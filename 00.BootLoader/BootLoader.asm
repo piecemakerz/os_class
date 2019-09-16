@@ -206,7 +206,6 @@ HANDLEDISKERROR:
 	add sp, 4
 
 	jmp $					; 현재 위치에서 무한 루프 수행
-
 ; 메시지를 출력하는 함수
 ; PARAM: x 좌표, y 좌표, 문자열
 SPLIT_LINE:
@@ -224,10 +223,6 @@ PRINTMESSAGE:
 	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
 	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-	push si		; 함수에서 임시로 사용하는 레지스터로 함수의 마지막 부분에서
-	push ax		; 스택에 삽입된 값을 꺼내 원래 값으로 복원
-	push cx
-	push dx
 	mov si, word[bp+4]		; 파라미터 3(출력할 문자열의 어드레스)
 .MESSAGELOOP:				; 메시지를 출력하는 루프
 	mov cl, byte[si]		; SI 레지스터가 가리키는 문자열의 위치에서 한 문자를
@@ -247,10 +242,6 @@ PRINTMESSAGE:
 	jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
 
 .MESSAGEEND:
-	pop dx					; 함수에서 사용이 끝난 DX 레지스터부터 ES 레지스터까지를
-	pop cx					; 스택에 삽입된 값을 이용해서 복원
-	pop ax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
-	pop si					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 
@@ -258,15 +249,8 @@ PRINT_BCD:
 	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
 	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-	push si
-	push ax
-	push bx
-	push cx
-	push dx
-
-	movzx cx, byte[bp+4]
-
-	mov bx, cx
+				
+	movzx bx, byte[bp+4]
 	shl bx, 4
 	and bh, 0fh
 	add bh, '0'
@@ -278,11 +262,6 @@ PRINT_BCD:
 	mov byte[es:di], bl
 	add di, 2
 
-	pop dx					; 함수에서 사용이 끝난 DX 레지스터부터 ES 레지스터까지를
-	pop cx
-	pop bx					; 스택에 삽입된 값을 이용해서 복원
-	pop ax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
-	pop si					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 ; PRINT_DAY:
