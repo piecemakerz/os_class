@@ -1,7 +1,7 @@
 [ORG 0x00]	; 코드의 시작 어드레스를 0x00으로 설정
 [BITS 16]	; 이하의 코드는 16비트 코드로 설정
 
-SECTION .text	; text 섹션(세그먼트)을 정의
+SECTION .text	; text 섹션(세그먼트) 정의
 
 jmp 0x07C0:START	; CS 세그먼트 레지스터에 0x07C0을 복사하면서, START 레이블로 이동
 					; BIOS는 메모리 주소 0x07C00에 부트 로더를 복사한다.
@@ -84,11 +84,18 @@ START:
 	mov byte[es:di], '/'
 	add di, 2
 
-	;연도 출력
+	;연도 출력;
+	movzx ax, ch
+	push ax
+	call PRINT_BCD
+	add sp, 4
 	movzx ax, cl
 	push ax
 	call PRINT_BCD
 	add sp, 4
+
+	;요일 출력
+	call PRINT_DAY
 
 	call SPLIT_LINE
 
@@ -251,7 +258,6 @@ PRINT_BCD:
 	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
 	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-
 	push si
 	push ax
 	push bx
@@ -259,21 +265,18 @@ PRINT_BCD:
 	push dx
 
 	movzx cx, byte[bp+4]
+
 	mov bx, cx
-	and bx, 0x0F
-	add bx, 0x30
-	
+	shl bx, 4
+	and bh, 0fh
+	add bh, '0'
+	mov byte[es:di], bh
 	add di, 2
-	mov byte[es:di], bl 	; 0이 아니라면 비디오 메모리 어드레서 0xB800:di에 문자를 출력
-	sub di, 2
-
-	shr cx, 4
-	mov bx, cx
-	and bx, 0x0F
-	add bx, 0x30
-
+	shr bx, 4
+	and bl, 0fh
+	add bl, '0'
 	mov byte[es:di], bl
-	add di, 4
+	add di, 2
 
 	pop dx					; 함수에서 사용이 끝난 DX 레지스터부터 ES 레지스터까지를
 	pop cx
@@ -282,17 +285,89 @@ PRINT_BCD:
 	pop si					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
+PRINT_DAY
+	push bp
+	mov bp, sp
 
+	mov bx, 0	; 지난 날짜
+
+	push dl
+	call BCD_TO_NUM
+	add sp, 2
+	push bx		; 일을 스택에 저장한다
+
+	push dl
+	call BCD_TO_NUM
+	add sp, 2
+	push bx		; 월을 스택에 저장한다
+
+	
+
+	CALCULATE_YEAR
+	
+
+	pop bx
+	pop bp
+	ret
+CALCULATE_YEAR:
+	mov bx, 0
+	push ch		; 연도 더하기	
+	call BCD_TO_NUM
+	add sp, 2
+	add bx, ax
+	mul bx, 100
+	push cl
+	call BCD_TO_NUM
+	add sp, 2
+	add bx, ax
+
+	sub bx, 1	; 작년까지의 기간 Pre Year
+	push bx		; 년을 스택에 저장한다
+
+	mov cx, 0	; num of days = 
+	mov dx, 0
+	mov ax, bx	
+	div ax, 4	; + year/4
+	add cx, ah
+	mov ax, bx
+	div ax, 400	; + year/400
+	add cx, ah
+	mov ax, bx
+	div ax, 100	; - year/100
+	sub cx, ah
+
+	pop bx
+	mul bx, 365
+	add bx, cx
+	ret
+CALCULATE_MONTH:
+CALCULATE_DATE
+BCD_TO_NUM:					; bcd를 숫자로 바꾸는 함수
+	push bp
+	mov bp, sp
+	push bx
+
+	movzx, byte[bp+2]
+	mov ax, 0
+	mov bx, cx
+	shl bx, 4
+	and bh, 0fh
+	mul bh, 10
+	add ax, bh
+	shr bx, 4
+	and bl, 0fh
+	add ax, bh
+
+	pop bx
+	pop bp
+	ret 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 부트 로더 시작 메시지
 MESSAGE1:	db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
-													; 마지막은 0으로 설정하여 .MESSAGELOOP에서
-													; 문자열이 종료되었음을 알 수 있도록 함
-
-DISKERRORMESSAGE:		db 'DISK ERROR~!!', 0
-IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0
+DISKERRORMESSAGE:		db 'DISK ERROR~!!', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
+IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
 LOADINGCOMPLETEMESSAGE:	db 'Complete~!!', 0
 CURRENTDATEMESSAGE: 	db 'Current Data: ',0
 
