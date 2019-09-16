@@ -69,8 +69,9 @@ START:
 	;일자 출력
 	movzx ax, dl
 	push ax
-	call PRINT_BCD
+	call PRINT_AND_SAVE_BCD
 	add sp, 4
+	mov dl, al	; dl 에 날짜를 저장
 
 	mov byte[es:di], '/'
 	add di, 2
@@ -78,8 +79,9 @@ START:
 	;달 출력
 	movzx ax, dh
 	push ax
-	call PRINT_BCD
+	call PRINT_AND_SAVE_BCD
 	add sp, 4
+	mov dh, al	; dx에 월 저장
 
 	mov byte[es:di], '/'
 	add di, 2
@@ -87,13 +89,27 @@ START:
 	;연도 출력;
 	movzx ax, ch
 	push ax
-	call PRINT_BCD
+	call PRINT_AND_SAVE_BCD
 	add sp, 4
+	mov ch, al	 ; ch에 세기 저장
+
 	movzx ax, cl
 	push ax
-	call PRINT_BCD
+	call PRINT_AND_SAVE_BCD
 	add sp, 4
-
+	mov bx, 0
+	movzx bx, cl ; ch를 바로 수정하면 문제가 생기므로
+	imul bx, 100 ; bx를 이용
+	add bx, ax	 ; bx에는 년이 저장되었고, 이제 cx를 사용가능
+	
+	; ;값 검사
+	; add  dl, 40	 ; 오능ㄹ은 16일, 40더하면 ascii 8이 된다
+	; mov byte[es:di], dl
+	; add di, 2
+	
+	; add dh, 40	 ; 오늘은 09월, 40 더하면 1이 된다
+	; mov byte[es:di], dh
+	; add di, 2
 	;요일 출력
 ;	call PRINT_DAY
 
@@ -219,7 +235,7 @@ SPLIT_LINE:
 		jge .LOOPFORSPLIT_LINE
 	pop si
 	ret
-PRINTMESSAGE:
+PRINTMESSAGE:	; 주의 : cx, si값 무결성 보장 안됨
 	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
 	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
@@ -245,19 +261,23 @@ PRINTMESSAGE:
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 
-PRINT_BCD:
+PRINT_AND_SAVE_BCD:			; BCD를 ax에 저장한다
 	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
 	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-				
+	mov ax, 0
 	movzx bx, byte[bp+4]
 	shl bx, 4
 	and bh, 0fh
+	add ah, bh
+	shr ax, 8
+	imul ax, 10
 	add bh, '0'
 	mov byte[es:di], bh
 	add di, 2
 	shr bx, 4
 	and bl, 0fh
+	add al, bl
 	add bl, '0'
 	mov byte[es:di], bl
 	add di, 2
@@ -316,25 +336,6 @@ PRINT_BCD:
 ; 	ret
 ; CALCULATE_MONTH:
 ; CALCULATE_DATE:
-; BCD_TO_NUM:					; bcd를 숫자로 바꾸는 함수
-; 	push bp
-; 	mov bp, sp
-; 	push bx
-
-; 	movzx cx, byte[bp+2]
-; 	mov ax, 0
-; 	mov bx, cx
-; 	shl bx, 4
-; 	and bh, 0fh
-; 	mul bh, 10
-; 	add ax, bh
-; 	shr bx, 4
-; 	and bl, 0fh
-; 	add ax, bh
-
-; 	pop bx
-; 	pop bp
-; 	ret 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
