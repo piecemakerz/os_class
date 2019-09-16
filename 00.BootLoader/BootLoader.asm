@@ -49,68 +49,55 @@ START:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면 상단에 시작 메시지 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	push MESSAGE1		; 출력할 메시지의 어드레스를 스택에 삽입
-	push 0				; 화면 Y 좌표(0)를 스택에 삽입
-	push 0				; 화면 X 좌표(0)를 스택에 삽입
+	mov si, 0
+	push MESSAGE1; 출력할 메시지의 어드레스를 스택에 삽입
 	call PRINTMESSAGE	; PRINTMESSAGE 함수 호출
-	add sp, 6			; 삽입한 파라미터 제거
-
+	add sp, 4 		; 삽입한 파라미터 제거
+	call SPLIT_LINE
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면 상단에 현재 날짜 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	push CURRENTDATEMESSAGE
-	push 1
-	push 0
 	call PRINTMESSAGE
-	add sp, 6
+	add sp, 4
 
 .GETREALTIME:
 	mov ah, 04h
 	int 1Ah
 
-	mov si, 80 * 2 + 30
-
 	;일자 출력
 	movzx ax, dl
 	push ax
-	push 1
-	push 15
 	call PRINT_BCD
 	add sp, 4
 
-	add si, 4
-	mov byte[es:si], '/'
-	add si, 2
+	mov byte[es:di], '/'
+	add di, 2
 
 	;달 출력
 	movzx ax, dh
 	push ax
-	push 1
-	push 18
 	call PRINT_BCD
 	add sp, 4
 
-	add si, 4
-	mov byte[es:si], '/'
-	add si, 2
+	mov byte[es:di], '/'
+	add di, 2
 
 	;연도 출력
 	movzx ax, cl
 	push ax
-	push 1
-	push 21
 	call PRINT_BCD
 	add sp, 4
+
+	call SPLIT_LINE
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	OS 이미지를 로딩한다는 메시지 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	push IMAGELOADINGMESSAGE	; 출력할 메시지의 어드레스를 스택에 삽입
-	push 2						; 화면 Y 좌표(2)를 스택에 삽입
-	push 0						; 화면 X 좌표(0)를 스택에 삽입
 	call PRINTMESSAGE			; PRINTMESSAGE 함수 호출
-	add sp, 6					; 삽입한 파라미터 제거
+	add sp, 4				; 삽입한 파라미터 제거
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	디스크에서 OS 이미지를 로딩
@@ -194,10 +181,8 @@ READEND:
 	;	OS이미지가 완료되었다는 메시지를 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	push LOADINGCOMPLETEMESSAGE		; 출력할 메시지의 어드레스를 스택에 삽입
-	push 2							; 화면 Y 좌표(1)를 스택에 삽입
-	push 20							; 화면 X 좌표(20)를 스택에 삽입
 	call PRINTMESSAGE				; PRINTMESSAGE 함수 호출
-	add sp, 6						; 삽입한 파라미터 제거
+	add sp, 4						; 삽입한 파라미터 제거
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	로딩한 가상 OS 이미지 실행
@@ -210,50 +195,33 @@ READEND:
 ; 디스크 에러를 처리하는 함수
 HANDLEDISKERROR:
 	push DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
-	push 2					; 화면 Y 좌표(1)를 스택에 삽입
-	push 20					; 화면 X 좌표(20)를 스택에 삽입
 	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
+	add sp, 4
 
 	jmp $					; 현재 위치에서 무한 루프 수행
 
 ; 메시지를 출력하는 함수
 ; PARAM: x 좌표, y 좌표, 문자열
+SPLIT_LINE:
+	push si
+	mov si, di
+	mov di, 0
+	.LOOPFORSPLIT_LINE:
+		sub si, 160
+		add di, 160
+		cmp si, 0
+		jge .LOOPFORSPLIT_LINE
+	pop si
+	ret
 PRINTMESSAGE:
 	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
 	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-
-	push es		; ES 세그먼트 레지스터부터 DX 레지스터까지 스택에 삽입
 	push si		; 함수에서 임시로 사용하는 레지스터로 함수의 마지막 부분에서
-	push di		; 스택에 삽입된 값을 꺼내 원래 값으로 복원
-	push ax
+	push ax		; 스택에 삽입된 값을 꺼내 원래 값으로 복원
 	push cx
 	push dx
-
-	; ES 세그먼트 레지스터에 비디오 모드 어드레스 설정
-	mov ax, 0xB800		; 비디오 메모리 시작 어드레스(0x0B8000)를
-						; 세그먼트 레지스터 값으로 변환
-	mov es, ax			; ES 세그먼트 레지스터에 설정
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	X, Y의 좌표로 비디오 메모리의 어드레스를 계산함
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Y의 좌표를 이용해서 먼저 라인 어드레스를 구함
-	mov ax, word[bp+6]		; 파라미터 2(화면 좌표 Y)를 AX 레지스터에 설정
-	mov si, 160				; 한 라인의 바이트 수(2 * 80컬럼)를 SI 레지스터에 설정
-	mul si					; AX 레지스터와 SI 레지스터를 곱하여 화면 Y 어드레스 계산
-	mov di, ax				; 계산된 화면 Y 어드레스를 DI 레지스터에 설정
-
-	; X의 좌표를 이용해서 2를 곱한 후 최종 어드레스를 구함
-	mov ax, word[bp+4]		; 파라미터 1(화면 좌표 X)를 AX 레지스터에 설정
-	mov si, 2				; 한 문자를 나타내는 바이트 수(2)를 SI 레지스터에 설정
-	mul si					; AX 레지스터와 SI 레지스터를 곱하여 화면 X 어드레스를 계산
-	add di, ax				; 화면 Y 어드레스와 계산된 X 어드레스를 더해서
-							; 실제 비디오 메모리 어드레스를 계산
-
-	; 출력할 문자열의 어드레스
-	mov si, word[bp+8]		; 파라미터 3(출력할 문자열의 어드레스)
-
+	mov si, word[bp+4]		; 파라미터 3(출력할 문자열의 어드레스)
 .MESSAGELOOP:				; 메시지를 출력하는 루프
 	mov cl, byte[si]		; SI 레지스터가 가리키는 문자열의 위치에서 한 문자를
 							; CL 레지스터에 복사
@@ -275,9 +243,7 @@ PRINTMESSAGE:
 	pop dx					; 함수에서 사용이 끝난 DX 레지스터부터 ES 레지스터까지를
 	pop cx					; 스택에 삽입된 값을 이용해서 복원
 	pop ax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
-	pop di					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
-	pop si
-	pop es
+	pop si					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 
@@ -287,50 +253,33 @@ PRINT_BCD:
 				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
 
 	push si
-	push di
 	push ax
 	push bx
 	push cx
 	push dx
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	X, Y의 좌표로 비디오 메모리의 어드레스를 계산함
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Y의 좌표를 이용해서 먼저 라인 어드레스를 구함
-	mov ax, word[bp+6]		; 파라미터 2(화면 좌표 Y)를 AX 레지스터에 설정
-	mov si, 160				; 한 라인의 바이트 수(2 * 80컬럼)를 SI 레지스터에 설정
-	mul si					; AX 레지스터와 SI 레지스터를 곱하여 화면 Y 어드레스 계산
-	mov di, ax				; 계산된 화면 Y 어드레스를 DI 레지스터에 설정
-
-	; X의 좌표를 이용해서 2를 곱한 후 최종 어드레스를 구함
-	mov ax, word[bp+4]		; 파라미터 1(화면 좌표 X)를 AX 레지스터에 설정
-	mov si, 2				; 한 문자를 나타내는 바이트 수(2)를 SI 레지스터에 설정
-	mul si					; AX 레지스터와 SI 레지스터를 곱하여 화면 X 어드레스를 계산
-	add di, ax				; 화면 Y 어드레스와 계산된 X 어드레스를 더해서
-							; 실제 비디오 메모리 어드레스를 계산
-
-	movzx cx, byte[bp+8]
+	movzx cx, byte[bp+4]
 	mov bx, cx
 	and bx, 0x0F
 	add bx, 0x30
+	
 	add di, 2
-
 	mov byte[es:di], bl 	; 0이 아니라면 비디오 메모리 어드레서 0xB800:di에 문자를 출력
+	sub di, 2
 
 	shr cx, 4
 	mov bx, cx
 	and bx, 0x0F
 	add bx, 0x30
 
-	sub di, 2
 	mov byte[es:di], bl
+	add di, 4
 
 	pop dx					; 함수에서 사용이 끝난 DX 레지스터부터 ES 레지스터까지를
 	pop cx
 	pop bx					; 스택에 삽입된 값을 이용해서 복원
 	pop ax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
-	pop di					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
-	pop si
+	pop si					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 
