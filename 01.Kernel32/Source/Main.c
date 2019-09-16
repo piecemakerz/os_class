@@ -1,10 +1,13 @@
 #include "Types.h"
+// #include "Page.h"
 
+// 함수 선언
 void kPrintString(int iX, int iY, const char* pcString);
 BOOL kInitializeKernel64Area(void);
 BOOL kIsMemoryEnough(void);
 
 // 아래 함수는 C 언어 커널의 시작 부분
+// 반드시 다른 함수들 보다 가장 앞 쪽에 존재해야 함
 void Main(void)
 {
 	DWORD i;
@@ -33,6 +36,13 @@ void Main(void)
 		while(1);
 	}
 	kPrintString(45, 5, "Pass");
+
+	/*
+	// IA-32e 모드 커널을 위한 페이지 테이블  생성
+	kPrintString(0, 6, "IA-32e Page Tables Initialize...............[    ]");
+	kInitializePageTables();
+	kPrintString(45, 6, "Pass");
+	*/
 
 	while(1);
 }
