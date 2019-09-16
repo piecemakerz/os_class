@@ -97,21 +97,38 @@ START:
 	push ax
 	call PRINT_AND_SAVE_BCD
 	add sp, 4
-	mov bx, 0
-	movzx bx, cl ; ch를 바로 수정하면 문제가 생기므로
-	imul bx, 100 ; bx를 이용
-	add bx, ax	 ; bx에는 년이 저장되었고, 이제 cx를 사용가능
-	
+	; mov bx, 0
+	; movzx bx, cl ; ch를 바로 수정하면 문제가 생기므로
+	; imul bx, 100 ; bx를 이용
+	; add bx, ax
+	; mov cx, bx	 ; cx는 이제 년이 저장되었다
 	; ;값 검사
-	; add  dl, 40	 ; 오능ㄹ은 16일, 40더하면 ascii 8이 된다
+	; add  dl, 40	; 오능ㄹ은 16일, 40더하면 ascii 8이 된다
 	; mov byte[es:di], dl
 	; add di, 2
 	
-	; add dh, 40	 ; 오늘은 09월, 40 더하면 1이 된다
+	; add dh, 40	; 오늘은 09월, 40 더하면 1이 된다
 	; mov byte[es:di], dh
 	; add di, 2
+
 	;요일 출력
-;	call PRINT_DAY
+	; 1일부터의 날짜를 세야한다
+	dec dl			
+	movzx ax, dl	; ax는 이제 1900년1월1일부터의 지난날짜
+	; 전월까지의 기간을 더해준다
+	dec dh
+	movzx bx, dh			
+	.LOOP_FOR_MONTH:
+		cmp bx, 1
+		ja .LOOP_FOR_MONTH
+		add ax, [MONTH + bx]
+		dec bh
+	; 중간점검
+	
+
+	; ; 전년까지의 기간을 더해준다
+	; sub bx, 1901
+
 
 	call SPLIT_LINE
 
@@ -284,58 +301,6 @@ PRINT_AND_SAVE_BCD:			; BCD를 ax에 저장한다
 
 	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
-; PRINT_DAY:
-; 	push bp
-; 	mov bp, sp
-
-; 	mov bx, 0	; 지난 날짜
-
-; 	push dl
-; 	call BCD_TO_NUM
-; 	add sp, 2
-; 	push bx		; 일을 스택에 저장한다
-
-; 	push dl
-; 	call BCD_TO_NUM
-; 	add sp, 2
-; 	push bx		; 월을 스택에 저장한다
-
-; 	pop bx
-; 	pop bp
-; 	ret
-; CALCULATE_YEAR:
-; 	mov bx, 0
-; 	push ch		; 연도 더하기	
-; 	call BCD_TO_NUM
-; 	add sp, 2
-; 	add bx, ax
-; 	mul bx, 100
-; 	push cl
-; 	call BCD_TO_NUM
-; 	add sp, 2
-; 	add bx, ax
-
-; 	sub bx, 1	; 작년까지의 기간 Pre Year
-; 	push bx		; 년을 스택에 저장한다
-
-; 	mov cx, 0	; num of days = 
-; 	mov dx, 0
-; 	mov ax, bx	
-; 	div ax, 4	; + year/4
-; 	add cx, ah
-; 	mov ax, bx
-; 	div ax, 400	; + year/400
-; 	add cx, ah
-; 	mov ax, bx
-; 	div ax, 100	; - year/100
-; 	sub cx, ah
-
-; 	pop bx
-; 	mul bx, 365
-; 	add bx, cx
-; 	ret
-; CALCULATE_MONTH:
-; CALCULATE_DATE:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -345,6 +310,8 @@ DISKERRORMESSAGE:		db 'DISK ERROR~!!', 0		; 마지막은 0으로 설정하여 .M
 IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
 LOADINGCOMPLETEMESSAGE:	db 'Complete~!!', 0
 CURRENTDATEMESSAGE: 	db 'Current Data: ',0
+
+MONTH: db 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 
 ; 디스크 읽기에 필요한 변수들
 SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
