@@ -32,92 +32,86 @@ START:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면을 모두 지우고, 속성 값을 녹색으로 설정
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov si, 80 * 25 * 2	; SI 레지스터 최대값으로 초기화
+	mov si, 80 * 25 * 2	; SI 레지스터를 마지막 위치로 초기화
 .SCREENCLEARLOOP:
-	mov byte[es:si-2], 0		; 화면을 지우는 루프
-							; 비디오 메모리의 문자가 위치하는 어드레스에
-							; 0을 복사하여 문자를 삭제
-	mov byte[es:si-1], 0x0A	; 비디오 메모리의 속성이 위치하는 어드레스에
-							; 0x0A(검은 바탕에 밝은 녹색)을 복사
-	sub si, 2				; si-2 == 0 일때 zf 플래그 0으로 셋팅 됨
-							; 출력한 문자의 수를 의미하는 SI 레지스터와 비교
-	jg .SCREENCLEARLOOP		; zf 플래그 0이면 아직 스크린을 다 지우지 못한 것
+	mov byte[es:si-2], 0	; 0으로 화면을 삭제한다
+	mov byte[es:si-1], 0x0A	; 속성에 0x0A(검은 바탕에 밝은 녹색)을 복사
+	sub si, 2	; sub연산과 더불어 si-2 == 0 일때 zf 플래그가 1로 셋팅 됨
+				; 즉, 모든 위치를 지웠을 때, 플래그가 세팅됨
+	jg .SCREENCLEARLOOP		; jz는 zf 플래그가 0일때 작동 (아직 스크린을 다 지우지 못한 것)
 							; .SCREENCLEARLOOP 레이블로 이동
-
+	; mov si, 0				; 어차피 문자열 시작주소를 집어넣으므로 초기화 할 필요가 없다
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면 상단에 시작 메시지 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov si, MESSAGE1	; 파라미터 3(출력할 문자열의 어드레스)
+	mov si, MESSAGE1	; si에 출력할 문자열 시작주소를 넘긴다
 	call PRINTMESSAGE	; PRINTMESSAGE 함수 호출
-
-	mov di, 160
+	mov di, 160			; di를 2째 줄로 넘긴다
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면 상단에 현재 날짜 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	mov si, CURRENTDATEMESSAGE
-	call PRINTMESSAGE
+	call PRINTMESSAGE 	; 날짜 안내 메시지를 출력한다
 
 .GETREALTIME:
-	mov ah, 04h
-	int 1Ah
+	;시간 호출 인터럽트
+	mov ah, 04h		; 인자 04h: 날짜
+	int 1Ah			; 인터럽트 번호
 
 	;일자 출력
-	movzx bx, dl
-	call PRINT_AND_SAVE_BCD
-	mov dl, al	; dl 에 날짜를 저장
+	movzx bx, dl 			; bx에 입력하면
+	call PRINT_AND_SAVE_BCD	; BCD를 출력하고, ax에 저장
+	mov dl, al	 			; ax에 저장된 날짜를 dl에 저장
 
 	mov byte[es:di], '/'
 	add di, 2
 
 	;달 출력
 	movzx bx, dh
-	call PRINT_AND_SAVE_BCD
-	mov dh, al	; dx에 월 저장
+	call PRINT_AND_SAVE_BCD	; ax에 달 저장됨
+	mov dh, al	; dh에 달 저장
 
 	mov byte[es:di], '/'
 	add di, 2
 
-	;연도 출력;
+	;연도 출력; (다음 줄 부터 HHLL년을 HH세기와 LL년으로 이해하면 됨)
 	movzx bx, ch
-	call PRINT_AND_SAVE_BCD
+	call PRINT_AND_SAVE_BCD ; ax에 세기 저장됨.
 	mov ch, al	 ; ch에 세기 저장
 
 	movzx bx, cl
-	call PRINT_AND_SAVE_BCD
-	xor bx, bx
-	movzx bx, cl ; ch를 바로 수정하면 문제가 생기므로
-	imul bx, 100 ; bx를 이용
-	add bx, ax	 ; bx에는 년이 저장되었고, 이제 cx를 사용가능
-	mov cx, bx
-	
-	; ;값 검사
-	; add  dl, 40	 ; 오능ㄹ은 16일, 40더하면 ascii 8이 된다
+	call PRINT_AND_SAVE_BCD ; ax에 년 저장됨.
+	shr cx, 8	 ; 오른쪽 쉬프트로, 년도를 없애버림.
+	imul cx, 100 ; 세기에 100을 곱함.
+	add cx, ax	 ; cx에 년도를 더해서 HHLL 완성
+
+	; ; 데이터 검증을 하고 싶으면 실행하면 됨.
+	; add  dl, 39	 ; 오능ㄹ은 18일, 39더하면 ascii 9이 된다
 	; mov byte[es:di], dl
 	; add di, 2
-	
 	; add dh, 40	 ; 오늘은 09월, 40 더하면 1이 된다
 	; mov byte[es:di], dh
 	; add di, 2
 	;요일 출력
 	; 1일부터의 날짜를 세야한다
-	dec dl			
-	movzx ax, dl	; ax는 이제 1900년1월1일부터의 지난날짜
-	movzx bx, dh
-	; .LOOP_FOR_MONTH:
-	; 	sub bx, 1	; 이전달을 확인한다
-	; 	jz .LOOP_FOR_MONTH_END ; 0이면 루프 나감
-	; 	add ax, [MONTH + bx]
-	; 	; add bx, '0'
-	; 	; mov byte [es:di], bl
-	; 	; sub bx, '0'
-	; 	; add di, 2
-	; 	jmp .LOOP_FOR_MONTH
-	; .LOOP_FOR_MONTH_END:
-	; mov bl, 7
+	dec dl		 ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
+	movzx ax, dl ; ax는 이제 1900년1월1일부터의 지난날짜
+	movzx bx, dh ; 달을 지칭하는 인텍스
+	.LOOP_FOR_MONTH:
+		sub bx, 1	; 이전달을 확인한다, 
+					; bx-1로 bx가 0이 될 때 플래그가 설정된다
+					; 참고: 어셈블리어에선, 인덱스가 1부터 시작한다.
+		jle .LOOP_FOR_MONTH_END ; 플래그가 설정되면 루프를 벗어난다
+		add ax, [MONTH + bx] ; ax에 전월까지의 날짜를 더한다
+		jmp .LOOP_FOR_MONTH	
+	.LOOP_FOR_MONTH_END:
+	mov bx, 7
 	; div bl
-	; add ah, '0'
-	; mov byte [es: di], ah
+	; mov byte [es:di], 'e'
+	; add di, 2
+	; add ax, '0'
+	; mov byte [es: di], al
 	; add di, 2
 	
 
@@ -166,6 +160,10 @@ READDATA:					;디스크를 읽는 코드의 시작
 	sub di, 0x1		; 복사할 섹터 수를 1 감소
 	jnge READEND	; di < 0이라면 다 복사 했으므로 READEND로 이동
 
+
+	;;;구현 아이디어 : 트랙불러오기를 다중 For문으로 짜면 라인을 좀 아낄 수 있을 듯
+
+	
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	BIOS Read Function 호출
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -174,7 +172,7 @@ READDATA:					;디스크를 읽는 코드의 시작
 	mov ch, byte[TRACKNUMBER]	; 읽을 트랙 번호 설정
 	mov cl, byte[SECTORNUMBER]	; 읽을 섹터 번호 설정
 	mov dh, byte[HEADNUMBER]	; 읽을 헤드 번호 설정
-	mov dl, 0x00				; 읽을 드라이브 번호(0=Floppy) 설정
+	xor dl, dl					; 읽을 드라이브 번호(0=Floppy) 설정
 	int 0x13					; 인터럽트 서비스 수행
 	jc HANDLEDISKERROR			; 에러가 발생했다면 HANDLEDISKERROR로 이동
 
@@ -227,7 +225,6 @@ READEND:
 HANDLEDISKERROR:
 	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
 	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
-
 	jmp $					; 현재 위치에서 무한 루프 수행
 ; 메시지를 출력하는 함수
 ; PARAM: x 좌표, y 좌표, 문자열
@@ -250,24 +247,21 @@ PRINTMESSAGE:
 	jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
 
 .MESSAGEEND:
-	ret						; 함수를 호출한 다음 코드의 위치로 복귀
+	ret					; 함수를 호출한 다음 코드의 위치로 복귀
 
-PRINT_AND_SAVE_BCD:			; BCD를 ax에 저장한다
-	shl bx, 4
-	and bh, 0fh
-	add ah, bh
-	shr ax, 8
-	imul ax, 10
-	add bh, '0'
-	mov byte[es:di], bh
-	add di, 2
-	shr bx, 4
-	and bl, 0fh
-	add al, bl
-	add bl, '0'
-	mov byte[es:di], bl
-	add di, 2
-	ret						; 함수를 호출한 다음 코드의 위치로 복귀
+PRINT_AND_SAVE_BCD:		; BCD를 bx에 입력받고, 화면에 [출력]하고 ax에 [저장]한다
+	shl bx, 4			; bx에 입력받은 BCD를 상위, 하위비트로 나눈다
+	movzx ax, bh		; [저장] ax에 10의 자리를 넣는다
+	imul ax, 10			; [저장] ax는 10의 자리이므로 10배 한다
+	add bh, '0'			; [출력] 숫자를 ascii로 변경한다
+	mov byte[es:di], bh ; 
+	shr bx, 4			; bx를 오른쪽 쉬프트한다
+	and bl, 0fh			; 10의 자리를 제거한다
+	add al, bl			; [저장] ax에 1의 자리도 더한다
+	add bl, '0'			
+	mov byte[es:di+2], bl
+	add di, 4			; [출력] 한번에 더해서 라인을 아낀다
+	ret					; 함수를 호출한 다음 코드의 위치로 복귀
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
