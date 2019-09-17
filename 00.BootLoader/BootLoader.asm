@@ -32,112 +32,102 @@ START:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면을 모두 지우고, 속성 값을 녹색으로 설정
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov si, 0	; SI 레지스터(원본 문자열 인덱스 레지스터)를 초기화
-
+	mov si, 80 * 25 * 2	; SI 레지스터 최대값으로 초기화
 .SCREENCLEARLOOP:
-	mov byte[es:si], 0		; 화면을 지우는 루프
+	mov byte[es:si-2], 0		; 화면을 지우는 루프
 							; 비디오 메모리의 문자가 위치하는 어드레스에
 							; 0을 복사하여 문자를 삭제
-	mov byte[es:si+1], 0x0A	; 비디오 메모리의 속성이 위치하는 어드레스에
+	mov byte[es:si-1], 0x0A	; 비디오 메모리의 속성이 위치하는 어드레스에
 							; 0x0A(검은 바탕에 밝은 녹색)을 복사
-	add si, 2
-	cmp si, 80 * 25 * 2		; 화면의 전체 크기는 80문자 * 25라인
+	sub si, 2				; si-2 == 0 일때 zf 플래그 0으로 셋팅 됨
 							; 출력한 문자의 수를 의미하는 SI 레지스터와 비교
-	jl .SCREENCLEARLOOP		; SI 레지스터가 80*25*2보다 작다면 아직 지우지
-							; 못한 영역이 있으므로 .SCREENCLEARLOOP 레이블로 이동
+	jg .SCREENCLEARLOOP		; zf 플래그 0이면 아직 스크린을 다 지우지 못한 것
+							; .SCREENCLEARLOOP 레이블로 이동
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면 상단에 시작 메시지 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov si, 0
-	push MESSAGE1; 출력할 메시지의 어드레스를 스택에 삽입
+	mov si, MESSAGE1	; 파라미터 3(출력할 문자열의 어드레스)
 	call PRINTMESSAGE	; PRINTMESSAGE 함수 호출
-	add sp, 4 		; 삽입한 파라미터 제거
-	call SPLIT_LINE
+
+	mov di, 160
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	화면 상단에 현재 날짜 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	push CURRENTDATEMESSAGE
+	mov si, CURRENTDATEMESSAGE
 	call PRINTMESSAGE
-	add sp, 4
 
 .GETREALTIME:
 	mov ah, 04h
 	int 1Ah
 
 	;일자 출력
-	movzx ax, dl
-	push ax
+	movzx bx, dl
 	call PRINT_AND_SAVE_BCD
-	add sp, 4
 	mov dl, al	; dl 에 날짜를 저장
 
 	mov byte[es:di], '/'
 	add di, 2
 
 	;달 출력
-	movzx ax, dh
-	push ax
+	movzx bx, dh
 	call PRINT_AND_SAVE_BCD
-	add sp, 4
 	mov dh, al	; dx에 월 저장
 
 	mov byte[es:di], '/'
 	add di, 2
 
 	;연도 출력;
-	movzx ax, ch
-	push ax
+	movzx bx, ch
 	call PRINT_AND_SAVE_BCD
-	add sp, 4
 	mov ch, al	 ; ch에 세기 저장
 
-	movzx ax, cl
-	push ax
+	movzx bx, cl
 	call PRINT_AND_SAVE_BCD
-	add sp, 4
-	; mov bx, 0
-	; movzx bx, cl ; ch를 바로 수정하면 문제가 생기므로
-	; imul bx, 100 ; bx를 이용
-	; add bx, ax
-	; mov cx, bx	 ; cx는 이제 년이 저장되었다
+	xor bx, bx
+	movzx bx, cl ; ch를 바로 수정하면 문제가 생기므로
+	imul bx, 100 ; bx를 이용
+	add bx, ax	 ; bx에는 년이 저장되었고, 이제 cx를 사용가능
+	mov cx, bx
+	
 	; ;값 검사
-	; add  dl, 40	; 오능ㄹ은 16일, 40더하면 ascii 8이 된다
+	; add  dl, 40	 ; 오능ㄹ은 16일, 40더하면 ascii 8이 된다
 	; mov byte[es:di], dl
 	; add di, 2
 	
-	; add dh, 40	; 오늘은 09월, 40 더하면 1이 된다
+	; add dh, 40	 ; 오늘은 09월, 40 더하면 1이 된다
 	; mov byte[es:di], dh
 	; add di, 2
-
 	;요일 출력
 	; 1일부터의 날짜를 세야한다
 	dec dl			
 	movzx ax, dl	; ax는 이제 1900년1월1일부터의 지난날짜
-	; 전월까지의 기간을 더해준다
-	dec dh
-	movzx bx, dh			
-	.LOOP_FOR_MONTH:
-		cmp bx, 1
-		ja .LOOP_FOR_MONTH
-		add ax, [MONTH + bx]
-		dec bh
-	; 중간점검
+	movzx bx, dh
+	; .LOOP_FOR_MONTH:
+	; 	sub bx, 1	; 이전달을 확인한다
+	; 	jz .LOOP_FOR_MONTH_END ; 0이면 루프 나감
+	; 	add ax, [MONTH + bx]
+	; 	; add bx, '0'
+	; 	; mov byte [es:di], bl
+	; 	; sub bx, '0'
+	; 	; add di, 2
+	; 	jmp .LOOP_FOR_MONTH
+	; .LOOP_FOR_MONTH_END:
+	; mov bl, 7
+	; div bl
+	; add ah, '0'
+	; mov byte [es: di], ah
+	; add di, 2
 	
 
-	; ; 전년까지의 기간을 더해준다
-	; sub bx, 1901
-
-
-	call SPLIT_LINE
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	OS 이미지를 로딩한다는 메시지 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	push IMAGELOADINGMESSAGE	; 출력할 메시지의 어드레스를 스택에 삽입
+	mov di, 320
+	mov si, IMAGELOADINGMESSAGE	; 출력할 메시지의 어드레스를 스택에 삽입
 	call PRINTMESSAGE			; PRINTMESSAGE 함수 호출
-	add sp, 4				; 삽입한 파라미터 제거
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	디스크에서 OS 이미지를 로딩
@@ -151,9 +141,9 @@ RESETDISK:					;디스크를 리셋하는 코드의 시작
 	;	BIOS Reset Function 호출
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	; 서비스 번호 0, 드라이브 번호(0=Floppy)
-	mov ax, 0
-	mov dl, 0
+	; 인터럽트
+	xor ax, ax	; 서비스 번호 0,
+	xor dl, dl	; 드라이브 번호(0=Floppy)
 	int 0x13
 	; 에러가 발생하면 에러 처리로 이동
 	jc HANDLEDISKERROR
@@ -168,13 +158,13 @@ RESETDISK:					;디스크를 리셋하는 코드의 시작
 	mov bx, 0x0000			; BX 레지스터에 0x0000을 설정하여 복사할
 							; 어드레스를 0x1000:0000(0x10000)으로 최종 설정
 
+
 	mov di, word[TOTALSECTORCOUNT]	; 복사할 OS 이미지의 섹터 수를 DI 레지스터에 설정
 
 READDATA:					;디스크를 읽는 코드의 시작
 	; 모든 섹터를 다 읽었는지 확인
-	cmp di, 0		; 복사할 OS 이미지의 섹터 수를 0과 비교
-	je READEND		; 복사할 섹터 수가 0이라면 다 복사 했으므로 READEND로 이동
 	sub di, 0x1		; 복사할 섹터 수를 1 감소
+	jnge READEND	; di < 0이라면 다 복사 했으므로 READEND로 이동
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	BIOS Read Function 호출
@@ -216,13 +206,14 @@ READDATA:					;디스크를 읽는 코드의 시작
 	add byte[TRACKNUMBER], 0x01		; 트랙 번호를 1 증가
 	jmp READDATA					; READDATA로 이동
 READEND:
-
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	OS이미지가 완료되었다는 메시지를 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	push LOADINGCOMPLETEMESSAGE		; 출력할 메시지의 어드레스를 스택에 삽입
+	mov ax, 0xb800
+	mov es, ax
+	mov di, 358
+	mov si, LOADINGCOMPLETEMESSAGE		; 출력할 메시지의 어드레스를 스택에 삽입
 	call PRINTMESSAGE				; PRINTMESSAGE 함수 호출
-	add sp, 4						; 삽입한 파라미터 제거
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	로딩한 가상 OS 이미지 실행
@@ -234,29 +225,13 @@ READEND:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 디스크 에러를 처리하는 함수
 HANDLEDISKERROR:
-	push DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
+	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
 	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
-	add sp, 4
 
 	jmp $					; 현재 위치에서 무한 루프 수행
 ; 메시지를 출력하는 함수
 ; PARAM: x 좌표, y 좌표, 문자열
-SPLIT_LINE:
-	push si
-	mov si, di
-	mov di, 0
-	.LOOPFORSPLIT_LINE:
-		sub si, 160
-		add di, 160
-		cmp si, 0
-		jge .LOOPFORSPLIT_LINE
-	pop si
-	ret
-PRINTMESSAGE:	; 주의 : cx, si값 무결성 보장 안됨
-	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
-	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
-				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-	mov si, word[bp+4]		; 파라미터 3(출력할 문자열의 어드레스)
+PRINTMESSAGE:
 .MESSAGELOOP:				; 메시지를 출력하는 루프
 	mov cl, byte[si]		; SI 레지스터가 가리키는 문자열의 위치에서 한 문자를
 							; CL 레지스터에 복사
@@ -275,15 +250,9 @@ PRINTMESSAGE:	; 주의 : cx, si값 무결성 보장 안됨
 	jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
 
 .MESSAGEEND:
-	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 
 PRINT_AND_SAVE_BCD:			; BCD를 ax에 저장한다
-	push bp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
-	mov bp, sp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
-				; 베이스 포인터 레지스터를 이용해서 파라미터에 접근할 목적
-	mov ax, 0
-	movzx bx, byte[bp+4]
 	shl bx, 4
 	and bh, 0fh
 	add ah, bh
@@ -298,8 +267,6 @@ PRINT_AND_SAVE_BCD:			; BCD를 ax에 저장한다
 	add bl, '0'
 	mov byte[es:di], bl
 	add di, 2
-
-	pop bp					; 베이스 포인터 레지스터(BP) 복원
 	ret						; 함수를 호출한 다음 코드의 위치로 복귀
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
@@ -310,9 +277,7 @@ DISKERRORMESSAGE:		db 'DISK ERROR~!!', 0		; 마지막은 0으로 설정하여 .M
 IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
 LOADINGCOMPLETEMESSAGE:	db 'Complete~!!', 0
 CURRENTDATEMESSAGE: 	db 'Current Data: ',0
-
 MONTH: db 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
-
 ; 디스크 읽기에 필요한 변수들
 SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
 HEADNUMBER			db 0x00	; OS 이미지가 시작하는 헤드 번호를 저장하는 영역
