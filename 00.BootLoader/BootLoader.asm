@@ -89,22 +89,21 @@ START:
 	; dl에 일자, dh에 달, cx에 년도가 저장되어 있다.
 	dec dl		 ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
 	movzx ax, dl ; ax는 이제 1900년1월1일부터의 지난날짜 (ex. 1900년1월2일이라면 ax=1)
-		; 1월 부터의 날짜를 세야한다 
+	
+	; 1월 부터의 날짜를 세야한다 
 	; 올해 초부터 지난 달까지의 일수를 더해 7로 나눠야 한다
 	; 이전 달까지의 일수 합을 7로 나눈 나머지를 더하자
 	movzx bx, dh ; 배열에 접근하기 위해 bx에 dh(달)을 집어넣는다
 	cmp bx, 3	 ; dh(달)가 3월 이후 인지 검사한다
 	jl .AFTER_CONSIDER_LEAP_YEAR	; 3월 이전이라면 윤년계산이 필요없다
-	; 구현예정
-	.AFTER_CONSIDER_LEAP_YEAR:
 	; 1월의 경우 지난달이 없고, 
 	; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
 	; 나머지 달은 윤년 계산 후에 더해준다
+	mov si, 1	 ; si는 윤년 계산이 필요한 플래그
 	movzx dx, byte[DAYS_UNTIL_MONTH + bx -1]
 	add ax, dx	 ; ax는 당해년도 1일부터의 지난날짜
 
 	; 1900년 부터의 날짜를 세야한다
-
 	mov word[YEARNUMBER], cx	; cx를 1900년도부터의 년도 계산에 사용
 								; 따라서 YEARNUMBER 메모리에 현재 년도 저장
 	mov word[TEMPDATEREPOS], ax	; ax를 나눗셈에 써야하기 때문에 임시저장
