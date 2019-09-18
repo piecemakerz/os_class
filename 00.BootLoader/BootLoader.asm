@@ -89,17 +89,21 @@ START:
 	; dl에 일자, dh에 달, cx에 년도가 저장되어 있다.
 	dec dl		 ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
 	movzx ax, dl ; ax는 이제 1900년1월1일부터의 지난날짜 (ex. 1900년1월2일이라면 ax=1)
-	movzx bx, dh ; 달을 지칭하는 인덱스
+		; 1월 부터의 날짜를 세야한다 
+	; 올해 초부터 지난 달까지의 일수를 더해 7로 나눠야 한다
+	; 이전 달까지의 일수 합을 7로 나눈 나머지를 더하자
+	movzx bx, dh ; 배열에 접근하기 위해 bx에 dh(달)을 집어넣는다
+	cmp bx, 3	 ; dh(달)가 3월 이후 인지 검사한다
+	jl .AFTER_CONSIDER_LEAP_YEAR	; 3월 이전이라면 윤년계산이 필요없다
+	; 구현예정
+	.AFTER_CONSIDER_LEAP_YEAR:
+	; 1월의 경우 지난달이 없고, 
+	; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
+	; 나머지 달은 윤년 계산 후에 더해준다
+	movzx dx, byte[DAYS_UNTIL_MONTH + bx -1]
+	add ax, dx	 ; ax는 당해년도 1일부터의 지난날짜
 
-	.LOOP_FOR_MONTH:
-		sub bx, 1	; 이전달을 확인한다, 
-					; bx-1로 bx가 0이 될 때 플래그가 설정된다
-					; 참고: 어셈블리어에선, 인덱스가 1부터 시작한다.
-		jle .LOOP_FOR_MONTH_END ; 플래그가 설정되면 루프를 벗어난다
-		movzx dx, byte[MONTH + bx - 1]
-		add ax, dx ; ax에 전월까지의 날짜를 더한다
-		jmp .LOOP_FOR_MONTH	
-	.LOOP_FOR_MONTH_END:
+	; 1900년 부터의 날짜를 세야한다
 
 	mov word[YEARNUMBER], cx	; cx를 1900년도부터의 년도 계산에 사용
 								; 따라서 YEARNUMBER 메모리에 현재 년도 저장
@@ -311,7 +315,7 @@ MESSAGE1:	db 'Start', 0	; 출력할 메시지 정의
 IMAGELOADINGMESSAGE:	db 'Loading ', 0 ; 문자열이 종료되었음을 알 수 있도록 함
 LOADINGCOMPLETEMESSAGE:	db 'Complete', 0
 CURRENTDATEMESSAGE: 	db 'Date: ',0
-MONTH: db 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+DAYS_UNTIL_MONTH:  db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
 DAYS: db 'MON', 0, 'TUE', 0, 'WED', 0, 'THU', 0, 'FRI', 0, 'SAT', 0, 'SUN', 0
 
 ; 디스크 읽기에 필요한 변수들
