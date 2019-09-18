@@ -10,8 +10,8 @@ jmp 0x07C0:START	; CS 세그먼트 레지스터에 0x07C0을 복사하면서, ST
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	MINT64 OS에 관련된 환경 설정 값
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-TOTALSECTORCOUNT:	dw	0x0	; 부트 로더를 제외한 MINT64 OS 이미지의 크기
-							; 최대 1152 섹터까지 가능
+TOTALSECTORCOUNT:	dw	0x02	; 부트 로더를 제외한 MINT64 OS 이미지의 크기
+								; 최대 1152 섹터까지 가능
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	코드 영역
@@ -63,59 +63,94 @@ START:
 	movzx bx, dl 			; bx에 입력하면
 	call PRINT_AND_SAVE_BCD	; BCD를 출력하고, ax에 저장
 	mov dl, al	 			; ax에 저장된 날짜를 dl에 저장
-
 	mov byte[es:di], '/'
 	add di, 2
 
 	;달 출력
-	movzx bx, dh
+	movzx bx, dh			; bx에 입력하면
 	call PRINT_AND_SAVE_BCD	; ax에 달 저장됨
 	mov dh, al	; dh에 달 저장
-
 	mov byte[es:di], '/'
 	add di, 2
 
 	;연도 출력; (다음 줄 부터 HHLL년을 HH세기와 LL년으로 이해하면 됨)
-	movzx bx, ch
+	movzx bx, ch			; bx에 입력하면
 	call PRINT_AND_SAVE_BCD ; ax에 세기 저장됨.
 	mov ch, al	 ; ch에 세기 저장
 
-	movzx bx, cl
+	movzx bx, cl			; bx에 입력하면
 	call PRINT_AND_SAVE_BCD ; ax에 년 저장됨.
 	shr cx, 8	 ; 오른쪽 쉬프트로, 년도를 없애버림.
 	imul cx, 100 ; 세기에 100을 곱함.
 	add cx, ax	 ; cx에 년도를 더해서 HHLL 완성
 
-	; ; 데이터 검증을 하고 싶으면 실행하면 됨.
-	; add  dl, 39	 ; 오능ㄹ은 18일, 39더하면 ascii 9이 된다
-	; mov byte[es:di], dl
-	; add di, 2
-	; add dh, 40	 ; 오늘은 09월, 40 더하면 1이 된다
-	; mov byte[es:di], dh
-	; add di, 2
-	;요일 출력
+	; 요일 출력
 	; 1일부터의 날짜를 세야한다
+	; dl에 일자, dh에 달, cx에 년도가 저장되어 있다.
 	dec dl		 ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
-	movzx ax, dl ; ax는 이제 1900년1월1일부터의 지난날짜
-	movzx bx, dh ; 달을 지칭하는 인텍스
+	movzx ax, dl ; ax는 이제 1900년1월1일부터의 지난날짜 (ex. 1900년1월2일이라면 ax=1)
+	movzx bx, dh ; 달을 지칭하는 인덱스
+
 	.LOOP_FOR_MONTH:
 		sub bx, 1	; 이전달을 확인한다, 
 					; bx-1로 bx가 0이 될 때 플래그가 설정된다
 					; 참고: 어셈블리어에선, 인덱스가 1부터 시작한다.
 		jle .LOOP_FOR_MONTH_END ; 플래그가 설정되면 루프를 벗어난다
-		add ax, [MONTH + bx] ; ax에 전월까지의 날짜를 더한다
+		movzx dx, byte[MONTH + bx - 1]
+		add ax, dx ; ax에 전월까지의 날짜를 더한다
 		jmp .LOOP_FOR_MONTH	
 	.LOOP_FOR_MONTH_END:
+
+	mov word[YEARNUMBER], cx	; cx를 1900년도부터의 년도 계산에 사용
+								; 따라서 YEARNUMBER 메모리에 현재 년도 저장
+	mov word[TEMPDATEREPOS], ax	; ax를 나눗셈에 써야하기 때문에 임시저장
+	mov cx, 1899
+	mov word[TEMPYEAR], cx
+
+	.LOOP_FOR_YEAR:
+		mov cx, word[TEMPYEAR]
+		add cx, 1
+		cmp cx, word[YEARNUMBER]
+		jge .LOOP_FOR_YEAR_END
+		mov word[TEMPYEAR], cx
+
+		mov ax, word[TEMPYEAR]
+		mov cx, 400
+		xor dx, dx
+		div cx
+		cmp dx, 0
+		je .LEAP_YEAR
+
+		mov ax, word[TEMPYEAR]
+		mov cx, 4
+		xor dx, dx
+		div cx
+		cmp dx, 0
+		jne .NORMAL_YEAR
+
+		mov ax, word[TEMPYEAR]
+		mov cx, 100
+		xor dx, dx
+		div cx
+		cmp dx, 0
+		je .NORMAL_YEAR
+
+	.LEAP_YEAR:
+		add word[TEMPDATEREPOS], 366
+		jmp .LOOP_FOR_YEAR
+	.NORMAL_YEAR:
+		add word[TEMPDATEREPOS], 365
+		jmp .LOOP_FOR_YEAR
+	.LOOP_FOR_YEAR_END:
+
+	mov ax, word[TEMPDATEREPOS]
 	mov bx, 7
-	; div bl
-	; mov byte [es:di], 'e'
-	; add di, 2
-	; add ax, '0'
-	; mov byte [es: di], al
-	; add di, 2
-	
-
-
+	xor dx, dx
+	div bx
+	imul dx, 4
+	mov si, DAYS
+	add si, dx
+	call PRINTMESSAGE
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	OS 이미지를 로딩한다는 메시지 출력
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -140,7 +175,7 @@ RESETDISK:					;디스크를 리셋하는 코드의 시작
 	xor dl, dl	; 드라이브 번호(0=Floppy)
 	int 0x13
 	; 에러가 발생하면 에러 처리로 이동
-	jc HANDLEDISKERROR
+;	jc HANDLEDISKERROR
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	디스크에서 섹터를 읽음
@@ -174,7 +209,7 @@ READDATA:					;디스크를 읽는 코드의 시작
 	mov dh, byte[HEADNUMBER]	; 읽을 헤드 번호 설정
 	xor dl, dl					; 읽을 드라이브 번호(0=Floppy) 설정
 	int 0x13					; 인터럽트 서비스 수행
-	jc HANDLEDISKERROR			; 에러가 발생했다면 HANDLEDISKERROR로 이동
+;	jc HANDLEDISKERROR			; 에러가 발생했다면 HANDLEDISKERROR로 이동
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	복사할 어드레스와 트랙, 헤드, 섹터 어드레스 계산
@@ -222,10 +257,10 @@ READEND:
 ;	함수 코드 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 디스크 에러를 처리하는 함수
-HANDLEDISKERROR:
-	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
-	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
-	jmp $					; 현재 위치에서 무한 루프 수행
+;HANDLEDISKERROR:
+;	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
+;	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
+;	jmp $					; 현재 위치에서 무한 루프 수행
 ; 메시지를 출력하는 함수
 ; PARAM: x 좌표, y 좌표, 문자열
 PRINTMESSAGE:
@@ -262,20 +297,28 @@ PRINT_AND_SAVE_BCD:		; BCD를 bx에 입력받고, 화면에 [출력]하고 ax에
 	mov byte[es:di+2], bl
 	add di, 4			; [출력] 한번에 더해서 라인을 아낀다
 	ret					; 함수를 호출한 다음 코드의 위치로 복귀
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ; 부트 로더 시작 메시지
-MESSAGE1:	db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
-DISKERRORMESSAGE:		db 'DISK ERROR~!!', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
-IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
-LOADINGCOMPLETEMESSAGE:	db 'Complete~!!', 0
-CURRENTDATEMESSAGE: 	db 'Current Data: ',0
+MESSAGE1:	db 'Start', 0	; 출력할 메시지 정의
+;DISKERRORMESSAGE:		db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
+IMAGELOADINGMESSAGE:	db 'Loading ', 0 ; 문자열이 종료되었음을 알 수 있도록 함
+LOADINGCOMPLETEMESSAGE:	db 'Complete', 0
+CURRENTDATEMESSAGE: 	db 'Date: ',0
 MONTH: db 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+DAYS: db 'MON', 0, 'TUE', 0, 'WED', 0, 'THU', 0, 'FRI', 0, 'SAT', 0, 'SUN', 0
+
 ; 디스크 읽기에 필요한 변수들
 SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
 HEADNUMBER			db 0x00	; OS 이미지가 시작하는 헤드 번호를 저장하는 영역
 TRACKNUMBER			db 0x00	; OS 이미지가 시작하는 트랙 번호를 저장하는 영역
+YEARNUMBER			dw 0x00
+TEMPDATEREPOS		dw 0x00
+TEMPYEAR			dw 0x00
+ISTHISYEARLOOPYEAR  db 0x00
 
 times 510-($ - $$)	db 0x00
 
