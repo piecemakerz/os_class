@@ -108,11 +108,7 @@ START:
 	mov word[TEMPYEAR], cx
 
 	.LOOP_FOR_YEAR:
-		mov cx, word[TEMPYEAR]
-		add cx, 1
-		cmp cx, word[YEARNUMBER]
-		jge .LOOP_FOR_YEAR_END
-		mov word[TEMPYEAR], cx
+		add word[TEMPYEAR], 1
 
 		mov ax, word[TEMPYEAR]
 		mov cx, 400
@@ -136,9 +132,16 @@ START:
 		je .NORMAL_YEAR
 
 	.LEAP_YEAR:
-		add word[TEMPDATEREPOS], 366
-		jmp .LOOP_FOR_YEAR
+		add word[TEMPDATEREPOS], 1
+
+		mov cx, word[TEMPYEAR]
+		cmp cx, word[YEARNUMBER]
+		jge .LOOP_FOR_YEAR_END
 	.NORMAL_YEAR:
+		mov cx, word[TEMPYEAR]
+		cmp cx, word[YEARNUMBER]
+		jge .LOOP_FOR_YEAR_END
+
 		add word[TEMPDATEREPOS], 365
 		jmp .LOOP_FOR_YEAR
 	.LOOP_FOR_YEAR_END:
