@@ -113,7 +113,8 @@ START:
 	add bx, cx
 	sub bx, 1901
 	; 먼저 윤년
-	; 1900년 부터 작년까자의 윤년의 횟수는 작년까지의 윤년의 개수에서 1900년까지의 윤년의 개수를 빼서 구할 수 있다
+	; 1900년 부터 작년까자의 윤년의 횟수는 작년까지의 윤년의 개수에서 
+	; 1900년까지의 윤년의 개수를 빼서 구할 수 있다
 	; 1900년까지의 윤년은
 	; 1900 / 4 + 1900 / 400 - 1900/100이고 이는
 	; 475 + 4 - 19로 460 번 발생했다
@@ -137,9 +138,10 @@ START:
 	mov ax, bx
 	mov cx, 7
 	div cx
-	imul dx, 4
+	shl dx, 2
 	mov si, DAYS
 	add si, dx
+	add di, 2
 	call PRINTMESSAGE
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	OS 이미지를 로딩한다는 메시지 출력
@@ -182,7 +184,7 @@ RESETDISK:					;디스크를 리셋하는 코드의 시작
 
 READDATA:					;디스크를 읽는 코드의 시작
 	; 모든 섹터를 다 읽었는지 확인
-	sub di, 0x1		; 복사할 섹터 수를 1 감소
+	dec di		; 복사할 섹터 수를 1 감소
 	jnge READEND	; di < 0이라면 다 복사 했으므로 READEND로 이동
 
 
@@ -212,7 +214,7 @@ READDATA:					;디스크를 읽는 코드의 시작
 	; 한 섹터를 읽었으므로 섹터 번호를 증가시키고 마지막 섹터까지 읽었는지 판단
 	; 마지막 섹터가 아니면 섹터 읽기로 이동해서 다시 섹터 읽기 수행
 	mov al, byte[SECTORNUMBER]		; 섹터 번호를 AL 레지스터에 설정
-	add al, 0x01					; 섹터 번호를 1 증가
+	inc al					; 섹터 번호를 1 증가
 	mov byte[SECTORNUMBER], al		; 증가시킨 섹터 번호를 SECTORNUMBER에 다시 설정
 	cmp al, 19						; 증가시킨 섹터 번호를 19와 비교
 	jl READDATA						; 섹터 번호가 19 미만이라면 READDATA로 이동
@@ -228,7 +230,7 @@ READDATA:					;디스크를 읽는 코드의 시작
 	jne READDATA					; 헤드 번호가 0이 아니면 READDATA로 이동
 
 	; 트랙을 1 증가시킨 후 다시 섹터 읽기로 이동
-	add byte[TRACKNUMBER], 0x01		; 트랙 번호를 1 증가
+	add byte[TRACKNUMBER], 0x1	; 트랙 번호를 1 증가
 	jmp READDATA					; READDATA로 이동
 READEND:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -264,8 +266,7 @@ PRINTMESSAGE:
 							; .MESSAGEEND로 이동하여 문자 출력 종료
 
 	mov byte[es:di], cl		; 0이 아니라면 비디오 메모리 어드레스 0xB800:di에 문자를 출력
-
-	add si, 1				; SI 레지스터에 1을 더하여 다음 문자열로 이동
+	inc si, 				; SI 레지스터에 1을 더하여 다음 문자열로 이동
 	add di, 2				; DI 레지스터에 2를 더하여 비디오 메모리의 다음 문자 위치로 이동
 							; 비디오 메모리는 (문자, 속성)의 쌍으로 구성되므로 문자만 출력하려면
 							; 2를 더해야 함
@@ -297,14 +298,14 @@ DIVIDE_YEAR_BY_CX:
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; 부트 로더 시작 메시지
-MESSAGE1:				db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
-DISKERRORMESSAGE:		db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
-IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
-LOADINGCOMPLETEMESSAGE:	db 'Complete~!!', 0
-CURRENTDATEMESSAGE: 	db 'Current Date: ',0
-DAYS_UNTIL_MONTH:  db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
-DAYS: db 'MON', 0, 'TUE', 0, 'WED', 0, 'THU', 0, 'FRI', 0, 'SAT', 0, 'SUN', 0
+; 부트 로더 메시지
+MESSAGE1				db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
+DISKERRORMESSAGE		db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
+IMAGELOADINGMESSAGE	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
+LOADINGCOMPLETEMESSAGE	db 'Complete~!!', 0
+CURRENTDATEMESSAGE 	db 'Current Date: ',0
+DAYS_UNTIL_MONTH  db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
+DAYS db 'Mon', 0, 'Tue', 0, 'Wed', 0, 'Thu', 0, 'Fri', 0, 'Sat', 0, 'Sun', 0
 
 ; 디스크 읽기에 필요한 변수들
 SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
@@ -314,3 +315,5 @@ times 510-($ - $$)	db 0x00
 
 db 0x55
 db 0xAA
+
+
