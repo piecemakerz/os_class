@@ -96,12 +96,12 @@ START:
 	movzx bx, dh ; 배열에 접근하기 위해 bx에 dh(달)을 집어넣는다
 	cmp bx, 3	 ; dh(달)가 3월 이후 인지 검사한다
 	jl .AFTER_CONSIDER_LEAP_YEAR	; 3월 이전이라면 윤년계산이 필요없다
-	; 1월의 경우 지난달이 없고, 
-	; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
-	; 나머지 달의 경우, 올해까지의 윤년계산이 필요하다
-	add cx, 1
-	dec ax		 ; 올해까지 윤년계산을 하면서 올해까지 1년이 추가되므로 미리 제거한다
+		; 1월의 경우 지난달이 없고, 
+		; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
+		add cx, 1    ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
+		dec ax		 ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
 	.AFTER_CONSIDER_LEAP_YEAR:
+	; 1월은 0이 더해지므로 케이스분류 할 필요없음
 	movzx bx, byte[DAYS_UNTIL_MONTH + bx -1]
 	add bx, ax ; 이 줄 부터는 bx로 일수의 합을 관리한다
 	
@@ -119,23 +119,17 @@ START:
 	; 475 + 4 - 19로 460 번 발생했다
 	mov si, cx ; div에서 cx로 제수를 전달해야 하기 때문에 si로 년도를 관리한다
 	
-	xor dx, dx ; word 단위 나눗셈을 준비한다
-	mov ax, si ; 피제수 ax=작년
-	mov cx, 4
-	div cx
-	add bx, ax ; 윤년 만큼 더한다
-
-	xor dx, dx
-	mov ax, si
-	mov cx, 100
-	div cx
-	sub bx, ax ; 윤년이 아닌데 더해진 년도를 뺀다
-
-	xor dx, dx
-	mov ax, si
-	mov cx, 400
-	div cx
-	add bx, ax ; 윤년 만큼 더한다
+	mov cx, 4   ; 4로 나눠지면 윤년이다
+	call DIVIDE_YEAR_BY_CX
+	add bx, ax
+	
+	mov cx, 100 ; 100으로 나눠지면 윤년이 아니지만, 4로 나뉘면서 더해졌다
+	call DIVIDE_YEAR_BY_CX
+	sub bx, ax
+ 
+	mov cx, 400 ; 400으로 나눠지면 윤년이다
+	call DIVIDE_YEAR_BY_CX
+	add bx, ax
 
 	sub bx, 460 ; 1900년까지의 윤년을 뺀다
 
@@ -171,7 +165,7 @@ RESETDISK:					;디스크를 리셋하는 코드의 시작
 	xor dl, dl	; 드라이브 번호(0=Floppy)
 	int 0x13
 	; 에러가 발생하면 에러 처리로 이동
-;	jc HANDLEDISKERROR
+	jc HANDLEDISKERROR
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	디스크에서 섹터를 읽음
@@ -198,13 +192,15 @@ READDATA:					;디스크를 읽는 코드의 시작
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	BIOS Read Function 호출
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov ah, 0x02				; BIOS 서비스 번호 2(Read Sector)
-	mov al, 0x1					; 읽을 섹터 수는 1
+	mov ax, 0x201				; 서비스2번 / 읽을 섹터 1개
 	mov ch, byte[TRACKNUMBER]	; 읽을 트랙 번호 설정
 	mov cl, byte[SECTORNUMBER]	; 읽을 섹터 번호 설정
 	mov dh, byte[HEADNUMBER]	; 읽을 헤드 번호 설정
 	xor dl, dl					; 읽을 드라이브 번호(0=Floppy) 설정
 	int 0x13					; 인터럽트 서비스 수행
+	; 0x13 - 02h
+	; 입력 AX, CX, DX
+	; 출력 CF:에러, AH:리턴코드, AL:읽은 데이터 수
 ;	jc HANDLEDISKERROR			; 에러가 발생했다면 HANDLEDISKERROR로 이동
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -252,10 +248,10 @@ READEND:
 ;	함수 코드 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 디스크 에러를 처리하는 함수
-;HANDLEDISKERROR:
-;	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
-;	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
-;	jmp $					; 현재 위치에서 무한 루프 수행
+HANDLEDISKERROR:
+	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
+	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
+	jmp $					; 현재 위치에서 무한 루프 수행
 ; 메시지를 출력하는 함수
 ; PARAM: x 좌표, y 좌표, 문자열
 PRINTMESSAGE:
@@ -292,17 +288,21 @@ PRINT_AND_SAVE_BCD:		; BCD를 bx에 입력받고, 화면에 [출력]하고 ax에
 	mov byte[es:di+2], bl
 	add di, 4			; [출력] 한번에 더해서 라인을 아낀다
 	ret					; 함수를 호출한 다음 코드의 위치로 복귀
-
+DIVIDE_YEAR_BY_CX:
+	xor dx, dx
+	mov ax, si
+	div cx
+	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; 부트 로더 시작 메시지
-MESSAGE1:	db 'Start', 0	; 출력할 메시지 정의
-;DISKERRORMESSAGE:		db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
-IMAGELOADINGMESSAGE:	db 'Loading ', 0 ; 문자열이 종료되었음을 알 수 있도록 함
-LOADINGCOMPLETEMESSAGE:	db 'Complete', 0
-CURRENTDATEMESSAGE: 	db 'Date: ',0
+MESSAGE1:				db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
+DISKERRORMESSAGE:		db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
+IMAGELOADINGMESSAGE:	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
+LOADINGCOMPLETEMESSAGE:	db 'Complete~!!', 0
+CURRENTDATEMESSAGE: 	db 'Current Date: ',0
 DAYS_UNTIL_MONTH:  db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
 DAYS: db 'MON', 0, 'TUE', 0, 'WED', 0, 'THU', 0, 'FRI', 0, 'SAT', 0, 'SUN', 0
 
@@ -310,8 +310,6 @@ DAYS: db 'MON', 0, 'TUE', 0, 'WED', 0, 'THU', 0, 'FRI', 0, 'SAT', 0, 'SUN', 0
 SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
 HEADNUMBER			db 0x00	; OS 이미지가 시작하는 헤드 번호를 저장하는 영역
 TRACKNUMBER			db 0x00	; OS 이미지가 시작하는 트랙 번호를 저장하는 영역
-; 임계 영역
-TRASH	dw 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
 times 510-($ - $$)	db 0x00
 
 db 0x55
