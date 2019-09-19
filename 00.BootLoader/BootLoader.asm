@@ -1,110 +1,113 @@
-[ORG 0x00]	; 코드의 시작 어드레스를 0x00으로 설정
-[BITS 16]	; 이하의 코드는 16비트 코드로 설정
+[ORG 0x00]          ; 코드의 시작 어드레스를 0x00으로 설정
+[BITS 16]           ; 이하의 코드는 16비트 코드로 설정
 
-SECTION .text	; text 섹션(세그먼트) 정의
+SECTION .text       ; text 섹션(세그먼트) 정의
 
-jmp 0x07C0:START	; CS 세그먼트 레지스터에 0x07C0을 복사하면서, START 레이블로 이동
-					; BIOS는 메모리 주소 0x07C00에 부트 로더를 복사한다.
-					; 부트로더는 512바이트짜리 코드이므로 코드 영역을 0x07C00으로 설정한다
+jmp 0x07C0:START    ; CS는 코드 세그먼트의 시작주소를 가리키는 중요한 레지스터지만
+                    ; BIOS가 사용하던 데이터가 들어있으므로 초기화가 필요하다
+                    ; BootLoader가 메모리에 복사되는 위치인 0x7c00으로 초기화 한다
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	MINT64 OS에 관련된 환경 설정 값
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-TOTALSECTORCOUNT:	dw	0x02	; 부트 로더를 제외한 MINT64 OS 이미지의 크기
-								; 최대 1152 섹터까지 가능
+TOTALSECTORCOUNT	dw	0x02
+                    ; 부트 로더를 제외한 MINT64 OS 이미지의 크기
+                    ; 최대 1152 섹터까지 가능
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	코드 영역
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+; 레지스터 초기화
 START:
-	mov ax, 0x07C0	; 부트 로더의 시작 어드레스(0x7C00)를 세그먼트 레지스터 값으로 변환
-	mov ds, ax		; DS 세그먼트 레지스터(데이터 영역 레지스터)에 설정
-	mov ax, 0xB800	; 비디오 메모리(화면 출력)의 시작 어드레스(0xB8000)를 세그먼트 레지스터 값으로 변환
-	mov es, ax		; ES 세그먼트 레지스터(문자열 관련 레지스터)에 설정
+	; 세그먼트 레지스터 설정
+	mov ax, 0x07C0  ; 부트 로더의 시작 어드레스(0x7C00)를
+	mov ds, ax      ; DS(데이터 영역 레지스터)에 설정
+	mov ax, 0xB800	; 비디오 메모리의 시작 어드레스(0xB8000)를
+	mov es, ax		; ES(여분 레지스터)에 설정
 
 	;스택을 0x0000:0000~0x0000:FFFF 영역에 64KB(0x10000) 크기로 생성
-	mov ax, 0x0000	; 스택 세그먼트의 시작 어드레스(0x0000)를 세그먼트 레지스터 값으로 변환
+	mov ax, 0x0000	; 스택 세그먼트의 시작 어드레스(0x0000)를
 	mov ss, ax		; SS 세그먼트 레지스터(스택 기준주소 저장)에 설정
 	mov sp, 0xFFFE	; SP 레지스터의 어드레스를 0xFFFE로 설정
 	mov bp, 0xFFFE	; BP 레지스터의 어드레스를 0xFFFE로 설정
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	화면을 모두 지우고, 속성 값을 녹색으로 설정
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 화면 지움
 	mov si, 80 * 25 * 2	; SI 레지스터를 마지막 위치로 초기화
 .SCREENCLEARLOOP:
-	mov byte[es:si-2], 0	; 0으로 화면을 삭제한다
-	mov byte[es:si-1], 0x0A	; 속성에 0x0A(검은 바탕에 밝은 녹색)을 복사
-	sub si, 2	; sub연산과 더불어 si-2 == 0 일때 zf 플래그가 1로 셋팅 됨
-				; 즉, 모든 위치를 지웠을 때, 플래그가 세팅됨
-	jg .SCREENCLEARLOOP		; jz는 zf 플래그가 0일때 작동 (아직 스크린을 다 지우지 못한 것)
-							; .SCREENCLEARLOOP 레이블로 이동
-	; mov si, 0				; 어차피 문자열 시작주소를 집어넣으므로 초기화 할 필요가 없다
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	화면 상단에 시작 메시지 출력
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov si, MESSAGE1	; si에 출력할 문자열 시작주소를 넘긴다
-	call PRINTMESSAGE	; PRINTMESSAGE 함수 호출
-	mov di, 160			; di를 2째 줄로 넘긴다
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	화면 상단에 현재 날짜 출력
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	mov byte[es:si-2], 0	; 0으로 빈 글짜 출력
+	mov byte[es:si-1], 0x0A	; 0x0A 으로 검은 바탕에 밝은 녹색 속성 설정
+	sub si, 2        ; si-2 == 0 일때 zf 플래그가 1로 셋팅 됨
+	                 ; 즉, 모든 위치를 지웠을 때, 플래그가 세팅됨
+	jg .SCREENCLEARLOOP
+                     ; jg는 zf 플래그가 0일때 작동
 
+; 환영 메시지 출력
+	mov si, MESSAGE1 ; PRINTMESSAGE()는 SI를 통해 인자를 받는다
+	call PRINTMESSAGE
+
+; 날짜 메시지 출력
+	mov di, 160      ; 글짜 출력 위치를 두번째 줄로 바꾼다
+                     ; di는 이 Bootloader에서 출력시에 글짜 좌표로 쓰인다 
 	mov si, CURRENTDATEMESSAGE
-	call PRINTMESSAGE 	; 날짜 안내 메시지를 출력한다
+	call PRINTMESSAGE
 
-.GETREALTIME:
-	;시간 호출 인터럽트
-	mov ah, 04h		; 인자 04h: 날짜
-	int 1Ah			; 인터럽트 번호
+; 날짜 호출 및 출력
+	; 날짜 호출 인터럽트
+	mov ah, 04h      ; 1AH - 04H는 날짜 인터럽트이다
+	int 1Ah          ; 일=dl, 월=dh, 년=cl, 세기=ch를 받아온다
 
-	;일자 출력
-	movzx bx, dl 			; bx에 입력하면
-	call PRINT_AND_SAVE_BCD	; BCD를 출력하고, ax에 저장
-	mov dl, al	 			; ax에 저장된 날짜를 dl에 저장
+	; 일자 출력 및 unpack
+	movzx bx, dl     ; PRINT_AND_SAVE_BCD()는 BX를 통해 인자를 받는다
+	call PRINT_AND_SAVE_BCD
+	                 ; AX = PRINT_AND_SAVE_BCD(DL)
+	mov dl, al       ; DL에 BCD로 저장된 날짜를 unpack하여 저장한다
+
+	; 구분자 출력
 	mov byte[es:di], '/'
 	add di, 2
 
-	;달 출력
-	movzx bx, dh			; bx에 입력하면
-	call PRINT_AND_SAVE_BCD	; ax에 달 저장됨
-	mov dh, al	; dh에 달 저장
+	; 달 출력 및 unpack
+	movzx bx, dh
+	call PRINT_AND_SAVE_BCD
+	mov dh, al       ; DH에 월 unpack
+
+	; 구분자 출력
 	mov byte[es:di], '/'
 	add di, 2
 
-	;연도 출력; (다음 줄 부터 HHLL년을 HH세기와 LL년으로 이해하면 됨)
-	movzx bx, ch			; bx에 입력하면
-	call PRINT_AND_SAVE_BCD ; ax에 세기 저장됨.
-	mov ch, al	 ; ch에 세기 저장
+ 	;연도 출력 및 unpack
+	movzx bx, ch
+	call PRINT_AND_SAVE_BCD
+	mov ch, al       ; CH에 세기 unpack
 
-	movzx bx, cl			; bx에 입력하면
-	call PRINT_AND_SAVE_BCD ; ax에 년 저장됨.
-	shr cx, 8	 ; 오른쪽 쉬프트로, 년도를 없애버림.
-	imul cx, 100 ; 세기에 100을 곱함.
-	add cx, ax	 ; cx에 년도를 더해서 HHLL 완성
+	movzx bx, cl
+	call PRINT_AND_SAVE_BCD
+	shr cx, 8        ; 오른쪽 시프트로, CH만 남긴다
+	imul cx, 100     ; CH는 원래 100의 자리므로 100을 곱한다
+	add cx, ax       ; 세기인 CH에 년도인 CX를 더해서 4자리 년도 완성
 
-	; 요일 출력
-	; 1일부터의 날짜를 세야한다
-	; dl에 일자, dh에 달, cx에 년도가 저장되어 있다.
-	dec dl		 ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
-	movzx ax, dl ; ax는 이제 1900년1월1일부터의 지난날짜 (ex. 1900년1월2일이라면 ax=1)
+; 요일 출력
+; 1900년 1월 1일부터의 날짜를 세어서 7로 나누어 상대적 요일을 구할 것이다
+; 현재 DL=일자, DL=달, CX=년도가 저장되어 있다.
+
+	; 일 계산
+	dec dl            ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
+	movzx ax, dl      ; ax는 이제 1900년1월1일부터의 지난날짜
 	
+	; 월 계산
 	; 1월 부터의 날짜를 세야한다 
-	; 올해 초부터 지난 달까지의 일수를 더해 7로 나눠야 한다
-	; 이전 달까지의 일수 합을 7로 나눈 나머지를 더하자
-	movzx bx, dh ; 배열에 접근하기 위해 bx에 dh(달)을 집어넣는다
-	cmp bx, 3	 ; dh(달)가 3월 이후 인지 검사한다
-	jl .AFTER_CONSIDER_LEAP_YEAR	; 3월 이전이라면 윤년계산이 필요없다
-		; 1월의 경우 지난달이 없고, 
-		; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
-		add cx, 1    ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
-		dec ax		 ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
+	; 원래 목표는 올해 초부터 지난 달까지의 일수를 더해 7로 나눠야 한다
+	; 이는 이전 달까지의 일수 합을 7로 나눈 나머지를 더한 것과 동일하다
+	movzx bx, dh      ; 배열에 접근하기 위해 BX에 DH(달)을 집어넣는다
+	cmp bx, 3         ; DH(달)가 3월 이후 인지 검사한다
+	jl .AFTER_CONSIDER_LEAP_YEAR
+		              ; 1월의 경우 지난달이 없고, 
+		              ; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
+		add cx, 1     ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
+		dec ax        ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
 	.AFTER_CONSIDER_LEAP_YEAR:
-	; 1월은 0이 더해지므로 케이스분류 할 필요없음
 	movzx bx, byte[DAYS_UNTIL_MONTH + bx -1]
-	add bx, ax ; 이 줄 부터는 bx로 일수의 합을 관리한다
+	                  ; DAYS_~는 지난달까지의 일수 합을 7로 나눈 나머지
+	                  ; (bx-1)이 0일때 가리키는 1월은 0이 더해지므로 
+	                  ; 케이스분류를 피할 수 있다
+	add bx, ax        ; 년도 계산은 윤년 계산이 들어가서 나눗셈을 해야한다
+	                  ; 이 줄 부터는 bx로 일수의 합을 관리해야 한다
 	
+	; 연도 계산
 	; 1900년 부터의 날짜를 세야한다
 	; 1900년 1월 1일 부터 올해 1월 1일 까지는 
 	; 1900년 부터 작년까지의 연 * 365와
@@ -232,6 +235,7 @@ READDATA:					;디스크를 읽는 코드의 시작
 	; 트랙을 1 증가시킨 후 다시 섹터 읽기로 이동
 	add byte[TRACKNUMBER], 0x1	; 트랙 번호를 1 증가
 	jmp READDATA					; READDATA로 이동
+
 READEND:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	OS이미지가 완료되었다는 메시지를 출력
@@ -246,52 +250,61 @@ READEND:
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	jmp 0x1000:0x0000
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	함수 코드 영역
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 디스크 에러를 처리하는 함수
 HANDLEDISKERROR:
-	mov si, DISKERRORMESSAGE	; 에러 문자열의 어드레스를 스택에 삽입
-	call PRINTMESSAGE		; PRINTMESSAGE 함수 호출
-	jmp $					; 현재 위치에서 무한 루프 수행
-; 메시지를 출력하는 함수
-; PARAM: x 좌표, y 좌표, 문자열
+; 이 함수는 디스크 에러가 발생했을 때 에러 메시지를 출력한다
+	mov si, DISKERRORMESSAGE
+	call PRINTMESSAGE
+	jmp $            ; 현재 위치에서 무한 루프 수행
+
 PRINTMESSAGE:
-.MESSAGELOOP:				; 메시지를 출력하는 루프
-	mov cl, byte[si]		; SI 레지스터가 가리키는 문자열의 위치에서 한 문자를
-							; CL 레지스터에 복사
-							; CL 레지스터는 CX 레지스터의 하위 1바이트를 의미
-	cmp cl, 0				; 복사된 문자와 0을 비교
-	je .MESSAGEEND			; 복사한 문자의 값이 0이면 문자열이 종료되었음을 의미하므로
-							; .MESSAGEEND로 이동하여 문자 출력 종료
-
-	mov byte[es:di], cl		; 0이 아니라면 비디오 메모리 어드레스 0xB800:di에 문자를 출력
-	inc si, 				; SI 레지스터에 1을 더하여 다음 문자열로 이동
-	add di, 2				; DI 레지스터에 2를 더하여 비디오 메모리의 다음 문자 위치로 이동
-							; 비디오 메모리는 (문자, 속성)의 쌍으로 구성되므로 문자만 출력하려면
-							; 2를 더해야 함
-
-	jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
-
+; 이 함수는 SI가 가리키는 문자열을 출력한다
+; 이 함수는 다음의 동작조건이 있고, CL을 사용한다
+; SI : 문자열의 주소
+; ES : 비디오 메모리
+; DI : 비디오 메모리상의 인덱스
+; 이 함수는 리턴하는 데이터가 없다
+.MESSAGELOOP:        ; while(true):
+	mov cl, byte[si] ;    cl = message[si]
+	cmp cl, 0        ;    if cl == 0:
+	je .MESSAGEEND   ;       break
+	mov byte[es:di], cl
+	                 ;    print cl at es+di
+	inc si           ;    si++
+	add di, 2        ;    di = di + 1 + 1 // 문자열, 속성
+	jmp .MESSAGELOOP ;
 .MESSAGEEND:
-	ret					; 함수를 호출한 다음 코드의 위치로 복귀
+	ret
 
-PRINT_AND_SAVE_BCD:		; BCD를 bx에 입력받고, 화면에 [출력]하고 ax에 [저장]한다
-	shl bx, 4			; bx에 입력받은 BCD를 상위, 하위비트로 나눈다
-	movzx ax, bh		; [저장] ax에 10의 자리를 넣는다
-	imul ax, 10			; [저장] ax는 10의 자리이므로 10배 한다
-	add bh, '0'			; [출력] 숫자를 ascii로 변경한다
-	mov byte[es:di], bh ; 
-	shr bx, 4			; bx를 오른쪽 쉬프트한다
-	and bl, 0fh			; 10의 자리를 제거한다
-	add al, bl			; [저장] ax에 1의 자리도 더한다
-	add bl, '0'			
+PRINT_AND_SAVE_BCD:
+; 이 함수는 세가지 일을 한다
+; BX에 있는 BCD압축된 문자열을 unpack하고
+; 이를 [출력]하고
+; AX에 unpack하여 [저장]한다
+; 이 함수는 다음의 동작조건이 있고, AX를 사용한다
+; BX : 8비트로 BCD되어있는 2자리 숫자
+; ES : 비디오 메모리
+; DI : 비디오 메모리상의 인덱스
+	; BCD는 8비트를 4비트씩 나누어 1자리씩 저장한 방식이다
+	shl bx, 4        ; 4번 시프트하여 BCD를 bh에 걸치도록한다
+	movzx ax, bh     ; [저장] AX에 10의 자리를 넣는다
+	imul ax, 10      ; [저장] 현재 AX는 10의 자리이므로 10배 곱한다
+	add bh, '0'      ; [출력] 숫자를 ascii로 변경한다
+	mov byte[es:di], bh
+	shr bx, 4        ; bx를 오른쪽 쉬프트한다
+	and bl, 0fh      ; 10의 자리를 제거한다
+	add al, bl       ; [저장] ax에 1의 자리도 더한다
+	add bl, '0'      ;
 	mov byte[es:di+2], bl
-	add di, 4			; [출력] 한번에 더해서 라인을 아낀다
-	ret					; 함수를 호출한 다음 코드의 위치로 복귀
+	add di, 4        ; [출력] 라인을 아낀다
+	ret
+
 DIVIDE_YEAR_BY_CX:
-	xor dx, dx
-	mov ax, si
+; 이 함수는 나누기 연산의 중복라인을 없애기 위해 작성하였다
+; 이 함수는 다음의 동작조건이 있고, DX를 사용한다
+; SI : 년도
+; CX : 제수(나눌 수)
+	xor dx, dx       ; 16비트 나누기를 위해 DX를 정리한다
+	mov ax, si       ; DIV연산을 위해 AX에 년도를 옮긴다
 	div cx
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
