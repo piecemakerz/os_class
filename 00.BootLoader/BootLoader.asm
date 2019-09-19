@@ -85,28 +85,28 @@ START:
 ; 현재 DL=일자, DL=달, CX=년도가 저장되어 있다.
 
 	; 일 계산
-	dec dl            ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
-	movzx ax, dl      ; ax는 이제 1900년1월1일부터의 지난날짜
+	dec dl           ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
+	movzx ax, dl     ; ax는 이제 1900년1월1일부터의 지난날짜
 	
 	; 월 계산
 	; 1월 부터의 날짜를 세야한다 
 	; 원래 목표는 올해 초부터 지난 달까지의 일수를 더해 7로 나눠야 한다
 	; 이는 이전 달까지의 일수 합을 7로 나눈 나머지를 더한 것과 동일하다
-	movzx bx, dh      ; 배열에 접근하기 위해 BX에 DH(달)을 집어넣는다
-	cmp bx, 3         ; DH(달)가 3월 이후 인지 검사한다
-	                  ; 1월의 경우 지난달이 없고, 
-	                  ; 2월의 경우 1월의 일수만 더해주면 되므로
-	                  ; 올해에 대한 윤년계산이 필요없다
+	movzx bx, dh     ; 배열에 접근하기 위해 BX에 DH(달)을 집어넣는다
+	cmp bx, 3        ; DH(달)가 3월 이후 인지 검사한다
+	                 ; 1월의 경우 지난달이 없고, 
+	                 ; 2월의 경우 1월의 일수만 더해주면 되므로
+	                 ; 올해에 대한 윤년계산이 필요없다
 	jna .AFTER_CONSIDER_LEAP_YEAR
-	inc cx            ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
-	dec ax            ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
+	inc cx           ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
+	dec ax           ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
 	.AFTER_CONSIDER_LEAP_YEAR:
 	movzx bx, byte[DAYS_UNTIL_MONTH + bx -1]
-	                  ; DAYS_~는 지난달까지의 일수 합을 7로 나눈 나머지
-	                  ; (bx-1)이 0일때 가리키는 1월은 0이 더해지므로 
-	                  ; 케이스분류를 피할 수 있다
-	add bx, ax        ; 년도 계산은 윤년 계산이 들어가서 나눗셈을 해야한다
-	                  ; 이 줄 부터는 bx로 일수의 합을 관리해야 한다
+	                 ; DAYS_~는 지난달까지의 일수 합을 7로 나눈 나머지
+	                 ; (bx-1)이 0일때 가리키는 1월은 0이 더해지므로 
+	                 ; 케이스분류를 피할 수 있다
+	add bx, ax       ; 년도 계산은 윤년 계산이 들어가서 나눗셈을 해야한다
+	                 ; 이 줄 부터는 bx로 일수의 합을 관리해야 한다
 	
 	; 연도 계산
 	; 1900년 부터의 날짜를 세야한다
@@ -114,69 +114,66 @@ START:
 	; 1900년 부터 작년까지의 연 * 365와
 	; 1900년 부터 작년까지 윤년의 횟수를 더하는 방식으로 구할 수 있다
 	; 365는 7로 나눈 나머지가 1이므로 년도별로 1씩만 더해도 된다
-	add bx, cx        ; 작년까지의 일수만 필요하지만, CX를 더했다
-	sub bx, 1901      ; CX는 작년+1 이므로 1900+1을 뺀다
+	add bx, cx       ; 작년까지의 일수만 필요하지만, CX를 더했다
+	sub bx, 1901     ; CX는 작년+1 이므로 1900+1을 뺀다
 
 	; 윤년 계산
 	; 1900년 부터 작년까자의 윤년의 횟수는 작년까지의 윤년의 개수에서 
 	; 1900년까지의 윤년의 개수를 빼서 구할 수 있다
 
 	; 작년까지의 윤년의 횟수를 구한다
-	mov si, cx         ; div에서 cx로 제수를 전달해야 하기 때문에 si로 년도를 관리한다
-	mov cx, 4          ; 4로 나눠지면 윤년이다
+	mov si, cx       ; div에서 cx로 제수를 전달해야 하기 때문에 si로 년도를 관리한다
+	mov cx, 4        ; 4로 나눠지면 윤년이다
 	call DIVIDE_SI_BY_CX
 	add bx, ax
 	
-	mov cx, 100        ; 100으로 나눠지면 윤년이 아니지만, 4로 나뉘면서 더해졌다
+	mov cx, 100      ; 100으로 나눠지면 윤년이 아니지만, 4로 나뉘면서 더해졌다
 	call DIVIDE_SI_BY_CX
 	sub bx, ax
  
-	mov cx, 400        ; 400으로 나눠지면 윤년이다
+	mov cx, 400      ; 400으로 나눠지면 윤년이다
 	call DIVIDE_SI_BY_CX
 	add bx, ax
 
 	; 1900년까지의 윤년은
 	; 1900 / 4 + 1900 / 400 - 1900/100이고 이는
 	; 475 + 4 - 19로 460 번 발생했다
-	sub bx, 460         ; 1900년까지의 윤년을 뺀다
+	sub bx, 460      ; 1900년까지의 윤년을 뺀다
 
 	; 7로 나누기
-	mov si, bx          ; DIVIDE~ 함수는 SI를 CX로 나눈다
-	mov cx, 7           ; AX에 몫, DX에 나머지가 저장된다
+	mov si, bx       ; DIVIDE~ 함수는 SI를 CX로 나눈다
+	mov cx, 7        ; AX에 몫, DX에 나머지가 저장된다
 	call DIVIDE_SI_BY_CX
-	shl dx, 2           ; 4배 곱해서 요일 주소를 찾는다
-	mov si, DAYS        ; Mon0Tue0... 의 형태를 하고 있다
-	add si, dx          ; 시작주소에 인덱스주소를 더해 요일 주소를 구한다
-	add di, 2           ; 명세에 맞게 한칸 띄어쓴다
+	shl dx, 2        ; 4배 곱해서 요일 주소를 찾는다
+	mov si, DAYS     ; Mon0Tue0... 의 형태를 하고 있다
+	add si, dx       ; 시작주소에 인덱스주소를 더해 요일 주소를 구한다
+	add di, 2        ; 명세에 맞게 한칸 띄어쓴다
 	call PRINTMESSAGE
 
 	; os 로딩 메시지 출력
-	mov di, 320
-	mov si, IMAGELOADINGMESSAGE	; 출력할 메시지의 어드레스를 스택에 삽입
-	call PRINTMESSAGE			; PRINTMESSAGE 함수 호출
+	mov di, 320      ; 글짜 출력 위치를 세번째 줄로 바꾼다
+	mov si, IMAGELOADINGMESSAGE
+	call PRINTMESSAGE
 
-; 디스크 읽기
+; 디스크 초기화
 RESETDISK:
-	; 인터럽트
-	xor ax, ax	; 서비스 번호 0,
-	xor dl, dl	; 드라이브 번호(0=Floppy)
+	xor ax, ax	     ; 디스크를 초기화하는 인터럽트(13H - 0H)
+	xor dl, dl       ; 플로피 디스크에 관한 작업임을 알린다 0
 	int 0x13
-	; 에러가 발생하면 에러 처리로 이동
 	jc HANDLEDISKERROR
+	                ; 에러가 발생하면 에러 처리로 이동한다
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	디스크에서 섹터를 읽음
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; 디스크의 내용을 메모리로 복사할 어드레스(ES:BX)를 0x10000으로 설정
-	mov si, 0x1000			; OS 이미지를 복사할 어드레스(0x10000)를
-							; 세그먼트 레지스터 값으로 변환
-	mov es, si				; ES 세그먼트 레지스터에 값 설정
-	mov bx, 0x0000			; BX 레지스터에 0x0000을 설정하여 복사할
-							; 어드레스를 0x1000:0000(0x10000)으로 최종 설정
+	; 디스크의 내용을 메모리로 복사할 어드레스(ES:BX)를 0x10000으로 설정한다
+	mov si, 0x1000  ; OS 이미지를 복사할 어드레스(0x10000)를
+	                ; 세그먼트 레지스터 값으로 변환
+	mov es, si      ; ES 세그먼트 레지스터에 값 설정
+	mov bx, 0x0000  ; BX 레지스터에 0x0000을 설정하여 복사할
+	                ; 어드레스를 0x1000:0000(0x10000)으로 최종 설정
 
 
 	mov di, word[TOTALSECTORCOUNT]	; 복사할 OS 이미지의 섹터 수를 DI 레지스터에 설정
 
+; 디스크 읽기
 READDATA:					;디스크를 읽는 코드의 시작
 	; 모든 섹터를 다 읽었는지 확인
 	dec di		; 복사할 섹터 수를 1 감소
@@ -228,25 +225,20 @@ READDATA:					;디스크를 읽는 코드의 시작
 	add byte[TRACKNUMBER], 0x1	; 트랙 번호를 1 증가
 	jmp READDATA					; READDATA로 이동
 
+; 디스크 읽기 완료
 READEND:
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	OS이미지가 완료되었다는 메시지를 출력
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov ax, 0xb800
+	mov ax, 0xb800  ; 디스크를 읽으며 ES를 사용했으므로, 
 	mov es, ax
-	mov di, 358
-	mov si, LOADINGCOMPLETEMESSAGE		; 출력할 메시지의 어드레스를 스택에 삽입
-	call PRINTMESSAGE				; PRINTMESSAGE 함수 호출
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	로딩한 가상 OS 이미지 실행
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	jmp 0x1000:0x0000
+	mov di, 358      ; 디스크 로딩 메시지 뒤로 비디오 메모리 인덱스를 옮긴다
+	mov si, LOADINGCOMPLETEMESSAGE
+	call PRINTMESSAGE
+	jmp 0x1000:0x0000; 0x10000으로 이동해서 커널코드 실행한다
 
 HANDLEDISKERROR:
 ; 이 함수는 디스크 에러가 발생했을 때 에러 메시지를 출력한다
 	mov si, DISKERRORMESSAGE
 	call PRINTMESSAGE
-	jmp $            ; 현재 위치에서 무한 루프 수행
+	jmp $            ; 현재 위치에서 무한 루프 수행한다
 
 PRINTMESSAGE:
 ; 이 함수는 SI가 가리키는 문자열을 출력한다
@@ -255,14 +247,14 @@ PRINTMESSAGE:
 ; ES : 비디오 메모리
 ; DI : 비디오 메모리상의 인덱스
 ; 이 함수는 리턴하는 데이터가 없다
-.MESSAGELOOP:        ; while(true):
-	mov cl, byte[si] ;    cl = message[si]
-	cmp cl, 0        ;    if cl == 0:
-	je .MESSAGEEND   ;       break
+.MESSAGELOOP:
+	mov cl, byte[si] ; 메시지 한글자를 가져온다
+	cmp cl, 0        ; 0과 비교한다
+	je .MESSAGEEND   ; 0이면 종료한다
 	mov byte[es:di], cl
-	                 ;    print cl at es+di
-	inc si           ;    si++
-	add di, 2        ;    di = di + 1 + 1 // 문자열, 속성
+	                 ; 비디오 메모리에 저장한다
+	inc si           ; 메시지 인덱스를 글자하나 증가시킨다
+	add di, 2        ; 비디오 메모리 인덱스는 글자하나, 속성하나 증가시킨다
 	jmp .MESSAGELOOP ;
 .MESSAGEEND:
 	ret
