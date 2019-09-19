@@ -47,7 +47,7 @@ START:
 
 ; 날짜 호출 및 출력
 	; 날짜 호출 인터럽트
-	mov ah, 04h      ; 1AH - 04H는 날짜 인터럽트이다
+	mov ah, 04h      ; 날짜 인터럽트(1AH - 04H) 
 	int 1Ah          ; 일=dl, 월=dh, 년=cl, 세기=ch를 받아온다
 
 	; 일자 출력 및 unpack
@@ -94,11 +94,12 @@ START:
 	; 이는 이전 달까지의 일수 합을 7로 나눈 나머지를 더한 것과 동일하다
 	movzx bx, dh      ; 배열에 접근하기 위해 BX에 DH(달)을 집어넣는다
 	cmp bx, 3         ; DH(달)가 3월 이후 인지 검사한다
-	jl .AFTER_CONSIDER_LEAP_YEAR
-		              ; 1월의 경우 지난달이 없고, 
-		              ; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
-		add cx, 1     ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
-		dec ax        ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
+	                  ; 1월의 경우 지난달이 없고, 
+	                  ; 2월의 경우 1월의 일수만 더해주면 되므로
+	                  ; 올해에 대한 윤년계산이 필요없다
+	jna .AFTER_CONSIDER_LEAP_YEAR
+	inc cx            ; 나머지 달의 경우, 올해도 윤년계산이 필요하다
+	dec ax            ; 올해까지 윤년계산을 하면서 1년이 추가되므로 미리 제거한다
 	.AFTER_CONSIDER_LEAP_YEAR:
 	movzx bx, byte[DAYS_UNTIL_MONTH + bx -1]
 	                  ; DAYS_~는 지난달까지의 일수 합을 7로 나눈 나머지
@@ -112,59 +113,50 @@ START:
 	; 1900년 1월 1일 부터 올해 1월 1일 까지는 
 	; 1900년 부터 작년까지의 연 * 365와
 	; 1900년 부터 작년까지 윤년의 횟수를 더하는 방식으로 구할 수 있다
-	; 365는 7로 나눈 나머지가 1이므로 1씩만 더해도 된다
-	add bx, cx
-	sub bx, 1901
-	; 먼저 윤년
+	; 365는 7로 나눈 나머지가 1이므로 년도별로 1씩만 더해도 된다
+	add bx, cx        ; 작년까지의 일수만 필요하지만, CX를 더했다
+	sub bx, 1901      ; CX는 작년+1 이므로 1900+1을 뺀다
+
+	; 윤년 계산
 	; 1900년 부터 작년까자의 윤년의 횟수는 작년까지의 윤년의 개수에서 
 	; 1900년까지의 윤년의 개수를 빼서 구할 수 있다
+
+	; 작년까지의 윤년의 횟수를 구한다
+	mov si, cx         ; div에서 cx로 제수를 전달해야 하기 때문에 si로 년도를 관리한다
+	mov cx, 4          ; 4로 나눠지면 윤년이다
+	call DIVIDE_SI_BY_CX
+	add bx, ax
+	
+	mov cx, 100        ; 100으로 나눠지면 윤년이 아니지만, 4로 나뉘면서 더해졌다
+	call DIVIDE_SI_BY_CX
+	sub bx, ax
+ 
+	mov cx, 400        ; 400으로 나눠지면 윤년이다
+	call DIVIDE_SI_BY_CX
+	add bx, ax
+
 	; 1900년까지의 윤년은
 	; 1900 / 4 + 1900 / 400 - 1900/100이고 이는
 	; 475 + 4 - 19로 460 번 발생했다
-	mov si, cx ; div에서 cx로 제수를 전달해야 하기 때문에 si로 년도를 관리한다
-	
-	mov cx, 4   ; 4로 나눠지면 윤년이다
-	call DIVIDE_YEAR_BY_CX
-	add bx, ax
-	
-	mov cx, 100 ; 100으로 나눠지면 윤년이 아니지만, 4로 나뉘면서 더해졌다
-	call DIVIDE_YEAR_BY_CX
-	sub bx, ax
- 
-	mov cx, 400 ; 400으로 나눠지면 윤년이다
-	call DIVIDE_YEAR_BY_CX
-	add bx, ax
+	sub bx, 460         ; 1900년까지의 윤년을 뺀다
 
-	sub bx, 460 ; 1900년까지의 윤년을 뺀다
-
-	xor dx, dx
-	mov ax, bx
-	mov cx, 7
-	div cx
-	shl dx, 2
-	mov si, DAYS
-	add si, dx
-	add di, 2
+	; 7로 나누기
+	mov si, bx          ; DIVIDE~ 함수는 SI를 CX로 나눈다
+	mov cx, 7           ; AX에 몫, DX에 나머지가 저장된다
+	call DIVIDE_SI_BY_CX
+	shl dx, 2           ; 4배 곱해서 요일 주소를 찾는다
+	mov si, DAYS        ; Mon0Tue0... 의 형태를 하고 있다
+	add si, dx          ; 시작주소에 인덱스주소를 더해 요일 주소를 구한다
+	add di, 2           ; 명세에 맞게 한칸 띄어쓴다
 	call PRINTMESSAGE
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	OS 이미지를 로딩한다는 메시지 출력
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	; os 로딩 메시지 출력
 	mov di, 320
 	mov si, IMAGELOADINGMESSAGE	; 출력할 메시지의 어드레스를 스택에 삽입
 	call PRINTMESSAGE			; PRINTMESSAGE 함수 호출
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	디스크에서 OS 이미지를 로딩
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	디스크를 읽기 전에 먼저 리셋
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-RESETDISK:					;디스크를 리셋하는 코드의 시작
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	BIOS Reset Function 호출
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+; 디스크 읽기
+RESETDISK:
 	; 인터럽트
 	xor ax, ax	; 서비스 번호 0,
 	xor dl, dl	; 드라이브 번호(0=Floppy)
@@ -298,10 +290,10 @@ PRINT_AND_SAVE_BCD:
 	add di, 4        ; [출력] 라인을 아낀다
 	ret
 
-DIVIDE_YEAR_BY_CX:
+DIVIDE_SI_BY_CX:
 ; 이 함수는 나누기 연산의 중복라인을 없애기 위해 작성하였다
 ; 이 함수는 다음의 동작조건이 있고, DX를 사용한다
-; SI : 년도
+; SI : 피제수
 ; CX : 제수(나눌 수)
 	xor dx, dx       ; 16비트 나누기를 위해 DX를 정리한다
 	mov ax, si       ; DIV연산을 위해 AX에 년도를 옮긴다
@@ -312,21 +304,22 @@ DIVIDE_YEAR_BY_CX:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; 부트 로더 메시지
-MESSAGE1				db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
-DISKERRORMESSAGE		db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
-IMAGELOADINGMESSAGE	db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
+MESSAGE1                db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
+DISKERRORMESSAGE        db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
+IMAGELOADINGMESSAGE	    db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
 LOADINGCOMPLETEMESSAGE	db 'Complete~!!', 0
-CURRENTDATEMESSAGE 	db 'Current Date: ',0
-DAYS_UNTIL_MONTH  db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
-DAYS db 'Mon', 0, 'Tue', 0, 'Wed', 0, 'Thu', 0, 'Fri', 0, 'Sat', 0, 'Sun', 0
+CURRENTDATEMESSAGE 	    db 'Current Date: ',0
+DAYS_UNTIL_MONTH        db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
+DAYS                    db 'Mon', 0, 'Tue', 0, 'Wed', 0, 'Thu', 0, 'Fri', 0, 'Sat', 0, 'Sun', 0
 
 ; 디스크 읽기에 필요한 변수들
-SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
-HEADNUMBER			db 0x00	; OS 이미지가 시작하는 헤드 번호를 저장하는 영역
-TRACKNUMBER			db 0x00	; OS 이미지가 시작하는 트랙 번호를 저장하는 영역
-times 510-($ - $$)	db 0x00
+SECTORNUMBER            db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
+HEADNUMBER              db 0x00	; OS 이미지가 시작하는 헤드 번호를 저장하는 영역
+TRACKNUMBER             db 0x00	; OS 이미지가 시작하는 트랙 번호를 저장하는 영역
+times 510-($ - $$)      db 0x00
 
 db 0x55
 db 0xAA
-
+  
+; good
 
