@@ -98,61 +98,51 @@ START:
 	jl .AFTER_CONSIDER_LEAP_YEAR	; 3월 이전이라면 윤년계산이 필요없다
 	; 1월의 경우 지난달이 없고, 
 	; 2월의 경우 1월의 일수만 더해주면 되므로 문제가 없다
-	; 나머지 달은 윤년 계산 후에 더해준다
-	mov si, 1	 ; si는 윤년 계산이 필요한 플래그
-	movzx dx, byte[DAYS_UNTIL_MONTH + bx -1]
-	add ax, dx	 ; ax는 당해년도 1일부터의 지난날짜
-
+	; 나머지 달의 경우, 올해까지의 윤년계산이 필요하다
+	add cx, 1
+	dec ax		 ; 올해까지 윤년계산을 하면서 올해까지 1년이 추가되므로 미리 제거한다
+	.AFTER_CONSIDER_LEAP_YEAR:
+	movzx bx, byte[DAYS_UNTIL_MONTH + bx -1]
+	add bx, ax ; 이 줄 부터는 bx로 일수의 합을 관리한다
+	
 	; 1900년 부터의 날짜를 세야한다
-	mov word[YEARNUMBER], cx	; cx를 1900년도부터의 년도 계산에 사용
-								; 따라서 YEARNUMBER 메모리에 현재 년도 저장
-	mov word[TEMPDATEREPOS], ax	; ax를 나눗셈에 써야하기 때문에 임시저장
-	mov cx, 1899
-	mov word[TEMPYEAR], cx
+	; 1900년 1월 1일 부터 올해 1월 1일 까지는 
+	; 1900년 부터 작년까지의 연 * 365와
+	; 1900년 부터 작년까지 윤년의 횟수를 더하는 방식으로 구할 수 있다
+	; 365는 7로 나눈 나머지가 1이므로 1씩만 더해도 된다
+	add bx, cx
+	sub bx, 1901
+	; 먼저 윤년
+	; 1900년 부터 작년까자의 윤년의 횟수는 작년까지의 윤년의 개수에서 1900년까지의 윤년의 개수를 빼서 구할 수 있다
+	; 1900년까지의 윤년은
+	; 1900 / 4 + 1900 / 400 - 1900/100이고 이는
+	; 475 + 4 - 19로 460 번 발생했다
+	mov si, cx ; div에서 cx로 제수를 전달해야 하기 때문에 si로 년도를 관리한다
+	
+	xor dx, dx ; word 단위 나눗셈을 준비한다
+	mov ax, si ; 피제수 ax=작년
+	mov cx, 4
+	div cx
+	add bx, ax ; 윤년 만큼 더한다
 
-	.LOOP_FOR_YEAR:
-		add word[TEMPYEAR], 1
-
-		mov ax, word[TEMPYEAR]
-		mov cx, 400
-		xor dx, dx
-		div cx
-		cmp dx, 0
-		je .LEAP_YEAR
-
-		mov ax, word[TEMPYEAR]
-		mov cx, 4
-		xor dx, dx
-		div cx
-		cmp dx, 0
-		jne .NORMAL_YEAR
-
-		mov ax, word[TEMPYEAR]
-		mov cx, 100
-		xor dx, dx
-		div cx
-		cmp dx, 0
-		je .NORMAL_YEAR
-
-	.LEAP_YEAR:
-		add word[TEMPDATEREPOS], 1
-
-		mov cx, word[TEMPYEAR]
-		cmp cx, word[YEARNUMBER]
-		jge .LOOP_FOR_YEAR_END
-	.NORMAL_YEAR:
-		mov cx, word[TEMPYEAR]
-		cmp cx, word[YEARNUMBER]
-		jge .LOOP_FOR_YEAR_END
-
-		add word[TEMPDATEREPOS], 365
-		jmp .LOOP_FOR_YEAR
-	.LOOP_FOR_YEAR_END:
-
-	mov ax, word[TEMPDATEREPOS]
-	mov bx, 7
 	xor dx, dx
-	div bx
+	mov ax, si
+	mov cx, 100
+	div cx
+	sub bx, ax ; 윤년이 아닌데 더해진 년도를 뺀다
+
+	xor dx, dx
+	mov ax, si
+	mov cx, 400
+	div cx
+	add bx, ax ; 윤년 만큼 더한다
+
+	sub bx, 460 ; 1900년까지의 윤년을 뺀다
+
+	xor dx, dx
+	mov ax, bx
+	mov cx, 7
+	div cx
 	imul dx, 4
 	mov si, DAYS
 	add si, dx
@@ -253,7 +243,6 @@ READEND:
 	mov di, 358
 	mov si, LOADINGCOMPLETEMESSAGE		; 출력할 메시지의 어드레스를 스택에 삽입
 	call PRINTMESSAGE				; PRINTMESSAGE 함수 호출
-
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;	로딩한 가상 OS 이미지 실행
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -321,11 +310,8 @@ DAYS: db 'MON', 0, 'TUE', 0, 'WED', 0, 'THU', 0, 'FRI', 0, 'SAT', 0, 'SUN', 0
 SECTORNUMBER		db 0x02	; OS 이미지가 시작하는 섹터 번호를 저장하는 영역
 HEADNUMBER			db 0x00	; OS 이미지가 시작하는 헤드 번호를 저장하는 영역
 TRACKNUMBER			db 0x00	; OS 이미지가 시작하는 트랙 번호를 저장하는 영역
-YEARNUMBER			dw 0x00
-TEMPDATEREPOS		dw 0x00
-TEMPYEAR			dw 0x00
-ISTHISYEARLOOPYEAR  db 0x00
-
+; 임계 영역
+TRASH	dw 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30
 times 510-($ - $$)	db 0x00
 
 db 0x55
