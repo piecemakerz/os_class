@@ -45,6 +45,7 @@ START:
 	mov si, CURRENTDATEMESSAGE
 	call PRINTMESSAGE
 
+.GETREALTIME:
 ; 날짜 호출 및 출력
 	; 날짜 호출 인터럽트
 	mov ah, 04h      ; 날짜 인터럽트(1AH - 04H) 
@@ -83,11 +84,10 @@ START:
 ; 요일 출력
 ; 1900년 1월 1일부터의 날짜를 세어서 7로 나누어 상대적 요일을 구할 것이다
 ; 현재 DL=일자, DL=달, CX=년도가 저장되어 있다.
-
 	; 일 계산
 	dec dl           ; 1900년 1월 1일부터의 날짜이므로 현재날짜 - 1일
 	movzx ax, dl     ; ax는 이제 1900년1월1일부터의 지난날짜
-	
+
 	; 월 계산
 	; 1월 부터의 날짜를 세야한다 
 	; 원래 목표는 올해 초부터 지난 달까지의 일수를 더해 7로 나눠야 한다
@@ -169,7 +169,7 @@ RESETDISK:
 	                ; 세그먼트 레지스터 값으로 변환
 	mov es, si      ; ES 세그먼트 레지스터에 값 설정
 	mov bx, 0x0000  ; BX 레지스터에 0x0000을 설정하여 복사할
-	                ; 어드레스를 0x1000:0000(0x10000)으로 최종 설정
+	        		     ; 어드레스를 0x1000:0000(0x10000)으로 최종 설정
 
 
 	mov di, word[TOTALSECTORCOUNT]	; 복사할 OS 이미지의 섹터 수를 DI 레지스터에 설정
@@ -297,7 +297,7 @@ DIVIDE_SI_BY_CX:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; 부트 로더 메시지
-MESSAGE1                db 'MINT64 OS Boot Loader Start~!!', 0	; 출력할 메시지 정의
+MESSAGE1                db 'Start~!!', 0	; 출력할 메시지 정의
 DISKERRORMESSAGE        db 'DISK ERROR', 0		; 마지막은 0으로 설정하여 .MESSAGELOOP에서
 IMAGELOADINGMESSAGE	    db 'OS Image Loading...', 0 ; 문자열이 종료되었음을 알 수 있도록 함
 LOADINGCOMPLETEMESSAGE	db 'Complete~!!', 0
