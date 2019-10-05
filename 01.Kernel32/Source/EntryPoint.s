@@ -2,18 +2,58 @@
 [BITS 16]
 
 SECTION .text
+; 과제 요약
+; Entry.s
+; 사용가능 메모리 크기 알아내기
+; Main.c, Page.c
+; 페이지 테이블로 가상메모리 활용
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	코드 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 START:
+
+	; ; 메모리 출력
+	; 메모리 호출 인터럽트
+	mov ah, 0xe820	; 메모리 검출 인터럽트 (15H - e820H)
+	xor bx, bx		; continuation : 초기 0
+	mov cx, OUTPUT
+	mov es, cx
+	xor di, di		; di 0 초기화
+	mov cx, 20	; 
+	mov dx, 534D4150h  ; "SMAP"
+	int 15h			; CF: 캐리, AX: 사인, ES:DI 포인트버퍼, 
+	jc .ERROR
+
+	mov di, 480      ; 글짜 출력 위치를 세번째 줄로 바꾼다
+	mov si, OUTPUT
+	.MESSAGELOOP:
+		mov cl, byte[si] ; 메시지 한글자를 가져온다
+		cmp cl, 0        ; 0과 비교한다
+		je .MESSAGEEND   ; 0이면 종료한다
+		mov byte[es:di], cl
+						; 비디오 메모리에 저장한다
+		inc si           ; 메시지 인덱스를 글자하나 증가시킨다
+		add di, 2        ; 비디오 메모리 인덱스는 글자하나, 속성하나 증가시킨다
+		jmp .MESSAGELOOP ;
+	.MESSAGEEND:
+	.ERROR:
+
+	mov bx, 0xb800
+	mov es, bx
+	mov byte[es:480], 'D'
+	mov byte[es:482], 'E'
+	mov byte[es:484], 'B'
+	mov byte[es:486], 'U'
+	mov byte[es:488], 'G'
+
 	mov ax, 0x1000	; 보호 모드 엔트리 포인트의 시작 어드레스(0x10000)를
 					; 세그먼트 레지스터 값으로 변환
 	mov ds, ax		; DS 세그먼트 레지스터에 설정
 	mov es, ax		; ES 세그먼트 레지스터에 설정
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; A20 게이트 활성화
+	; A20 게이트 활성화 -> p230
 	; BIOS를 이용한 전환이 실패했을 때 시스템 컨트롤 포트로 전환 시도
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	; BIOS 서비스를 사용해서 A20 게이트를 활성화
@@ -29,7 +69,6 @@ START:
 	or al, 0x02			; 읽은 값에 A20 게이트 비트(비트1)를 1로 설정
 	and al, 0xFE		; 시스템 리셋 방지를 위해 0xFE와 AND 연산하여 비트 0를 0으로 설정
 	out 0x92, al		; 시스템 컨트롤 포트(0x92)에 변경된 값을 1 바이트 설정
-
 .A20GATESUCCESS:
 	cli				; 인터럽트가 발생하지 못하도록 설정
 	lgdt[GDTR]		; GDTR 자료구조를 프로세서에 설정하여 GDT 테이블을 로드
@@ -47,10 +86,11 @@ START:
 	; CS 세그먼트 셀렉터 : EIP (다음에 실행할 명령어 주소를 저장하는 레지스터)
 	jmp dword 0x08: (PROTECTEDMODE - $$ + 0x10000)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; 보호 모드로 진입
-;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 [BITS 32]			; 이하의 코드는 32비트 코드로 설정
 PROTECTEDMODE:
@@ -64,10 +104,10 @@ PROTECTEDMODE:
 	mov ss, ax		; SS 세그먼트 셀렉터에 설정
 	mov esp, 0xFFFE	; ESP 레지스터의 어드레스를 0xFFFE로 설정
 	mov ebp, 0xFFFE	; EBP 레지스터의 어드레스를 0xFFFE로 설정
-
+	
 	; 화면에 보호 모드로 전환되었다는 메시지를 찍는다.
 	push ( SWITCHSUCCESSMESSAGE - $$ + 0x10000 )	; 출력할 메시지의 어드레스를 스택에 삽입
-	push 3											; 화면 Y 좌표(2)를 스택에 삽입
+	push 4											; 화면 Y 좌표(2)를 스택에 삽입
 	push 0											; 화면 X 좌표(0)를 스택에 삽입
 	call PRINTMESSAGE								; PRINTMESSAGE 함수 호출
 	add esp, 12										; 삽입한 파라미터 제거
@@ -109,35 +149,34 @@ PRINTMESSAGE:
 	; 출력할 문자열의 어드레스
 	mov esi, dword[ebp+16]		; 파라미터 3(출력할 문자열의 어드레스)
 
-.MESSAGELOOP:				; 메시지를 출력하는 루프
-	mov cl, byte[esi]		; ESI 레지스터가 가리키는 문자열의 위치에서 한 문자를
-							; CL 레지스터에 복사
-							; CL 레지스터는 ECX 레지스터의 하위 1바이트를 의미
-							; 문자열을 1바이트면 충분하므로 ECX 레지스터의 하위 1바이트만 사용
+	.MESSAGELOOP:				; 메시지를 출력하는 루프
+		mov cl, byte[esi]		; ESI 레지스터가 가리키는 문자열의 위치에서 한 문자를
+								; CL 레지스터에 복사
+								; CL 레지스터는 ECX 레지스터의 하위 1바이트를 의미
+								; 문자열을 1바이트면 충분하므로 ECX 레지스터의 하위 1바이트만 사용
 
-	cmp cl, 0				; 복사된 문자와 0을 비교
-	je .MESSAGEEND			; 복사한 문자의 값이 0이면 문자열이 종료되었음을 의미하므로
-							; .MESSAGEEND로 이동하여 문자 출력 종료
+		cmp cl, 0				; 복사된 문자와 0을 비교
+		je .MESSAGEEND			; 복사한 문자의 값이 0이면 문자열이 종료되었음을 의미하므로
+								; .MESSAGEEND로 이동하여 문자 출력 종료
 
-	mov byte[edi+0xB8000], cl		; 0이 아니라면 비디오 메모리 어드레스
-									; 0xB8000 + EDI에 문자를 출력
+		mov byte[edi+0xB8000], cl		; 0이 아니라면 비디오 메모리 어드레스
+										; 0xB8000 + EDI에 문자를 출력
 
-	add esi, 1				; ESI 레지스터에 1을 더하여 다음 문자열로 이동
-	add edi, 2				; EDI 레지스터에 2를 더하여 비디오 메모리의 다음 문자 위치로 이동
-							; 비디오 메모리는 (문자, 속성)의 쌍으로 구성되므로 문자만 출력하려면
-							; 2를 더해야 함
+		add esi, 1				; ESI 레지스터에 1을 더하여 다음 문자열로 이동
+		add edi, 2				; EDI 레지스터에 2를 더하여 비디오 메모리의 다음 문자 위치로 이동
+								; 비디오 메모리는 (문자, 속성)의 쌍으로 구성되므로 문자만 출력하려면
+								; 2를 더해야 함
 
-	jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
+		jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
 
-.MESSAGEEND:
-	pop edx					; 함수에서 사용이 끝난 EDX 레지스터부터 EBP 레지스터까지를
-	pop ecx					; 스택에 삽입된 값을 이용해서 복원
-	pop eax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
-	pop edi					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
-	pop esi
-	pop ebp					; 베이스 포인터 레지스터(EBP) 복원
-	ret						; 함수를 호출한 다음 코드의 위치로 복귀
-
+	.MESSAGEEND:
+		pop edx					; 함수에서 사용이 끝난 EDX 레지스터부터 EBP 레지스터까지를
+		pop ecx					; 스택에 삽입된 값을 이용해서 복원
+		pop eax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
+		pop edi					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
+		pop esi
+		pop ebp					; 베이스 포인터 레지스터(EBP) 복원
+		ret						; 함수를 호출한 다음 코드의 위치로 복귀
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -183,5 +222,7 @@ GDTEND:
 
 ; 보호 모드로 전환되었다는 메시지
 SWITCHSUCCESSMESSAGE: db 'Switch To Protected Mode Success~!!',0
+ERROR: db 'error',0
+OUTPUT: db '012345678901234567890123456789001234567890',0
 
 times 512 - ($ - $$) db 0x00	; 512바이트를 맞추기 위해 남은 부분을 0으로 채움

@@ -12,30 +12,30 @@ void Main(void)
 {
 	DWORD i;
 
-	kPrintString(0, 4, "C Language Kernel Started..................[Pass]");
+	kPrintString(0, 5, "C Language Kernel Started..................[Pass]");
 
 	// 최소 메모리 크기를 만족하는지 검사
-	kPrintString(0, 5, "Minimum Memory Size Check...................[    ]");
+	kPrintString(0, 6, "Minimum Memory Size Check...................[    ]");
 	if(kIsMemoryEnough() == FALSE)
 	{
-		kPrintString(45, 5, "Fail");
-		kPrintString(0, 6, "Not Enough Memory~!! MINT64 OS Requires Over 64Mbyte Memory~!!");
+		kPrintString(45, 6, "Fail");
+		kPrintString(0, 7, "Not Enough Memory~!! MINT64 OS Requires Over 64Mbyte Memory~!!");
 		while(1);
 	}
 	else
 	{
-		kPrintString(45, 5, "Pass");
+		kPrintString(45, 6, "Pass");
 	}
 
 	// IA-32e 모드의 커널 영역을 초기화
-	kPrintString(0, 6, "IA-32e Kernel Area Initialize...............[    ]");
+	kPrintString(0, 7, "IA-32e Kernel Area Initialize...............[    ]");
 	if(kInitializeKernel64Area() == FALSE)
 	{
-		kPrintString(45, 6, "Fail");
-		kPrintString(0, 7, "Kernel Area Initialization Fail~!!");
+		kPrintString(45, 7, "Fail");
+		kPrintString(0, 8, "Kernel Area Initialization Fail~!!");
 		while(1);
 	}
-	kPrintString(45, 6, "Pass");
+	kPrintString(45, 7, "Pass");
 
 	/*
 	// IA-32e 모드 커널을 위한 페이지 테이블  생성
