@@ -1,37 +1,64 @@
-#ifndef __PAGE_H
-#define __PAGE_H
+#ifndef __PAGE_H__
+#define __PAGE_H__
 
 #include "Types.h"
 
-#define PAGE_FLAGS_P        	0x00000001  // Present
-#define PAGE_FLAGS_RW       	0x00000002  // Read/Write
-#define PAGE_FLAGS_US       	0x00000004  // User/Supervisor(ÌîåÎûòÍ∑∏ ÏÑ§Ï†ï Ïãú Ïú†Ï†Ä Î†àÎ≤®)
-#define PAGE_FLAGS_PWT      	0x00000008  // Page Level Write-through
-#define PAGE_FLAGS_PCD      	0x00000010  // Page Level Cache Disable
-#define PAGE_FLAGS_A        	0x00000020  // Accessed
-#define PAGE_FLAGS_D        	0x00000040  // Dirty
-#define PAGE_FLAGS_PS       	0x00000080  // Page Size
-#define PAGE_FLAGS_G        	0x00000100  // Global
-#define PAGE_FLAGS_PAT      	0x00001000  // Page Attribute Table Index
-#define PAGE_FLAGS_EXB			0x80000000	// Execute Disable ÎπÑÌä∏
-#define PAGE_FLAGS_DEFAULT		(PAGE_FLAGS_P | PAGE_FLAGS_RW)
-#define PAGE_TABLESIZE			0x1000 // ÌÖåÏù¥Î∏î = 4KB ÌÅ¨Í∏∞
-#define PAGE_MAXENTRYCOUNT		512
+////////////////////////////////////////////////////////////////////////////////
+//
+// ∏≈≈©∑Œ
+//
+////////////////////////////////////////////////////////////////////////////////
+// «œ¿ß 32∫Ò∆Æ øÎ º”º∫ « µÂ
+#define PAGE_FLAGS_P        0x00000001  // Present
+#define PAGE_FLAGS_RW       0x00000002  // Read/Write
+#define PAGE_FLAGS_US       0x00000004  // User/Supervisor(«√∑°±◊ º≥¡§ Ω√ ¿Ø¿˙ ∑π∫ß)
+#define PAGE_FLAGS_PWT      0x00000008  // Page Level Write-through
+#define PAGE_FLAGS_PCD      0x00000010  // Page Level Cache Disable
+#define PAGE_FLAGS_A        0x00000020  // Accessed
+#define PAGE_FLAGS_D        0x00000040  // Dirty
+#define PAGE_FLAGS_PS       0x00000080  // Page Size
+#define PAGE_FLAGS_G        0x00000100  // Global
+#define PAGE_FLAGS_PAT      0x00001000  // Page Attribute Table Index
+// ªÛ¿ß 32∫Ò∆Æ øÎ º”º∫ « µÂ
+#define PAGE_FLAGS_EXB		0x80000000	// Execute Disable ∫Ò∆Æ  
+// æ∆∑°¥¬ ∆Ì¿«∏¶ ¿ß«ÿ ¡§¿««— «√∑°±◊
+#define PAGE_FLAGS_DEFAULT	( PAGE_FLAGS_P | PAGE_FLAGS_RW )
+
+// ±‚≈∏ ∆‰¿Ã¬° ∞¸∑√
+#define PAGE_TABLESIZE		0x1000
+#define PAGE_MAXENTRYCOUNT 	512
 #define PAGE_DEFAULTSIZE	0x200000
 
-// Íµ¨Ï°∞Ï≤¥
-#pragma pack(push, 1)
+////////////////////////////////////////////////////////////////////////////////
+//
+// ±∏¡∂√º
+//
+////////////////////////////////////////////////////////////////////////////////
+#pragma pack( push, 1 )
 
-// ÌéòÏù¥ÏßÄ ÏóîÌä∏Î¶¨Ïóê ÎåÄÌïú ÏûêÎ£åÍµ¨Ï°∞
+// ∆‰¿Ã¡ˆ ø£∆Æ∏Æø° ¥Î«— ¿⁄∑·±∏¡∂
 typedef struct kPageTableEntryStruct
 {
+	// PML4TøÕ PDPTE¿« ∞ÊøÏ
+    // 1 ∫Ò∆Æ P, RW, US, PWT, PCD, A, 3 ∫Ò∆Æ Reserved, 3 ∫Ò∆Æ Avail, 
+	// 20 ∫Ò∆Æ Base Address
+	// PDE¿« ∞ÊøÏ
+    // 1 ∫Ò∆Æ P, RW, US, PWT, PCD, A, D, 1, G, 3 ∫Ò∆Æ Avail, 1 ∫Ò∆Æ PAT, 8 ∫Ò∆Æ Avail, 
+	// 11 ∫Ò∆Æ Base Address
 	DWORD dwAttributeAndLowerBaseAddress;
+    // 8 ∫Ò∆Æ Upper BaseAddress, 12 ∫Ò∆Æ Reserved, 11 ∫Ò∆Æ Avail, 1 ∫Ò∆Æ EXB 
 	DWORD dwUpperBaseAddressAndEXB;
 } PML4TENTRY, PDPTENTRY, PDENTRY, PTENTRY;
-#pragma pack(pop)
 
-// Ìï®Ïàò
-void kInitializePageTables(void);
-void kSetPageEntryData(PTENTRY* pstEntry, DWORD dwUpperBaseAddress,
-		DWORD dwLowerBaseAddress, DWORD dwLowerFlags, DWORD dwUpperFlags);
+#pragma pack( pop )
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  «‘ºˆ
+//
+////////////////////////////////////////////////////////////////////////////////
+void kInitializePageTables( void );
+void kSetPageEntryData( PTENTRY* pstEntry, DWORD dwUpperBaseAddress,
+		DWORD dwLowerBaseAddress, DWORD dwLowerFlags, DWORD dwUpperFlags );
+
 #endif /*__PAGE_H__*/

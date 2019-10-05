@@ -1,318 +1,317 @@
-[ORG 0x00]          ; ì½”ë“œì˜ ì‹œìž‘ ì–´ë“œë ˆìŠ¤ë¥¼ 0x00ìœ¼ë¡œ ì„¤ì •
-[BITS 16]           ; ì´í•˜ì˜ ì½”ë“œëŠ” 16ë¹„íŠ¸ ì½”ë“œë¡œ ì„¤ì •
+[ORG 0x00]          ; ÄÚµåÀÇ ½ÃÀÛ ¾îµå·¹½º¸¦ 0x00À¸·Î ¼³Á¤
+[BITS 16]           ; ÀÌÇÏÀÇ ÄÚµå´Â 16ºñÆ® ÄÚµå·Î ¼³Á¤
 
-SECTION .text       ; text ì„¹ì…˜(ì„¸ê·¸ë¨¼íŠ¸) ì •ì˜
+SECTION .text       ; text ¼½¼Ç(¼¼±×¸ÕÆ®) Á¤ÀÇ
 
-jmp 0x07C0:START    ; CSëŠ” ì½”ë“œ ì„¸ê·¸ë¨¼íŠ¸ì˜ ì‹œìž‘ì£¼ì†Œë¥¼ ê°€ë¦¬í‚¤ëŠ” ì¤‘ìš”í•œ ë ˆì§€ìŠ¤í„°ì§€ë§Œ
-                    ; BIOSê°€ ì‚¬ìš©í•˜ë˜ ë°ì´í„°ê°€ ë“¤ì–´ìžˆìœ¼ë¯€ë¡œ ì´ˆê¸°í™”ê°€ í•„ìš”í•˜ë‹¤
-                    ; BootLoaderê°€ ë©”ëª¨ë¦¬ì— ë³µì‚¬ë˜ëŠ” ìœ„ì¹˜ì¸ 0x7c00ìœ¼ë¡œ ì´ˆê¸°í™” í•œë‹¤
+jmp 0x07C0:START    ; CS´Â ÄÚµå ¼¼±×¸ÕÆ®ÀÇ ½ÃÀÛÁÖ¼Ò¸¦ °¡¸®Å°´Â Áß¿äÇÑ ·¹Áö½ºÅÍÁö¸¸
+                    ; BIOS°¡ »ç¿ëÇÏ´ø µ¥ÀÌÅÍ°¡ µé¾îÀÖÀ¸¹Ç·Î ÃÊ±âÈ­°¡ ÇÊ¿äÇÏ´Ù
+                    ; BootLoader°¡ ¸Þ¸ð¸®¿¡ º¹»çµÇ´Â À§Ä¡ÀÎ 0x7c00À¸·Î ÃÊ±âÈ­ ÇÑ´Ù
 
-TOTALSECTORCOUNT	dw	0x02
-                    ; ë¶€íŠ¸ ë¡œë”ë¥¼ ì œì™¸í•œ MINT64 OS ì´ë¯¸ì§€ì˜ í¬ê¸°
-                    ; ìµœëŒ€ 1152 ì„¹í„°ê¹Œì§€ ê°€ëŠ¥
-
-; ë ˆì§€ìŠ¤í„° ì´ˆê¸°í™”
+TOTALSECTORCOUNT:	dw	0x02
+                    ; ºÎÆ® ·Î´õ¸¦ Á¦¿ÜÇÑ MINT64 OS ÀÌ¹ÌÁöÀÇ Å©±â
+                    ; ÃÖ´ë 1152 ¼½ÅÍ±îÁö °¡´É
+KERNEL32SECTORCOUNT:	dw 0x02	; º¸È£ ¸ðµå Ä¿³ÎÀÇ ÃÑ ¼½ÅÍ ¼ö
+; ·¹Áö½ºÅÍ ÃÊ±âÈ­
 START:
-	; ì„¸ê·¸ë¨¼íŠ¸ ë ˆì§€ìŠ¤í„° ì„¤ì •
-	mov ax, 0x07C0  ; ë¶€íŠ¸ ë¡œë”ì˜ ì‹œìž‘ ì–´ë“œë ˆìŠ¤(0x7C00)ë¥¼
-	mov ds, ax      ; DS(ë°ì´í„° ì˜ì—­ ë ˆì§€ìŠ¤í„°)ì— ì„¤ì •
-	mov ax, 0xB800	; ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬ì˜ ì‹œìž‘ ì–´ë“œë ˆìŠ¤(0xB8000)ë¥¼
-	mov es, ax		; ES(ì—¬ë¶„ ë ˆì§€ìŠ¤í„°)ì— ì„¤ì •
+	; ¼¼±×¸ÕÆ® ·¹Áö½ºÅÍ ¼³Á¤
+	mov ax, 0x07C0  ; ºÎÆ® ·Î´õÀÇ ½ÃÀÛ ¾îµå·¹½º(0x7C00)¸¦
+	mov ds, ax      ; DS(µ¥ÀÌÅÍ ¿µ¿ª ·¹Áö½ºÅÍ)¿¡ ¼³Á¤
+	mov ax, 0xB800	; ºñµð¿À ¸Þ¸ð¸®ÀÇ ½ÃÀÛ ¾îµå·¹½º(0xB8000)¸¦
+	mov es, ax		; ES(¿©ºÐ ·¹Áö½ºÅÍ)¿¡ ¼³Á¤
 
-	;ìŠ¤íƒì„ 0x0000:0000~0x0000:FFFF ì˜ì—­ì— 64KB(0x10000) í¬ê¸°ë¡œ ìƒì„±
-	mov ax, 0x0000	; ìŠ¤íƒ ì„¸ê·¸ë¨¼íŠ¸ì˜ ì‹œìž‘ ì–´ë“œë ˆìŠ¤(0x0000)ë¥¼
-	mov ss, ax		; SS ì„¸ê·¸ë¨¼íŠ¸ ë ˆì§€ìŠ¤í„°(ìŠ¤íƒ ê¸°ì¤€ì£¼ì†Œ ì €ìž¥)ì— ì„¤ì •
-	mov sp, 0xFFFE	; SP ë ˆì§€ìŠ¤í„°ì˜ ì–´ë“œë ˆìŠ¤ë¥¼ 0xFFFEë¡œ ì„¤ì •
-	mov bp, 0xFFFE	; BP ë ˆì§€ìŠ¤í„°ì˜ ì–´ë“œë ˆìŠ¤ë¥¼ 0xFFFEë¡œ ì„¤ì •
+	;½ºÅÃÀ» 0x0000:0000~0x0000:FFFF ¿µ¿ª¿¡ 64KB(0x10000) Å©±â·Î »ý¼º
+	mov ax, 0x0000	; ½ºÅÃ ¼¼±×¸ÕÆ®ÀÇ ½ÃÀÛ ¾îµå·¹½º(0x0000)¸¦
+	mov ss, ax		; SS ¼¼±×¸ÕÆ® ·¹Áö½ºÅÍ(½ºÅÃ ±âÁØÁÖ¼Ò ÀúÀå)¿¡ ¼³Á¤
+	mov sp, 0xFFFE	; SP ·¹Áö½ºÅÍÀÇ ¾îµå·¹½º¸¦ 0xFFFE·Î ¼³Á¤
+	mov bp, 0xFFFE	; BP ·¹Áö½ºÅÍÀÇ ¾îµå·¹½º¸¦ 0xFFFE·Î ¼³Á¤
 
-; í™”ë©´ ì§€ì›€
-	mov si, 80 * 25 * 2	; SI ë ˆì§€ìŠ¤í„°ë¥¼ ë§ˆì§€ë§‰ ìœ„ì¹˜ë¡œ ì´ˆê¸°í™”
+; È­¸é Áö¿ò
+	mov si, 80 * 25 * 2	; SI ·¹Áö½ºÅÍ¸¦ ¸¶Áö¸· À§Ä¡·Î ÃÊ±âÈ­
 .SCREENCLEARLOOP:
-	mov byte[es:si-2], 0	; 0ìœ¼ë¡œ ë¹ˆ ê¸€ì§œ ì¶œë ¥
-	mov byte[es:si-1], 0x0A	; 0x0A ìœ¼ë¡œ ê²€ì€ ë°”íƒ•ì— ë°ì€ ë…¹ìƒ‰ ì†ì„± ì„¤ì •
-	sub si, 2        ; si-2 == 0 ì¼ë•Œ zf í”Œëž˜ê·¸ê°€ 1ë¡œ ì…‹íŒ… ë¨
-	                 ; ì¦‰, ëª¨ë“  ìœ„ì¹˜ë¥¼ ì§€ì› ì„ ë•Œ, í”Œëž˜ê·¸ê°€ ì„¸íŒ…ë¨
+	mov byte[es:si-2], 0	; 0À¸·Î ºó ±ÛÂ¥ Ãâ·Â
+	mov byte[es:si-1], 0x0A	; 0x0A À¸·Î °ËÀº ¹ÙÅÁ¿¡ ¹àÀº ³ì»ö ¼Ó¼º ¼³Á¤
+	sub si, 2        ; si-2 == 0 ÀÏ¶§ zf ÇÃ·¡±×°¡ 1·Î ¼ÂÆÃ µÊ
+	                 ; Áï, ¸ðµç À§Ä¡¸¦ Áö¿üÀ» ¶§, ÇÃ·¡±×°¡ ¼¼ÆÃµÊ
 	jg .SCREENCLEARLOOP
-                     ; jgëŠ” zf í”Œëž˜ê·¸ê°€ 0ì¼ë•Œ ìž‘ë™
+                     ; jg´Â zf ÇÃ·¡±×°¡ 0ÀÏ¶§ ÀÛµ¿
 
-; í™˜ì˜ ë©”ì‹œì§€ ì¶œë ¥
-	mov si, MESSAGE1 ; PRINTMESSAGE()ëŠ” SIë¥¼ í†µí•´ ì¸ìžë¥¼ ë°›ëŠ”ë‹¤
+; È¯¿µ ¸Þ½ÃÁö Ãâ·Â
+	mov si, MESSAGE1 ; PRINTMESSAGE()´Â SI¸¦ ÅëÇØ ÀÎÀÚ¸¦ ¹Þ´Â´Ù
 	call PRINTMESSAGE
 
-; ë‚ ì§œ ë©”ì‹œì§€ ì¶œë ¥
-	mov di, 160      ; ê¸€ì§œ ì¶œë ¥ ìœ„ì¹˜ë¥¼ ë‘ë²ˆì§¸ ì¤„ë¡œ ë°”ê¾¼ë‹¤
-                     ; diëŠ” ì´ Bootloaderì—ì„œ ì¶œë ¥ì‹œì— ê¸€ì§œ ì¢Œí‘œë¡œ ì“°ì¸ë‹¤ 
+; ³¯Â¥ ¸Þ½ÃÁö Ãâ·Â
+	mov di, 160      ; ±ÛÂ¥ Ãâ·Â À§Ä¡¸¦ µÎ¹øÂ° ÁÙ·Î ¹Ù²Û´Ù
+                     ; di´Â ÀÌ Bootloader¿¡¼­ Ãâ·Â½Ã¿¡ ±ÛÂ¥ ÁÂÇ¥·Î ¾²ÀÎ´Ù
 	mov si, CURRENTDATEMESSAGE
 	call PRINTMESSAGE
 
 .GETREALTIME:
-; ë‚ ì§œ í˜¸ì¶œ ë° ì¶œë ¥
-	; ë‚ ì§œ í˜¸ì¶œ ì¸í„°ëŸ½íŠ¸
-	mov ah, 04h      ; ë‚ ì§œ ì¸í„°ëŸ½íŠ¸(1AH - 04H) 
-	int 1Ah          ; ì¼=dl, ì›”=dh, ë…„=cl, ì„¸ê¸°=chë¥¼ ë°›ì•„ì˜¨ë‹¤
+; ³¯Â¥ È£Ãâ ¹× Ãâ·Â
+	; ³¯Â¥ È£Ãâ ÀÎÅÍ·´Æ®
+	mov ah, 04h      ; ³¯Â¥ ÀÎÅÍ·´Æ®(1AH - 04H)
+	int 1Ah          ; ÀÏ=dl, ¿ù=dh, ³â=cl, ¼¼±â=ch¸¦ ¹Þ¾Æ¿Â´Ù
 
-	; ì¼ìž ì¶œë ¥ ë° unpack
-	movzx bx, dl     ; PRINT_AND_SAVE_BCD()ëŠ” BXë¥¼ í†µí•´ ì¸ìžë¥¼ ë°›ëŠ”ë‹¤
+	; ÀÏÀÚ Ãâ·Â ¹× unpack
+	movzx bx, dl     ; PRINT_AND_SAVE_BCD()´Â BX¸¦ ÅëÇØ ÀÎÀÚ¸¦ ¹Þ´Â´Ù
 	call PRINT_AND_SAVE_BCD
 	                 ; AX = PRINT_AND_SAVE_BCD(DL)
-	mov dl, al       ; DLì— BCDë¡œ ì €ìž¥ëœ ë‚ ì§œë¥¼ unpackí•˜ì—¬ ì €ìž¥í•œë‹¤
+	mov dl, al       ; DL¿¡ BCD·Î ÀúÀåµÈ ³¯Â¥¸¦ unpackÇÏ¿© ÀúÀåÇÑ´Ù
 
-	; êµ¬ë¶„ìž ì¶œë ¥
+	; ±¸ºÐÀÚ Ãâ·Â
 	mov byte[es:di], '/'
 	add di, 2
 
-	; ë‹¬ ì¶œë ¥ ë° unpack
+	; ´Þ Ãâ·Â ¹× unpack
 	movzx bx, dh
 	call PRINT_AND_SAVE_BCD
-	mov dh, al       ; DHì— ì›” unpack
+	mov dh, al       ; DH¿¡ ¿ù unpack
 
-	; êµ¬ë¶„ìž ì¶œë ¥
+	; ±¸ºÐÀÚ Ãâ·Â
 	mov byte[es:di], '/'
 	add di, 2
 
- 	;ì—°ë„ ì¶œë ¥ ë° unpack
+ 	;¿¬µµ Ãâ·Â ¹× unpack
 	movzx bx, ch
 	call PRINT_AND_SAVE_BCD
-	mov ch, al       ; CHì— ì„¸ê¸° unpack
+	mov ch, al       ; CH¿¡ ¼¼±â unpack
 
 	movzx bx, cl
 	call PRINT_AND_SAVE_BCD
-	shr cx, 8        ; ì˜¤ë¥¸ìª½ ì‹œí”„íŠ¸ë¡œ, CHë§Œ ë‚¨ê¸´ë‹¤
-	imul cx, 100     ; CHëŠ” ì›ëž˜ 100ì˜ ìžë¦¬ë¯€ë¡œ 100ì„ ê³±í•œë‹¤
-	add cx, ax       ; ì„¸ê¸°ì¸ CHì— ë…„ë„ì¸ CXë¥¼ ë”í•´ì„œ 4ìžë¦¬ ë…„ë„ ì™„ì„±
+	shr cx, 8        ; ¿À¸¥ÂÊ ½ÃÇÁÆ®·Î, CH¸¸ ³²±ä´Ù
+	imul cx, 100     ; CH´Â ¿ø·¡ 100ÀÇ ÀÚ¸®¹Ç·Î 100À» °öÇÑ´Ù
+	add cx, ax       ; ¼¼±âÀÎ CH¿¡ ³âµµÀÎ CX¸¦ ´õÇØ¼­ 4ÀÚ¸® ³âµµ ¿Ï¼º
 
-; ìš”ì¼ ì¶œë ¥
-; 1900ë…„ 1ì›” 1ì¼ë¶€í„°ì˜ ë‚ ì§œë¥¼ ì„¸ì–´ì„œ 7ë¡œ ë‚˜ëˆ„ì–´ ìƒëŒ€ì  ìš”ì¼ì„ êµ¬í•  ê²ƒì´ë‹¤
-; í˜„ìž¬ DL=ì¼ìž, DL=ë‹¬, CX=ë…„ë„ê°€ ì €ìž¥ë˜ì–´ ìžˆë‹¤.
-	; ì¼ ê³„ì‚°
-	dec dl           ; 1900ë…„ 1ì›” 1ì¼ë¶€í„°ì˜ ë‚ ì§œì´ë¯€ë¡œ í˜„ìž¬ë‚ ì§œ - 1ì¼
-	movzx ax, dl     ; axëŠ” ì´ì œ 1900ë…„1ì›”1ì¼ë¶€í„°ì˜ ì§€ë‚œë‚ ì§œ
+; ¿äÀÏ Ãâ·Â
+; 1900³â 1¿ù 1ÀÏºÎÅÍÀÇ ³¯Â¥¸¦ ¼¼¾î¼­ 7·Î ³ª´©¾î »ó´ëÀû ¿äÀÏÀ» ±¸ÇÒ °ÍÀÌ´Ù
+; ÇöÀç DL=ÀÏÀÚ, DL=´Þ, CX=³âµµ°¡ ÀúÀåµÇ¾î ÀÖ´Ù.
+	; ÀÏ °è»ê
+	dec dl           ; 1900³â 1¿ù 1ÀÏºÎÅÍÀÇ ³¯Â¥ÀÌ¹Ç·Î ÇöÀç³¯Â¥ - 1ÀÏ
+	movzx ax, dl     ; ax´Â ÀÌÁ¦ 1900³â1¿ù1ÀÏºÎÅÍÀÇ Áö³­³¯Â¥
 
-	; ì›” ê³„ì‚°
-	; 1ì›” ë¶€í„°ì˜ ë‚ ì§œë¥¼ ì„¸ì•¼í•œë‹¤ 
-	; ì›ëž˜ ëª©í‘œëŠ” ì˜¬í•´ ì´ˆë¶€í„° ì§€ë‚œ ë‹¬ê¹Œì§€ì˜ ì¼ìˆ˜ë¥¼ ë”í•´ 7ë¡œ ë‚˜ëˆ ì•¼ í•œë‹¤
-	; ì´ëŠ” ì´ì „ ë‹¬ê¹Œì§€ì˜ ì¼ìˆ˜ í•©ì„ 7ë¡œ ë‚˜ëˆˆ ë‚˜ë¨¸ì§€ë¥¼ ë”í•œ ê²ƒê³¼ ë™ì¼í•˜ë‹¤
-	movzx bx, dh     ; ë°°ì—´ì— ì ‘ê·¼í•˜ê¸° ìœ„í•´ BXì— DH(ë‹¬)ì„ ì§‘ì–´ë„£ëŠ”ë‹¤
-	cmp bx, 3        ; DH(ë‹¬)ê°€ 3ì›” ì´í›„ ì¸ì§€ ê²€ì‚¬í•œë‹¤
-	                 ; 1ì›”ì˜ ê²½ìš° ì§€ë‚œë‹¬ì´ ì—†ê³ , 
-	                 ; 2ì›”ì˜ ê²½ìš° 1ì›”ì˜ ì¼ìˆ˜ë§Œ ë”í•´ì£¼ë©´ ë˜ë¯€ë¡œ
-	                 ; ì˜¬í•´ì— ëŒ€í•œ ìœ¤ë…„ê³„ì‚°ì´ í•„ìš”ì—†ë‹¤
+	; ¿ù °è»ê
+	; 1¿ù ºÎÅÍÀÇ ³¯Â¥¸¦ ¼¼¾ßÇÑ´Ù
+	; ¿ø·¡ ¸ñÇ¥´Â ¿ÃÇØ ÃÊºÎÅÍ Áö³­ ´Þ±îÁöÀÇ ÀÏ¼ö¸¦ ´õÇØ 7·Î ³ª´²¾ß ÇÑ´Ù
+	; ÀÌ´Â ÀÌÀü ´Þ±îÁöÀÇ ÀÏ¼ö ÇÕÀ» 7·Î ³ª´« ³ª¸ÓÁö¸¦ ´õÇÑ °Í°ú µ¿ÀÏÇÏ´Ù
+	movzx bx, dh     ; ¹è¿­¿¡ Á¢±ÙÇÏ±â À§ÇØ BX¿¡ DH(´Þ)À» Áý¾î³Ö´Â´Ù
+	cmp bx, 3        ; DH(´Þ)°¡ 3¿ù ÀÌÈÄ ÀÎÁö °Ë»çÇÑ´Ù
+	                 ; 1¿ùÀÇ °æ¿ì Áö³­´ÞÀÌ ¾ø°í,
+	                 ; 2¿ùÀÇ °æ¿ì 1¿ùÀÇ ÀÏ¼ö¸¸ ´õÇØÁÖ¸é µÇ¹Ç·Î
+	                 ; ¿ÃÇØ¿¡ ´ëÇÑ À±³â°è»êÀÌ ÇÊ¿ä¾ø´Ù
 	jna .AFTER_CONSIDER_LEAP_YEAR
-	inc cx           ; ë‚˜ë¨¸ì§€ ë‹¬ì˜ ê²½ìš°, ì˜¬í•´ë„ ìœ¤ë…„ê³„ì‚°ì´ í•„ìš”í•˜ë‹¤
-	dec ax           ; ì˜¬í•´ê¹Œì§€ ìœ¤ë…„ê³„ì‚°ì„ í•˜ë©´ì„œ 1ë…„ì´ ì¶”ê°€ë˜ë¯€ë¡œ ë¯¸ë¦¬ ì œê±°í•œë‹¤
+	inc cx           ; ³ª¸ÓÁö ´ÞÀÇ °æ¿ì, ¿ÃÇØµµ À±³â°è»êÀÌ ÇÊ¿äÇÏ´Ù
+	dec ax           ; ¿ÃÇØ±îÁö À±³â°è»êÀ» ÇÏ¸é¼­ 1³âÀÌ Ãß°¡µÇ¹Ç·Î ¹Ì¸® Á¦°ÅÇÑ´Ù
 	.AFTER_CONSIDER_LEAP_YEAR:
 	movzx bx, byte[DAYS_UNTIL_MONTH + bx -1]
-	                 ; DAYS_~ëŠ” ì§€ë‚œë‹¬ê¹Œì§€ì˜ ì¼ìˆ˜ í•©ì„ 7ë¡œ ë‚˜ëˆˆ ë‚˜ë¨¸ì§€
-	                 ; (bx-1)ì´ 0ì¼ë•Œ ê°€ë¦¬í‚¤ëŠ” 1ì›”ì€ 0ì´ ë”í•´ì§€ë¯€ë¡œ 
-	                 ; ì¼€ì´ìŠ¤ë¶„ë¥˜ë¥¼ í”¼í•  ìˆ˜ ìžˆë‹¤
-	add bx, ax       ; ë…„ë„ ê³„ì‚°ì€ ìœ¤ë…„ ê³„ì‚°ì´ ë“¤ì–´ê°€ì„œ ë‚˜ëˆ—ì…ˆì„ í•´ì•¼í•œë‹¤
-	                 ; ì´ ì¤„ ë¶€í„°ëŠ” bxë¡œ ì¼ìˆ˜ì˜ í•©ì„ ê´€ë¦¬í•´ì•¼ í•œë‹¤
+	                 ; DAYS_~´Â Áö³­´Þ±îÁöÀÇ ÀÏ¼ö ÇÕÀ» 7·Î ³ª´« ³ª¸ÓÁö
+	                 ; (bx-1)ÀÌ 0ÀÏ¶§ °¡¸®Å°´Â 1¿ùÀº 0ÀÌ ´õÇØÁö¹Ç·Î
+	                 ; ÄÉÀÌ½ººÐ·ù¸¦ ÇÇÇÒ ¼ö ÀÖ´Ù
+	add bx, ax       ; ³âµµ °è»êÀº À±³â °è»êÀÌ µé¾î°¡¼­ ³ª´°¼ÀÀ» ÇØ¾ßÇÑ´Ù
+	                 ; ÀÌ ÁÙ ºÎÅÍ´Â bx·Î ÀÏ¼öÀÇ ÇÕÀ» °ü¸®ÇØ¾ß ÇÑ´Ù
 	
-	; ì—°ë„ ê³„ì‚°
-	; 1900ë…„ ë¶€í„°ì˜ ë‚ ì§œë¥¼ ì„¸ì•¼í•œë‹¤
-	; 1900ë…„ 1ì›” 1ì¼ ë¶€í„° ì˜¬í•´ 1ì›” 1ì¼ ê¹Œì§€ëŠ” 
-	; 1900ë…„ ë¶€í„° ìž‘ë…„ê¹Œì§€ì˜ ì—° * 365ì™€
-	; 1900ë…„ ë¶€í„° ìž‘ë…„ê¹Œì§€ ìœ¤ë…„ì˜ íšŸìˆ˜ë¥¼ ë”í•˜ëŠ” ë°©ì‹ìœ¼ë¡œ êµ¬í•  ìˆ˜ ìžˆë‹¤
-	; 365ëŠ” 7ë¡œ ë‚˜ëˆˆ ë‚˜ë¨¸ì§€ê°€ 1ì´ë¯€ë¡œ ë…„ë„ë³„ë¡œ 1ì”©ë§Œ ë”í•´ë„ ëœë‹¤
-	add bx, cx       ; ë§Œì•½ ì˜¬í•´ê°€ 1901ë…„ 1ì›”ì´ë¼ë©´
-	sub bx, 1900     ; ë…„ë„ì— ë”°ë¥¸ ë‚ ì§œì°¨ì´ì—ëŠ” 1901ë…„-1900ë…„ 1ë…„
-	dec cx           ; ë…„ë„ì— ë”°ë¥¸ ìœ¤ë…„ì°¨ì´ì—ëŠ” 1900ë…„ 2ì›”ë§Œì´ ë°˜ì˜ë˜ì–´ì•¼ í•œë‹¤
+	; ¿¬µµ °è»ê
+	; 1900³â ºÎÅÍÀÇ ³¯Â¥¸¦ ¼¼¾ßÇÑ´Ù
+	; 1900³â 1¿ù 1ÀÏ ºÎÅÍ ¿ÃÇØ 1¿ù 1ÀÏ ±îÁö´Â
+	; 1900³â ºÎÅÍ ÀÛ³â±îÁöÀÇ ¿¬ * 365¿Í
+	; 1900³â ºÎÅÍ ÀÛ³â±îÁö À±³âÀÇ È½¼ö¸¦ ´õÇÏ´Â ¹æ½ÄÀ¸·Î ±¸ÇÒ ¼ö ÀÖ´Ù
+	; 365´Â 7·Î ³ª´« ³ª¸ÓÁö°¡ 1ÀÌ¹Ç·Î ³âµµº°·Î 1¾¿¸¸ ´õÇØµµ µÈ´Ù
+	add bx, cx       ; ¸¸¾à ¿ÃÇØ°¡ 1901³â 1¿ùÀÌ¶ó¸é
+	sub bx, 1900     ; ³âµµ¿¡ µû¸¥ ³¯Â¥Â÷ÀÌ¿¡´Â 1901³â-1900³â 1³â
+	dec cx           ; ³âµµ¿¡ µû¸¥ À±³âÂ÷ÀÌ¿¡´Â 1900³â 2¿ù¸¸ÀÌ ¹Ý¿µµÇ¾î¾ß ÇÑ´Ù
 
-	; ìœ¤ë…„ ê³„ì‚°
-	; 1900ë…„ ë¶€í„° ìž‘ë…„ê¹Œìžì˜ ìœ¤ë…„ì˜ íšŸìˆ˜ëŠ” ìž‘ë…„ê¹Œì§€ì˜ ìœ¤ë…„ì˜ ê°œìˆ˜ì—ì„œ 
-	; 1899ë…„ê¹Œì§€ì˜ ìœ¤ë…„ì˜ ê°œìˆ˜ë¥¼ ë¹¼ì„œ êµ¬í•  ìˆ˜ ìžˆë‹¤
+	; À±³â °è»ê
+	; 1900³â ºÎÅÍ ÀÛ³â±îÀÚÀÇ À±³âÀÇ È½¼ö´Â ÀÛ³â±îÁöÀÇ À±³âÀÇ °³¼ö¿¡¼­
+	; 1899³â±îÁöÀÇ À±³âÀÇ °³¼ö¸¦ »©¼­ ±¸ÇÒ ¼ö ÀÖ´Ù
 
-	; ìž‘ë…„ê¹Œì§€ì˜ ìœ¤ë…„ì˜ íšŸìˆ˜ë¥¼ êµ¬í•œë‹¤
-	mov si, cx       ; divì—ì„œ cxë¡œ ì œìˆ˜ë¥¼ ì „ë‹¬í•´ì•¼ í•˜ê¸° ë•Œë¬¸ì— sië¡œ ë…„ë„ë¥¼ ê´€ë¦¬í•œë‹¤
-	mov cx, 4        ; 4ë¡œ ë‚˜ëˆ ì§€ë©´ ìœ¤ë…„ì´ë‹¤
+	; ÀÛ³â±îÁöÀÇ À±³âÀÇ È½¼ö¸¦ ±¸ÇÑ´Ù
+	mov si, cx       ; div¿¡¼­ cx·Î Á¦¼ö¸¦ Àü´ÞÇØ¾ß ÇÏ±â ¶§¹®¿¡ si·Î ³âµµ¸¦ °ü¸®ÇÑ´Ù
+	mov cx, 4        ; 4·Î ³ª´²Áö¸é À±³âÀÌ´Ù
 	call DIVIDE_SI_BY_CX
 	add bx, ax
 	
-	mov cx, 100      ; 100ìœ¼ë¡œ ë‚˜ëˆ ì§€ë©´ ìœ¤ë…„ì´ ì•„ë‹ˆì§€ë§Œ, 4ë¡œ ë‚˜ë‰˜ë©´ì„œ ë”í•´ì¡Œë‹¤
+	mov cx, 100      ; 100À¸·Î ³ª´²Áö¸é À±³âÀÌ ¾Æ´ÏÁö¸¸, 4·Î ³ª´µ¸é¼­ ´õÇØÁ³´Ù
 	call DIVIDE_SI_BY_CX
 	sub bx, ax
  
-	mov cx, 400      ; 400ìœ¼ë¡œ ë‚˜ëˆ ì§€ë©´ ìœ¤ë…„ì´ë‹¤
+	mov cx, 400      ; 400À¸·Î ³ª´²Áö¸é À±³âÀÌ´Ù
 	call DIVIDE_SI_BY_CX
 	add bx, ax
 
-	; 1900ë…„ê¹Œì§€ì˜ ìœ¤ë…„ì€
-	; 1899 / 4 + 1899 / 400 - 1899/100ì´ê³  ì´ëŠ”
-	; 474 + 4 - 18ë¡œ 460 ë²ˆ ë°œìƒí–ˆë‹¤
-	sub bx, 460      ; 1900ë…„ê¹Œì§€ì˜ ìœ¤ë…„ì„ ëº€ë‹¤
+	; 1900³â±îÁöÀÇ À±³âÀº
+	; 1899 / 4 + 1899 / 400 - 1899/100ÀÌ°í ÀÌ´Â
+	; 474 + 4 - 18·Î 460 ¹ø ¹ß»ýÇß´Ù
+	sub bx, 460      ; 1900³â±îÁöÀÇ À±³âÀ» »«´Ù
 
-	; 7ë¡œ ë‚˜ëˆ„ê¸°
-	mov si, bx       ; DIVIDE~ í•¨ìˆ˜ëŠ” SIë¥¼ CXë¡œ ë‚˜ëˆˆë‹¤
-	mov cx, 7        ; AXì— ëª«, DXì— ë‚˜ë¨¸ì§€ê°€ ì €ìž¥ëœë‹¤
+	; 7·Î ³ª´©±â
+	mov si, bx       ; DIVIDE~ ÇÔ¼ö´Â SI¸¦ CX·Î ³ª´«´Ù
+	mov cx, 7        ; AX¿¡ ¸ò, DX¿¡ ³ª¸ÓÁö°¡ ÀúÀåµÈ´Ù
 	call DIVIDE_SI_BY_CX
-	shl dx, 2        ; 4ë°° ê³±í•´ì„œ ìš”ì¼ ì£¼ì†Œë¥¼ ì°¾ëŠ”ë‹¤
-	mov si, DAYS     ; Mon0Tue0... ì˜ í˜•íƒœë¥¼ í•˜ê³  ìžˆë‹¤
-	add si, dx       ; ì‹œìž‘ì£¼ì†Œì— ì¸ë±ìŠ¤ì£¼ì†Œë¥¼ ë”í•´ ìš”ì¼ ì£¼ì†Œë¥¼ êµ¬í•œë‹¤
-	add di, 2        ; ëª…ì„¸ì— ë§žê²Œ í•œì¹¸ ë„ì–´ì“´ë‹¤
+	shl dx, 2        ; 4¹è °öÇØ¼­ ¿äÀÏ ÁÖ¼Ò¸¦ Ã£´Â´Ù
+	mov si, DAYS     ; Mon0Tue0... ÀÇ ÇüÅÂ¸¦ ÇÏ°í ÀÖ´Ù
+	add si, dx       ; ½ÃÀÛÁÖ¼Ò¿¡ ÀÎµ¦½ºÁÖ¼Ò¸¦ ´õÇØ ¿äÀÏ ÁÖ¼Ò¸¦ ±¸ÇÑ´Ù
+	add di, 2        ; ¸í¼¼¿¡ ¸Â°Ô ÇÑÄ­ ¶ç¾î¾´´Ù
 	call PRINTMESSAGE
 
-	; os ë¡œë”© ë©”ì‹œì§€ ì¶œë ¥
-	mov di, 320      ; ê¸€ì§œ ì¶œë ¥ ìœ„ì¹˜ë¥¼ ì„¸ë²ˆì§¸ ì¤„ë¡œ ë°”ê¾¼ë‹¤
+	; os ·Îµù ¸Þ½ÃÁö Ãâ·Â
+	mov di, 320      ; ±ÛÂ¥ Ãâ·Â À§Ä¡¸¦ ¼¼¹øÂ° ÁÙ·Î ¹Ù²Û´Ù
 	mov si, IMAGELOADINGMESSAGE
 	call PRINTMESSAGE
 
-; ë””ìŠ¤í¬ ì´ˆê¸°í™”
+; µð½ºÅ© ÃÊ±âÈ­
 RESETDISK:
-	xor ax, ax	     ; ë””ìŠ¤í¬ë¥¼ ì´ˆê¸°í™”í•˜ëŠ” ì¸í„°ëŸ½íŠ¸(13H - 0H)
-	xor dl, dl       ; í”Œë¡œí”¼ ë””ìŠ¤í¬ì— ê´€í•œ ìž‘ì—…ìž„ì„ ì•Œë¦°ë‹¤ 0
+	xor ax, ax	     ; µð½ºÅ©¸¦ ÃÊ±âÈ­ÇÏ´Â ÀÎÅÍ·´Æ®(13H - 0H)
+	xor dl, dl       ; ÇÃ·ÎÇÇ µð½ºÅ©¿¡ °üÇÑ ÀÛ¾÷ÀÓÀ» ¾Ë¸°´Ù 0
 	int 0x13
 	jc HANDLEDISKERROR
-	                ; ì—ëŸ¬ê°€ ë°œìƒí•˜ë©´ ì—ëŸ¬ ì²˜ë¦¬ë¡œ ì´ë™í•œë‹¤
+	                ; ¿¡·¯°¡ ¹ß»ýÇÏ¸é ¿¡·¯ Ã³¸®·Î ÀÌµ¿ÇÑ´Ù
 
-	; ë””ìŠ¤í¬ì˜ ë‚´ìš©ì„ ë©”ëª¨ë¦¬ë¡œ ë³µì‚¬í•  ì–´ë“œë ˆìŠ¤(ES:BX)ë¥¼ 0x10000ìœ¼ë¡œ ì„¤ì •í•œë‹¤
-	mov si, 0x1000  ; OS ì´ë¯¸ì§€ë¥¼ ë³µì‚¬í•  ì–´ë“œë ˆìŠ¤(0x10000)ë¥¼
-	                ; ì„¸ê·¸ë¨¼íŠ¸ ë ˆì§€ìŠ¤í„° ê°’ìœ¼ë¡œ ë³€í™˜
-	mov es, si      ; ES ì„¸ê·¸ë¨¼íŠ¸ ë ˆì§€ìŠ¤í„°ì— ê°’ ì„¤ì •
-	mov bx, 0x0000  ; BX ë ˆì§€ìŠ¤í„°ì— 0x0000ì„ ì„¤ì •í•˜ì—¬ ë³µì‚¬í• 
-	        		     ; ì–´ë“œë ˆìŠ¤ë¥¼ 0x1000:0000(0x10000)ìœ¼ë¡œ ìµœì¢… ì„¤ì •
-
-
-	mov di, word[TOTALSECTORCOUNT]	; ë³µì‚¬í•  OS ì´ë¯¸ì§€ì˜ ì„¹í„° ìˆ˜ë¥¼ DI ë ˆì§€ìŠ¤í„°ì— ì„¤ì •
-
-; ë””ìŠ¤í¬ ì½ê¸°
-READDATA:					;ë””ìŠ¤í¬ë¥¼ ì½ëŠ” ì½”ë“œì˜ ì‹œìž‘
-	; ëª¨ë“  ì„¹í„°ë¥¼ ë‹¤ ì½ì—ˆëŠ”ì§€ í™•ì¸
-	dec di		; ë³µì‚¬í•  ì„¹í„° ìˆ˜ë¥¼ 1 ê°ì†Œ
-	jnge READEND	; di < 0ì´ë¼ë©´ ë‹¤ ë³µì‚¬ í–ˆìœ¼ë¯€ë¡œ READENDë¡œ ì´ë™
+	; µð½ºÅ©ÀÇ ³»¿ëÀ» ¸Þ¸ð¸®·Î º¹»çÇÒ ¾îµå·¹½º(ES:BX)¸¦ 0x10000À¸·Î ¼³Á¤ÇÑ´Ù
+	mov si, 0x1000  ; OS ÀÌ¹ÌÁö¸¦ º¹»çÇÒ ¾îµå·¹½º(0x10000)¸¦
+	                ; ¼¼±×¸ÕÆ® ·¹Áö½ºÅÍ °ªÀ¸·Î º¯È¯
+	mov es, si      ; ES ¼¼±×¸ÕÆ® ·¹Áö½ºÅÍ¿¡ °ª ¼³Á¤
+	mov bx, 0x0000  ; BX ·¹Áö½ºÅÍ¿¡ 0x0000À» ¼³Á¤ÇÏ¿© º¹»çÇÒ
+	        		     ; ¾îµå·¹½º¸¦ 0x1000:0000(0x10000)À¸·Î ÃÖÁ¾ ¼³Á¤
 
 
-	;;;êµ¬í˜„ ì•„ì´ë””ì–´ : íŠ¸ëž™ë¶ˆëŸ¬ì˜¤ê¸°ë¥¼ ë‹¤ì¤‘ Forë¬¸ìœ¼ë¡œ ì§œë©´ ë¼ì¸ì„ ì¢€ ì•„ë‚„ ìˆ˜ ìžˆì„ ë“¯
+	mov di, word[TOTALSECTORCOUNT]	; º¹»çÇÒ OS ÀÌ¹ÌÁöÀÇ ¼½ÅÍ ¼ö¸¦ DI ·¹Áö½ºÅÍ¿¡ ¼³Á¤
+
+; µð½ºÅ© ÀÐ±â
+READDATA:					;µð½ºÅ©¸¦ ÀÐ´Â ÄÚµåÀÇ ½ÃÀÛ
+	; ¸ðµç ¼½ÅÍ¸¦ ´Ù ÀÐ¾ú´ÂÁö È®ÀÎ
+	dec di		; º¹»çÇÒ ¼½ÅÍ ¼ö¸¦ 1 °¨¼Ò
+	jnge READEND	; di < 0ÀÌ¶ó¸é ´Ù º¹»ç ÇßÀ¸¹Ç·Î READEND·Î ÀÌµ¿
+
+
+	;;;±¸Çö ¾ÆÀÌµð¾î : Æ®·¢ºÒ·¯¿À±â¸¦ ´ÙÁß For¹®À¸·Î Â¥¸é ¶óÀÎÀ» Á» ¾Æ³¥ ¼ö ÀÖÀ» µí
 
 	
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	BIOS Read Function í˜¸ì¶œ
+	;	BIOS Read Function È£Ãâ
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov ax, 0x201				; ì„œë¹„ìŠ¤2ë²ˆ / ì½ì„ ì„¹í„° 1ê°œ
-	mov ch, byte[TRACKNUMBER]	; ì½ì„ íŠ¸ëž™ ë²ˆí˜¸ ì„¤ì •
-	mov cl, byte[SECTORNUMBER]	; ì½ì„ ì„¹í„° ë²ˆí˜¸ ì„¤ì •
-	mov dh, byte[HEADNUMBER]	; ì½ì„ í—¤ë“œ ë²ˆí˜¸ ì„¤ì •
-	xor dl, dl					; ì½ì„ ë“œë¼ì´ë¸Œ ë²ˆí˜¸(0=Floppy) ì„¤ì •
-	int 0x13					; ì¸í„°ëŸ½íŠ¸ ì„œë¹„ìŠ¤ ìˆ˜í–‰
+	mov ax, 0x201				; ¼­ºñ½º2¹ø / ÀÐÀ» ¼½ÅÍ 1°³
+	mov ch, byte[TRACKNUMBER]	; ÀÐÀ» Æ®·¢ ¹øÈ£ ¼³Á¤
+	mov cl, byte[SECTORNUMBER]	; ÀÐÀ» ¼½ÅÍ ¹øÈ£ ¼³Á¤
+	mov dh, byte[HEADNUMBER]	; ÀÐÀ» Çìµå ¹øÈ£ ¼³Á¤
+	xor dl, dl					; ÀÐÀ» µå¶óÀÌºê ¹øÈ£(0=Floppy) ¼³Á¤
+	int 0x13					; ÀÎÅÍ·´Æ® ¼­ºñ½º ¼öÇà
 	; 0x13 - 02h
-	; ìž…ë ¥ AX, CX, DX
-	; ì¶œë ¥ CF:ì—ëŸ¬, AH:ë¦¬í„´ì½”ë“œ, AL:ì½ì€ ë°ì´í„° ìˆ˜
-;	jc HANDLEDISKERROR			; ì—ëŸ¬ê°€ ë°œìƒí–ˆë‹¤ë©´ HANDLEDISKERRORë¡œ ì´ë™
+	; ÀÔ·Â AX, CX, DX
+	; Ãâ·Â CF:¿¡·¯, AH:¸®ÅÏÄÚµå, AL:ÀÐÀº µ¥ÀÌÅÍ ¼ö
+;	jc HANDLEDISKERROR			; ¿¡·¯°¡ ¹ß»ýÇß´Ù¸é HANDLEDISKERROR·Î ÀÌµ¿
 
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;	ë³µì‚¬í•  ì–´ë“œë ˆìŠ¤ì™€ íŠ¸ëž™, í—¤ë“œ, ì„¹í„° ì–´ë“œë ˆìŠ¤ ê³„ì‚°
+	;	º¹»çÇÒ ¾îµå·¹½º¿Í Æ®·¢, Çìµå, ¼½ÅÍ ¾îµå·¹½º °è»ê
 	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	add si, 0x0020	; 512(0x200)ë°”ì´íŠ¸ë§Œí¼ ì½ì—ˆìœ¼ë¯€ë¡œ, ì´ë¥¼ ì„¸ê·¸ë¨¼íŠ¸ ë ˆì§€ìŠ¤í„° ê°’ìœ¼ë¡œ ë³€í™˜
-	mov es, si		; ES ì„¸ê·¸ë¨¼íŠ¸ ë ˆì§€ìŠ¤í„°ì— ë”í•´ì„œ ì–´ë“œë ˆìŠ¤ë¥¼ í•œ ì„¹í„° ë§Œí¼ ì¦ê°€
+	add si, 0x0020	; 512(0x200)¹ÙÀÌÆ®¸¸Å­ ÀÐ¾úÀ¸¹Ç·Î, ÀÌ¸¦ ¼¼±×¸ÕÆ® ·¹Áö½ºÅÍ °ªÀ¸·Î º¯È¯
+	mov es, si		; ES ¼¼±×¸ÕÆ® ·¹Áö½ºÅÍ¿¡ ´õÇØ¼­ ¾îµå·¹½º¸¦ ÇÑ ¼½ÅÍ ¸¸Å­ Áõ°¡
 
-	; í•œ ì„¹í„°ë¥¼ ì½ì—ˆìœ¼ë¯€ë¡œ ì„¹í„° ë²ˆí˜¸ë¥¼ ì¦ê°€ì‹œí‚¤ê³  ë§ˆì§€ë§‰ ì„¹í„°ê¹Œì§€ ì½ì—ˆëŠ”ì§€ íŒë‹¨
-	; ë§ˆì§€ë§‰ ì„¹í„°ê°€ ì•„ë‹ˆë©´ ì„¹í„° ì½ê¸°ë¡œ ì´ë™í•´ì„œ ë‹¤ì‹œ ì„¹í„° ì½ê¸° ìˆ˜í–‰
-	mov al, byte[SECTORNUMBER]		; ì„¹í„° ë²ˆí˜¸ë¥¼ AL ë ˆì§€ìŠ¤í„°ì— ì„¤ì •
-	inc al					; ì„¹í„° ë²ˆí˜¸ë¥¼ 1 ì¦ê°€
-	mov byte[SECTORNUMBER], al		; ì¦ê°€ì‹œí‚¨ ì„¹í„° ë²ˆí˜¸ë¥¼ SECTORNUMBERì— ë‹¤ì‹œ ì„¤ì •
-	cmp al, 19						; ì¦ê°€ì‹œí‚¨ ì„¹í„° ë²ˆí˜¸ë¥¼ 19ì™€ ë¹„êµ
-	jl READDATA						; ì„¹í„° ë²ˆí˜¸ê°€ 19 ë¯¸ë§Œì´ë¼ë©´ READDATAë¡œ ì´ë™
+	; ÇÑ ¼½ÅÍ¸¦ ÀÐ¾úÀ¸¹Ç·Î ¼½ÅÍ ¹øÈ£¸¦ Áõ°¡½ÃÅ°°í ¸¶Áö¸· ¼½ÅÍ±îÁö ÀÐ¾ú´ÂÁö ÆÇ´Ü
+	; ¸¶Áö¸· ¼½ÅÍ°¡ ¾Æ´Ï¸é ¼½ÅÍ ÀÐ±â·Î ÀÌµ¿ÇØ¼­ ´Ù½Ã ¼½ÅÍ ÀÐ±â ¼öÇà
+	mov al, byte[SECTORNUMBER]		; ¼½ÅÍ ¹øÈ£¸¦ AL ·¹Áö½ºÅÍ¿¡ ¼³Á¤
+	inc al					; ¼½ÅÍ ¹øÈ£¸¦ 1 Áõ°¡
+	mov byte[SECTORNUMBER], al		; Áõ°¡½ÃÅ² ¼½ÅÍ ¹øÈ£¸¦ SECTORNUMBER¿¡ ´Ù½Ã ¼³Á¤
+	cmp al, 19						; Áõ°¡½ÃÅ² ¼½ÅÍ ¹øÈ£¸¦ 19¿Í ºñ±³
+	jl READDATA						; ¼½ÅÍ ¹øÈ£°¡ 19 ¹Ì¸¸ÀÌ¶ó¸é READDATA·Î ÀÌµ¿
 
-	; ë§ˆì§€ë§‰ ì„¹í„°ê¹Œì§€ ì½ì—ˆìœ¼ë©´(ì„¹í„° ë²ˆí˜¸ê°€ 19ì´ë©´) í—¤ë“œë¥¼ í† ê¸€(0->1, 1->0)í•˜ê³ ,
-	; ì„¹í„° ë²ˆí˜¸ë¥¼ 1ë¡œ ì„¤ì •
-	xor byte[HEADNUMBER], 0x01		; í—¤ë“œ ë²ˆí˜¸ë¥¼ 0x01ê³¼ XOR í•˜ì—¬ í† ê¸€(0->1, 1->0)
-	mov byte[SECTORNUMBER], 0x01	; ì„¹í„° ë²ˆí˜¸ë¥¼ ë‹¤ì‹œ 1ë¡œ ì„¤ì •
+	; ¸¶Áö¸· ¼½ÅÍ±îÁö ÀÐ¾úÀ¸¸é(¼½ÅÍ ¹øÈ£°¡ 19ÀÌ¸é) Çìµå¸¦ Åä±Û(0->1, 1->0)ÇÏ°í,
+	; ¼½ÅÍ ¹øÈ£¸¦ 1·Î ¼³Á¤
+	xor byte[HEADNUMBER], 0x01		; Çìµå ¹øÈ£¸¦ 0x01°ú XOR ÇÏ¿© Åä±Û(0->1, 1->0)
+	mov byte[SECTORNUMBER], 0x01	; ¼½ÅÍ ¹øÈ£¸¦ ´Ù½Ã 1·Î ¼³Á¤
 
-	; ë§Œì•½ í—¤ë“œê°€ 1->0ìœ¼ë¡œ ë°”ë€Œì—ˆìœ¼ë©´ ì–‘ìª½ í—¤ë“œë¥¼ ëª¨ë‘ ì½ì€ ê²ƒì´ë¯€ë¡œ
-	; ì•„ëž˜ë¡œ ì´ë™í•˜ì—¬ íŠ¸ëž™ ë²ˆí˜¸ë¥¼ 1 ì¦ê°€
-	cmp byte[HEADNUMBER], 0x00		; í—¤ë“œ ë²ˆí˜¸ë¥¼ 0x00ê³¼ ë¹„êµ
-	jne READDATA					; í—¤ë“œ ë²ˆí˜¸ê°€ 0ì´ ì•„ë‹ˆë©´ READDATAë¡œ ì´ë™
+	; ¸¸¾à Çìµå°¡ 1->0À¸·Î ¹Ù²î¾úÀ¸¸é ¾çÂÊ Çìµå¸¦ ¸ðµÎ ÀÐÀº °ÍÀÌ¹Ç·Î
+	; ¾Æ·¡·Î ÀÌµ¿ÇÏ¿© Æ®·¢ ¹øÈ£¸¦ 1 Áõ°¡
+	cmp byte[HEADNUMBER], 0x00		; Çìµå ¹øÈ£¸¦ 0x00°ú ºñ±³
+	jne READDATA					; Çìµå ¹øÈ£°¡ 0ÀÌ ¾Æ´Ï¸é READDATA·Î ÀÌµ¿
 
-	; íŠ¸ëž™ì„ 1 ì¦ê°€ì‹œí‚¨ í›„ ë‹¤ì‹œ ì„¹í„° ì½ê¸°ë¡œ ì´ë™
-	add byte[TRACKNUMBER], 0x1	; íŠ¸ëž™ ë²ˆí˜¸ë¥¼ 1 ì¦ê°€
-	jmp READDATA					; READDATAë¡œ ì´ë™
+	; Æ®·¢À» 1 Áõ°¡½ÃÅ² ÈÄ ´Ù½Ã ¼½ÅÍ ÀÐ±â·Î ÀÌµ¿
+	add byte[TRACKNUMBER], 0x1	; Æ®·¢ ¹øÈ£¸¦ 1 Áõ°¡
+	jmp READDATA					; READDATA·Î ÀÌµ¿
 
-; ë””ìŠ¤í¬ ì½ê¸° ì™„ë£Œ
+; µð½ºÅ© ÀÐ±â ¿Ï·á
 READEND:
-	mov ax, 0xb800  ; ë””ìŠ¤í¬ë¥¼ ì½ìœ¼ë©° ESë¥¼ ì‚¬ìš©í–ˆìœ¼ë¯€ë¡œ, 
+	mov ax, 0xb800  ; µð½ºÅ©¸¦ ÀÐÀ¸¸ç ES¸¦ »ç¿ëÇßÀ¸¹Ç·Î,
 	mov es, ax
-	mov di, 358      ; ë””ìŠ¤í¬ ë¡œë”© ë©”ì‹œì§€ ë’¤ë¡œ ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬ ì¸ë±ìŠ¤ë¥¼ ì˜®ê¸´ë‹¤
+	mov di, 358      ; µð½ºÅ© ·Îµù ¸Þ½ÃÁö µÚ·Î ºñµð¿À ¸Þ¸ð¸® ÀÎµ¦½º¸¦ ¿Å±ä´Ù
 	mov si, LOADINGCOMPLETEMESSAGE
 	call PRINTMESSAGE
-	jmp 0x1000:0x0000; 0x10000ìœ¼ë¡œ ì´ë™í•´ì„œ ì»¤ë„ì½”ë“œ ì‹¤í–‰í•œë‹¤
+	jmp 0x1000:0x0000; 0x10000À¸·Î ÀÌµ¿ÇØ¼­ Ä¿³ÎÄÚµå ½ÇÇàÇÑ´Ù
 
 HANDLEDISKERROR:
-; ì´ í•¨ìˆ˜ëŠ” ë””ìŠ¤í¬ ì—ëŸ¬ê°€ ë°œìƒí–ˆì„ ë•Œ ì—ëŸ¬ ë©”ì‹œì§€ë¥¼ ì¶œë ¥í•œë‹¤
+; ÀÌ ÇÔ¼ö´Â µð½ºÅ© ¿¡·¯°¡ ¹ß»ýÇßÀ» ¶§ ¿¡·¯ ¸Þ½ÃÁö¸¦ Ãâ·ÂÇÑ´Ù
 	mov si, DISKERRORMESSAGE
 	call PRINTMESSAGE
-	jmp $            ; í˜„ìž¬ ìœ„ì¹˜ì—ì„œ ë¬´í•œ ë£¨í”„ ìˆ˜í–‰í•œë‹¤
+	jmp $            ; ÇöÀç À§Ä¡¿¡¼­ ¹«ÇÑ ·çÇÁ ¼öÇàÇÑ´Ù
 
 PRINTMESSAGE:
-; ì´ í•¨ìˆ˜ëŠ” SIê°€ ê°€ë¦¬í‚¤ëŠ” ë¬¸ìžì—´ì„ ì¶œë ¥í•œë‹¤
-; ì´ í•¨ìˆ˜ëŠ” ë‹¤ìŒì˜ ë™ìž‘ì¡°ê±´ì´ ìžˆê³ , CLì„ ì‚¬ìš©í•œë‹¤
-; SI : ë¬¸ìžì—´ì˜ ì£¼ì†Œ
-; ES : ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬
-; DI : ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬ìƒì˜ ì¸ë±ìŠ¤
-; ì´ í•¨ìˆ˜ëŠ” ë¦¬í„´í•˜ëŠ” ë°ì´í„°ê°€ ì—†ë‹¤
+; ÀÌ ÇÔ¼ö´Â SI°¡ °¡¸®Å°´Â ¹®ÀÚ¿­À» Ãâ·ÂÇÑ´Ù
+; ÀÌ ÇÔ¼ö´Â ´ÙÀ½ÀÇ µ¿ÀÛÁ¶°ÇÀÌ ÀÖ°í, CLÀ» »ç¿ëÇÑ´Ù
+; SI : ¹®ÀÚ¿­ÀÇ ÁÖ¼Ò
+; ES : ºñµð¿À ¸Þ¸ð¸®
+; DI : ºñµð¿À ¸Þ¸ð¸®»óÀÇ ÀÎµ¦½º
+; ÀÌ ÇÔ¼ö´Â ¸®ÅÏÇÏ´Â µ¥ÀÌÅÍ°¡ ¾ø´Ù
 .MESSAGELOOP:
-	mov cl, byte[si] ; ë©”ì‹œì§€ í•œê¸€ìžë¥¼ ê°€ì ¸ì˜¨ë‹¤
-	cmp cl, 0        ; 0ê³¼ ë¹„êµí•œë‹¤
-	je .MESSAGEEND   ; 0ì´ë©´ ì¢…ë£Œí•œë‹¤
+	mov cl, byte[si] ; ¸Þ½ÃÁö ÇÑ±ÛÀÚ¸¦ °¡Á®¿Â´Ù
+	cmp cl, 0        ; 0°ú ºñ±³ÇÑ´Ù
+	je .MESSAGEEND   ; 0ÀÌ¸é Á¾·áÇÑ´Ù
 	mov byte[es:di], cl
-	                 ; ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬ì— ì €ìž¥í•œë‹¤
-	inc si           ; ë©”ì‹œì§€ ì¸ë±ìŠ¤ë¥¼ ê¸€ìží•˜ë‚˜ ì¦ê°€ì‹œí‚¨ë‹¤
-	add di, 2        ; ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬ ì¸ë±ìŠ¤ëŠ” ê¸€ìží•˜ë‚˜, ì†ì„±í•˜ë‚˜ ì¦ê°€ì‹œí‚¨ë‹¤
+	                 ; ºñµð¿À ¸Þ¸ð¸®¿¡ ÀúÀåÇÑ´Ù
+	inc si           ; ¸Þ½ÃÁö ÀÎµ¦½º¸¦ ±ÛÀÚÇÏ³ª Áõ°¡½ÃÅ²´Ù
+	add di, 2        ; ºñµð¿À ¸Þ¸ð¸® ÀÎµ¦½º´Â ±ÛÀÚÇÏ³ª, ¼Ó¼ºÇÏ³ª Áõ°¡½ÃÅ²´Ù
 	jmp .MESSAGELOOP ;
 .MESSAGEEND:
 	ret
 
 PRINT_AND_SAVE_BCD:
-; ì´ í•¨ìˆ˜ëŠ” ì„¸ê°€ì§€ ì¼ì„ í•œë‹¤
-; BXì— ìžˆëŠ” BCDì••ì¶•ëœ ë¬¸ìžì—´ì„ unpackí•˜ê³ 
-; ì´ë¥¼ [ì¶œë ¥]í•˜ê³ 
-; AXì— unpackí•˜ì—¬ [ì €ìž¥]í•œë‹¤
-; ì´ í•¨ìˆ˜ëŠ” ë‹¤ìŒì˜ ë™ìž‘ì¡°ê±´ì´ ìžˆê³ , AXë¥¼ ì‚¬ìš©í•œë‹¤
-; BX : 8ë¹„íŠ¸ë¡œ BCDë˜ì–´ìžˆëŠ” 2ìžë¦¬ ìˆ«ìž
-; ES : ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬
-; DI : ë¹„ë””ì˜¤ ë©”ëª¨ë¦¬ìƒì˜ ì¸ë±ìŠ¤
-	; BCDëŠ” 8ë¹„íŠ¸ë¥¼ 4ë¹„íŠ¸ì”© ë‚˜ëˆ„ì–´ 1ìžë¦¬ì”© ì €ìž¥í•œ ë°©ì‹ì´ë‹¤
-	shl bx, 4        ; 4ë²ˆ ì‹œí”„íŠ¸í•˜ì—¬ BCDë¥¼ bhì— ê±¸ì¹˜ë„ë¡í•œë‹¤
-	movzx ax, bh     ; [ì €ìž¥] AXì— 10ì˜ ìžë¦¬ë¥¼ ë„£ëŠ”ë‹¤
-	imul ax, 10      ; [ì €ìž¥] í˜„ìž¬ AXëŠ” 10ì˜ ìžë¦¬ì´ë¯€ë¡œ 10ë°° ê³±í•œë‹¤
-	add bh, '0'      ; [ì¶œë ¥] ìˆ«ìžë¥¼ asciië¡œ ë³€ê²½í•œë‹¤
+; ÀÌ ÇÔ¼ö´Â ¼¼°¡Áö ÀÏÀ» ÇÑ´Ù
+; BX¿¡ ÀÖ´Â BCD¾ÐÃàµÈ ¹®ÀÚ¿­À» unpackÇÏ°í
+; ÀÌ¸¦ [Ãâ·Â]ÇÏ°í
+; AX¿¡ unpackÇÏ¿© [ÀúÀå]ÇÑ´Ù
+; ÀÌ ÇÔ¼ö´Â ´ÙÀ½ÀÇ µ¿ÀÛÁ¶°ÇÀÌ ÀÖ°í, AX¸¦ »ç¿ëÇÑ´Ù
+; BX : 8ºñÆ®·Î BCDµÇ¾îÀÖ´Â 2ÀÚ¸® ¼ýÀÚ
+; ES : ºñµð¿À ¸Þ¸ð¸®
+; DI : ºñµð¿À ¸Þ¸ð¸®»óÀÇ ÀÎµ¦½º
+	; BCD´Â 8ºñÆ®¸¦ 4ºñÆ®¾¿ ³ª´©¾î 1ÀÚ¸®¾¿ ÀúÀåÇÑ ¹æ½ÄÀÌ´Ù
+	shl bx, 4        ; 4¹ø ½ÃÇÁÆ®ÇÏ¿© BCD¸¦ bh¿¡ °ÉÄ¡µµ·ÏÇÑ´Ù
+	movzx ax, bh     ; [ÀúÀå] AX¿¡ 10ÀÇ ÀÚ¸®¸¦ ³Ö´Â´Ù
+	imul ax, 10      ; [ÀúÀå] ÇöÀç AX´Â 10ÀÇ ÀÚ¸®ÀÌ¹Ç·Î 10¹è °öÇÑ´Ù
+	add bh, '0'      ; [Ãâ·Â] ¼ýÀÚ¸¦ ascii·Î º¯°æÇÑ´Ù
 	mov byte[es:di], bh
-	shr bx, 4        ; bxë¥¼ ì˜¤ë¥¸ìª½ ì‰¬í”„íŠ¸í•œë‹¤
-	and bl, 0fh      ; 10ì˜ ìžë¦¬ë¥¼ ì œê±°í•œë‹¤
-	add al, bl       ; [ì €ìž¥] axì— 1ì˜ ìžë¦¬ë„ ë”í•œë‹¤
+	shr bx, 4        ; bx¸¦ ¿À¸¥ÂÊ ½¬ÇÁÆ®ÇÑ´Ù
+	and bl, 0fh      ; 10ÀÇ ÀÚ¸®¸¦ Á¦°ÅÇÑ´Ù
+	add al, bl       ; [ÀúÀå] ax¿¡ 1ÀÇ ÀÚ¸®µµ ´õÇÑ´Ù
 	add bl, '0'      ;
 	mov byte[es:di+2], bl
-	add di, 4        ; [ì¶œë ¥] ë¼ì¸ì„ ì•„ë‚€ë‹¤
+	add di, 4        ; [Ãâ·Â] ¶óÀÎÀ» ¾Æ³¤´Ù
 	ret
 
 DIVIDE_SI_BY_CX:
-; ì´ í•¨ìˆ˜ëŠ” ë‚˜ëˆ„ê¸° ì—°ì‚°ì˜ ì¤‘ë³µë¼ì¸ì„ ì—†ì• ê¸° ìœ„í•´ ìž‘ì„±í•˜ì˜€ë‹¤
-; ì´ í•¨ìˆ˜ëŠ” ë‹¤ìŒì˜ ë™ìž‘ì¡°ê±´ì´ ìžˆê³ , DXë¥¼ ì‚¬ìš©í•œë‹¤
-; SI : í”¼ì œìˆ˜
-; CX : ì œìˆ˜(ë‚˜ëˆŒ ìˆ˜)
-	xor dx, dx       ; 16ë¹„íŠ¸ ë‚˜ëˆ„ê¸°ë¥¼ ìœ„í•´ DXë¥¼ ì •ë¦¬í•œë‹¤
-	mov ax, si       ; DIVì—°ì‚°ì„ ìœ„í•´ AXì— ë…„ë„ë¥¼ ì˜®ê¸´ë‹¤
+; ÀÌ ÇÔ¼ö´Â ³ª´©±â ¿¬»êÀÇ Áßº¹¶óÀÎÀ» ¾ø¾Ö±â À§ÇØ ÀÛ¼ºÇÏ¿´´Ù
+; ÀÌ ÇÔ¼ö´Â ´ÙÀ½ÀÇ µ¿ÀÛÁ¶°ÇÀÌ ÀÖ°í, DX¸¦ »ç¿ëÇÑ´Ù
+; SI : ÇÇÁ¦¼ö
+; CX : Á¦¼ö(³ª´­ ¼ö)
+	xor dx, dx       ; 16ºñÆ® ³ª´©±â¸¦ À§ÇØ DX¸¦ Á¤¸®ÇÑ´Ù
+	mov ax, si       ; DIV¿¬»êÀ» À§ÇØ AX¿¡ ³âµµ¸¦ ¿Å±ä´Ù
 	div cx
 	ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	ë°ì´í„° ì˜ì—­
+;	µ¥ÀÌÅÍ ¿µ¿ª
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; ë¶€íŠ¸ ë¡œë” ë©”ì‹œì§€
-MESSAGE1                db 'Start~!!', 0	; ì¶œë ¥í•  ë©”ì‹œì§€ ì •ì˜
-DISKERRORMESSAGE        db 'DISK ERROR', 0		; ë§ˆì§€ë§‰ì€ 0ìœ¼ë¡œ ì„¤ì •í•˜ì—¬ .MESSAGELOOPì—ì„œ
-IMAGELOADINGMESSAGE	    db 'OS Image Loading...', 0 ; ë¬¸ìžì—´ì´ ì¢…ë£Œë˜ì—ˆìŒì„ ì•Œ ìˆ˜ ìžˆë„ë¡ í•¨
+; ºÎÆ® ·Î´õ ¸Þ½ÃÁö
+MESSAGE1                db 'Start~!!', 0	; Ãâ·ÂÇÒ ¸Þ½ÃÁö Á¤ÀÇ
+DISKERRORMESSAGE        db 'DISK ERROR', 0		; ¸¶Áö¸·Àº 0À¸·Î ¼³Á¤ÇÏ¿© .MESSAGELOOP¿¡¼­
+IMAGELOADINGMESSAGE	    db 'OS Image Loading...', 0 ; ¹®ÀÚ¿­ÀÌ Á¾·áµÇ¾úÀ½À» ¾Ë ¼ö ÀÖµµ·Ï ÇÔ
 LOADINGCOMPLETEMESSAGE	db 'Complete~!!', 0
 CURRENTDATEMESSAGE 	    db 'Current Date: ',0
 DAYS_UNTIL_MONTH        db 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5
 DAYS                    db 'Mon', 0, 'Tue', 0, 'Wed', 0, 'Thu', 0, 'Fri', 0, 'Sat', 0, 'Sun', 0
 
-; ë””ìŠ¤í¬ ì½ê¸°ì— í•„ìš”í•œ ë³€ìˆ˜ë“¤
-SECTORNUMBER            db 0x02	; OS ì´ë¯¸ì§€ê°€ ì‹œìž‘í•˜ëŠ” ì„¹í„° ë²ˆí˜¸ë¥¼ ì €ìž¥í•˜ëŠ” ì˜ì—­
-HEADNUMBER              db 0x00	; OS ì´ë¯¸ì§€ê°€ ì‹œìž‘í•˜ëŠ” í—¤ë“œ ë²ˆí˜¸ë¥¼ ì €ìž¥í•˜ëŠ” ì˜ì—­
-TRACKNUMBER             db 0x00	; OS ì´ë¯¸ì§€ê°€ ì‹œìž‘í•˜ëŠ” íŠ¸ëž™ ë²ˆí˜¸ë¥¼ ì €ìž¥í•˜ëŠ” ì˜ì—­
+; µð½ºÅ© ÀÐ±â¿¡ ÇÊ¿äÇÑ º¯¼öµé
+SECTORNUMBER            db 0x02	; OS ÀÌ¹ÌÁö°¡ ½ÃÀÛÇÏ´Â ¼½ÅÍ ¹øÈ£¸¦ ÀúÀåÇÏ´Â ¿µ¿ª
+HEADNUMBER              db 0x00	; OS ÀÌ¹ÌÁö°¡ ½ÃÀÛÇÏ´Â Çìµå ¹øÈ£¸¦ ÀúÀåÇÏ´Â ¿µ¿ª
+TRACKNUMBER             db 0x00	; OS ÀÌ¹ÌÁö°¡ ½ÃÀÛÇÏ´Â Æ®·¢ ¹øÈ£¸¦ ÀúÀåÇÏ´Â ¿µ¿ª
 times 510-($ - $$)      db 0x00
 
 db 0x55
 db 0xAA
   
 ; good
-

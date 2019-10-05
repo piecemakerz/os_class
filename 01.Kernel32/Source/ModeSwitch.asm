@@ -1,77 +1,95 @@
-[BITS 32]
+[BITS 32]               ; ÀÌÇÏÀÇ ÄÚµå´Â 32ºñÆ® ÄÚµå·Î ¼³Á¤
 
-; C ì–¸ì–´ì—ì„œ í˜¸ì¶œí•  ìˆ˜ ìžˆë„ë¡ ì´ë¦„ì„ ë…¸ì¶œí•¨(Export)
+; C ¾ð¾î¿¡¼­ È£ÃâÇÒ ¼ö ÀÖµµ·Ï ÀÌ¸§À» ³ëÃâÇÔ(Export)
 global kReadCPUID, kSwitchAndExecute64bitKernel
 
-SECTION .text	; text ì„¹ì…˜(ì„¸ê·¸ë¨¼íŠ¸)ì„ ì •ì˜
+SECTION .text       ; text ¼½¼Ç(¼¼±×¸ÕÆ®)À» Á¤ÀÇ
 
-; CPUID ë°˜í™˜
-; íŒŒë¼ë¯¸í„°: DWORD dwEAX, DWORD* pdwEAX, * pdwEBX, * pdwECX, * pdwEDX
+; CPUID¸¦ ¹ÝÈ¯
+;   PARAM: DWORD dwEAX, DWORD* pdwEAX,* pdwEBX,* pdwECX,* pdwEDX
 kReadCPUID:
-	push ebp		; ë² ì´ìŠ¤ í¬ì¸í„° ë ˆì§€ìŠ¤í„°(EBP)ë¥¼ ìŠ¤íƒì— ì‚½ìž…
-	mov ebp, esp	; ë² ì´ìŠ¤ í¬ì¸í„° ë ˆì§€ìŠ¤í„°(EBP)ì— ìŠ¤íƒ í¬ì¸í„° ë ˆì§€ìŠ¤í„°(ESP)ì˜ ê°’ì„ ì„¤ì •
-	push eax		; í•¨ìˆ˜ì—ì„œ ìž„ì‹œë¡œ ì‚¬ìš©í•˜ëŠ” ë ˆì§€ìŠ¤í„°ë¡œ í•¨ìˆ˜ì˜ ë§ˆì§€ë§‰ ë¶€ë¶„ì—ì„œ
-	push ebx		; ìŠ¤íƒì— ì‚½ìž…ëœ ê°’ì„ ê±°ë‚´ ì›ëž˜ ê°’ìœ¼ë¡œ ë³µì›
-	push ecx
-	push edx
-	push esi
+    push ebp        ; º£ÀÌ½º Æ÷ÀÎÅÍ ·¹Áö½ºÅÍ(EBP)¸¦ ½ºÅÃ¿¡ »ðÀÔ
+    mov ebp, esp    ; º£ÀÌ½º Æ÷ÀÎÅÍ ·¹Áö½ºÅÍ(EBP)¿¡ ½ºÅÃ Æ÷ÀÎÅÍ ·¹Áö½ºÅÍ(ESP)ÀÇ °ªÀ» ¼³Á¤
+    push eax        ; ÇÔ¼ö¿¡¼­ ÀÓ½Ã·Î »ç¿ëÇÏ´Â ·¹Áö½ºÅÍ·Î ÇÔ¼öÀÇ ¸¶Áö¸· ºÎºÐ¿¡¼­
+    push ebx        ; ½ºÅÃ¿¡ »ðÀÔµÈ °ªÀ» ²¨³» ¿ø·¡ °ªÀ¸·Î º¹¿ø
+    push ecx
+    push edx
+    push esi
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; EAX ë ˆì§€ìŠ¤í„°ì˜ ê°’ìœ¼ë¡œ CPUID ëª…ë ¹ì–´ ì‹¤í–‰
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov eax, dword[ebp+8]	; íŒŒë¼ë¯¸í„° 1(dwEAX)ë¥¼ EAX ë ˆì§€ìŠ¤í„°ì— ì €ìž¥
-	cpuid					; CPUID ëª…ë ¹ì–´ ì‹¤í–‰
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; EAX ·¹Áö½ºÅÍÀÇ °ªÀ¸·Î CPUID ¸í·É¾î ½ÇÇà
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mov eax, dword [ ebp + 8 ]  ; ÆÄ¶ó¹ÌÅÍ 1(dwEAX)¸¦ EAX ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    cpuid                       ; CPUID ¸í·É¾î ½ÇÇà
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; ¹ÝÈ¯µÈ °ªÀ» ÆÄ¶ó¹ÌÅÍ¿¡ ÀúÀå
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; *pdwEAX
+    mov esi, dword [ ebp + 12 ] ; ÆÄ¶ó¹ÌÅÍ 2(pdwEAX)¸¦ ESI ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    mov dword [ esi ], eax      ; pdwEAX°¡ Æ÷ÀÎÅÍÀÌ¹Ç·Î Æ÷ÀÎÅÍ°¡ °¡¸®Å°´Â ¾îµå·¹½º¿¡
+                                ; EAX ·¹Áö½ºÅÍÀÇ °ªÀ» ÀúÀå
+    ; *pdwEBX
+    mov esi, dword [ ebp + 16 ] ; ÆÄ¶ó¹ÌÅÍ 3(pdwEBX)¸¦ ESI ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    mov dword [ esi ], ebx      ; pdwEBX°¡ Æ÷ÀÎÅÍÀÌ¹Ç·Î Æ÷ÀÎÅÍ°¡ °¡¸®Å°´Â ¾îµå·¹½º¿¡
+                                ; EBX ·¹Áö½ºÅÍÀÇ °ªÀ» ÀúÀå
 
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; ë°˜í™˜ëœ ê°’ì„ íŒŒë¼ë¯¸í„°ì— ì €ìž¥
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; *pdwEAX
-	mov esi, dword[ebp+12]	; íŒŒë§ˆë¦¬í„° 2(pdwEAX)ë¥¼ ESI ë ˆì§€ìŠ¤í„°ì— ì €ìž¥
-	mov dword[esi], eax		; pdwEAXê°€ í¬ì¸í„°ì´ë¯€ë¡œ í¬ì¸í„°ê°€ ê°€ë¦¬í‚¤ëŠ” ì–´ë“œë ˆìŠ¤ì—
-							; EAX ë ˆì§€ìŠ¤í„°ì˜ ê°’ì„ ì €ìž¥
+    ; *pdwECX
+    mov esi, dword [ ebp + 20 ] ; ÆÄ¶ó¹ÌÅÍ 4(pdwECX)¸¦ ESI ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    mov dword [ esi ], ecx      ; pdwECX°¡ Æ÷ÀÎÅÍÀÌ¹Ç·Î Æ÷ÀÎÅÍ°¡ °¡¸®Å°´Â ¾îµå·¹½º¿¡
+                                ; ECX ·¹Áö½ºÅÍÀÇ °ªÀ» ÀúÀå
+                                
+    ; *pdwEDX
+    mov esi, dword [ ebp + 24 ] ; ÆÄ¶ó¹ÌÅÍ 5(pdwEDX)¸¦ ESI ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    mov dword [ esi ], edx      ; pdwEDX°¡ Æ÷ÀÎÅÍÀÌ¹Ç·Î Æ÷ÀÎÅÍ°¡ °¡¸®Å°´Â ¾îµå·¹½º¿¡
+                                ; EDX ·¹Áö½ºÅÍÀÇ °ªÀ» ÀúÀå
 
-	; *pdwEBX
-	mov esi, dword[ebp+16]
-	mov dword[esi], ebx
-
-	; *pdwECX
-	mov esi, dword[ebp+20]
-	mov dword[esi], ecx
-
-	; *pdwEDX
-	mov esi, dword[ebp+24]
-	mov dword[esi], edx
-
-	pop esi					; í•¨ìˆ˜ì—ì„œ ì‚¬ìš©ì´ ëë‚œ ESI ë ˆì§€ìŠ¤í„°ë¶€í„° EBP ë ˆì§€ìŠ¤í„°ê¹Œì§€ë¥¼ ìŠ¤íƒì—
-	pop edx					; ì‚½ìž…ëœ ê°’ì„ ì´ìš©í•´ì„œ ë³µì›
-	pop ecx					; ìŠ¤íƒì€ ê°€ìž¥ ë§ˆì§€ë§‰ì— ë“¤ì–´ê°„ ë°ì´í„°ê°€ ê°€ìž¥ ë¨¼ì € ë‚˜ì˜¤ëŠ”
-	pop ebx					; ìžë£Œêµ¬ì¡°ì´ë¯€ë¡œ ì‚½ìž…ì˜ ì—­ìˆœìœ¼ë¡œ
-	pop eax					; ì œê±°í•´ì•¼ í•¨
-	pop ebp					; ë² ì´ìŠ¤ í¬ì¸í„° ë ˆì§€ìŠ¤í„°(EBP) ë³µì›
-	ret						; í•¨ìˆ˜ë¥¼ í˜¸ì¶œí•œ ë‹¤ìŒ ì½”ë“œì˜ ìœ„ì¹˜ë¡œ ë³µê·€
-
-; IA-32e ëª¨ë“œë¡œ ì „í™˜í•˜ê³  64ë¹„íŠ¸ ì»¤ë„ì„ ìˆ˜í–‰
-; íŒŒë¼ë¯¸í„°: ì—†ìŒ
+    pop esi     ; ÇÔ¼ö¿¡¼­ »ç¿ëÀÌ ³¡³­ ESI ·¹Áö½ºÅÍºÎÅÍ EBP ·¹Áö½ºÅÍ±îÁö¸¦ ½ºÅÃ¿¡
+    pop edx     ; »ðÀÔµÈ °ªÀ» ÀÌ¿ëÇØ¼­ º¹¿ø
+    pop ecx     ; ½ºÅÃÀº °¡Àå ¸¶Áö¸·¿¡ µé¾î°£ µ¥ÀÌÅÍ°¡ °¡Àå ¸ÕÀú ³ª¿À´Â
+    pop ebx     ; ÀÚ·á±¸Á¶(Last-In, First-Out)ÀÌ¹Ç·Î »ðÀÔ(push)ÀÇ ¿ª¼øÀ¸·Î
+    pop eax     ; Á¦°Å(pop) ÇØ¾ß ÇÔ
+    pop ebp     ; º£ÀÌ½º Æ÷ÀÎÅÍ ·¹Áö½ºÅÍ(EBP) º¹¿ø
+    ret         ; ÇÔ¼ö¸¦ È£ÃâÇÑ ´ÙÀ½ ÄÚµåÀÇ À§Ä¡·Î º¹±Í
+    
+; IA-32e ¸ðµå·Î ÀüÈ¯ÇÏ°í 64ºñÆ® Ä¿³ÎÀ» ¼öÇà
+;   PARAM: ¾øÀ½
 kSwitchAndExecute64bitKernel:
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; CR4 ì»¨íŠ¸ë¡¤ ë ˆì§€ìŠ¤í„°ì˜ PAE ë¹„íŠ¸ë¥¼ 1ë¡œ ì„¤ì •
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov eax, cr4	; CR4 ì»¨íŠ¸ë¡¤ ë ˆì§€ìŠ¤í„°ì˜ ê°’ì„ EAXë ˆì§€ìŠ¤í„°ì— ì €ìž¥
-	or eax, 0x20	; PAE ë¹„íŠ¸(ë¹„íŠ¸ 5)ë¥¼ 1ë¡œ ì„¤ì •
-	mov cr4, eax	; PAE ë¹„íŠ¸ê°€ 1ë¡œ ì„¤ì •ëœ ê°’ì„ CR4 ì»¨íŠ¸ë¡¤ ë ˆì§€ìŠ¤í„°ì— ì €ìž¥
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; CR3 ì»¨íŠ¸ë¡¤ ë ˆì§€ìŠ¤í„°ì— RML4 í…Œì´ë¸”ì˜ ì–´ë“œë ˆìŠ¤ì™€ ìºì‹œ í™œì„±í™”
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov eax, 0x100000	; EAXë ˆì§€ìŠ¤í„°ì— PML4 í…Œì´ë¸”ì´ ì¡´ìž¬í•˜ëŠ” 0x100000(1MB)ë¥¼ ì €ìž¥
-	mov cr3, eax		; CR3 ì»¨íŠ¸ë¡¤ ë ˆì§€ìŠ¤í„°ì— 0x100000(1MB)ë¥¼ ì €ìž¥
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; IA32_EFER.LMEë¥¼ 1ë¡œ ì„¤ì •í•˜ì—¬ IA-32e ëª¨ë“œë¥¼ í™œì„±í™”
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	mov ecx, 0xC0000080	; IA32_EFER MSR ë ˆì§€ìŠ¤í„°ì˜ ì–´ë“œë ˆìŠ¤ë¥¼ ì €ìž¥
-	rdmsr				; MSR ë ˆì§€ìŠ¤í„°ë¥¼ ì½ê¸°
-
-	or eax, 0x0100		; EAX ë ˆì§€ìŠ¤í„°ì— ì €ìž¥ëœ IA32_EFER MSRì˜ í•˜ìœ„ 32ë¹„íŠ¸ì—ì„œ
-						; LME ë¹„íŠ¸(ë¹„íŠ¸ 8)ì„ 1ë¡œ ì„¤ì •
-	wrmsr				; MSR ë ˆì§€ìŠ¤í„°ì— ì“°ê¸°
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; CR4 ÄÁÆ®·Ñ ·¹Áö½ºÅÍÀÇ PAE ºñÆ®¸¦ 1·Î ¼³Á¤
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mov eax, cr4    ; CR4 ÄÁÆ®·Ñ ·¹Áö½ºÅÍÀÇ °ªÀ» EAX ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    or eax, 0x20    ; PAE ºñÆ®(ºñÆ® 5)¸¦ 1·Î ¼³Á¤
+    mov cr4, eax    ; PAE ºñÆ®°¡ 1·Î ¼³Á¤µÈ °ªÀ» CR4 ÄÁÆ®·Ñ ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; CR3 ÄÁÆ®·Ñ ·¹Áö½ºÅÍ¿¡ PML4 Å×ÀÌºíÀÇ ¾îµå·¹½º ¹× Ä³½Ã È°¼ºÈ­
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mov eax, 0x100000   ; EAX ·¹Áö½ºÅÍ¿¡ PML4 Å×ÀÌºíÀÌ Á¸ÀçÇÏ´Â 0x100000(1MB)¸¦ ÀúÀå
+    mov cr3, eax        ; CR3 ÄÁÆ®·Ñ ·¹Áö½ºÅÍ¿¡ 0x100000(1MB)À» ÀúÀå
+    
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; IA32_EFER.LME¸¦ 1·Î ¼³Á¤ÇÏ¿© IA-32e ¸ðµå¸¦ È°¼ºÈ­
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mov ecx, 0xC0000080 ; IA32_EFER MSR ·¹Áö½ºÅÍÀÇ ¾îµå·¹½º¸¦ ÀúÀå
+    rdmsr               ; MSR ·¹Áö½ºÅÍ¸¦ ÀÐ±â
+    
+    or eax, 0x0100      ; EAX ·¹Áö½ºÅÍ¿¡ ÀúÀåµÈ IA32_EFER MSRÀÇ ÇÏÀ§ 32ºñÆ®¿¡¼­ 
+                        ; LME ºñÆ®(ºñÆ® 8)À» 1·Î ¼³Á¤
+    wrmsr               ; MSR ·¹Áö½ºÅÍ¿¡ ¾²±â
+        
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ; CR0 ÄÁÆ®·Ñ ·¹Áö½ºÅÍ¸¦ NW ºñÆ®(ºñÆ® 29) = 0, CD ºñÆ®(ºñÆ® 30) = 0, PG ºñÆ®(ºñÆ® 31) = 1·Î
+    ; ¼³Á¤ÇÏ¿© Ä³½Ã ±â´É°ú ÆäÀÌÂ¡ ±â´ÉÀ» È°¼ºÈ­
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    mov eax, cr0            ; EAX ·¹Áö½ºÅÍ¿¡ CR0 ÄÁÆ®·Ñ ·¹Áö½ºÅÍ¸¦ ÀúÀå
+    or eax, 0xE0000000      ; NW ºñÆ®(ºñÆ® 29), CD ºñÆ®(ºñÆ® 30), PG ºñÆ®(ºñÆ® 31)À» ¸ðµÎ 1·Î ¼³Á¤
+    xor eax, 0x60000000     ; NW ºñÆ®(ºñÆ® 29)¿Í CD ºñÆ®(ºñÆ® 30)À» XORÇÏ¿© 0À¸·Î ¼³Á¤
+    mov cr0, eax            ; NW ºñÆ® = 0, CD ºñÆ® = 0, PG ºñÆ® = 1·Î ¼³Á¤ÇÑ °ªÀ» ´Ù½Ã 
+                            ; CR0 ÄÁÆ®·Ñ ·¹Áö½ºÅÍ¿¡ ÀúÀå
+    
+    jmp 0x08:0x200000   ; CS ¼¼±×¸ÕÆ® ¼¿·ºÅÍ¸¦ IA-32e ¸ðµå¿ë ÄÚµå ¼¼±×¸ÕÆ® µð½ºÅ©¸³ÅÍ·Î
+                        ; ±³Ã¼ÇÏ°í 0x200000(2MB) ¾îµå·¹½º·Î ÀÌµ¿
+                            
+    ; ¿©±â´Â ½ÇÇàµÇÁö ¾ÊÀ½
+    jmp $
