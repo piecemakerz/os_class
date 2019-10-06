@@ -28,7 +28,7 @@ START:
 	jc short .failed
 	mov edx, 0x0534D4150
 	cmp eax, edx			; 성공했을 시 eax는 "SMAP"으로 초기화되었을 것이다
-	jne short .failed
+	jne short .failed		; 인터럽트 실행 중 오류
 	test ebx, ebx			; ebx는 configuration 값으로, 0이라면 리스트의 끝에 도달했음을 의미
 							; 첫 순회때 리스트의 끝이라면 이는 계산할 필요가 없다.
 	je short .failed
@@ -46,22 +46,23 @@ START:
 
 ; 24바이트를 온전히 읽었는지 확인
 .jmpin:
-	jcxz .skipent			; 길이 0의 엔트리를 모두 스킵한다. (CX=0일때 jump)
-	cmp cl, 20				; 24바이트를 읽었는지 확인
-	jbe short .notext
+	jcxz .skipent				; 길이 0의 엔트리를 모두 스킵한다. (CX=0일때 jump)
+	cmp cl, 20					; 24바이트를 읽었는지 확인
+	jbe short .notext			; 24바이트를 읽지 않은 경우
 	test byte[es:di + 20], 1	; 24바이트를 읽었다면, 맨 뒤 4바이트가 지워졌는지 확인
-	je short .skipent
+	je short .skipent			; 지워지지 않았다면 해당 엔트리 스킵
 
 ; 메모리 영역 길이 확인 및 사용가능 메모리 공간인지 확인
 .notext:
 	mov ecx, dword[es:di + 8]	; 메모리 영역 길이의 lower uint32_t를 얻는다
 	or ecx, dword[es:di + 12]	; 길이가 0인지를 체크하기 위해 upper uint32_t와 or연산을 한다
-	jz short .skipent					; 만일 uint64_t의 길이가 0이라면 엔트리를 스킵한다.
+	jz short .skipent			; 만일 uint64_t의 길이가 0이라면 엔트리를 스킵한다.
 
-	mov ecx, dword[es:di+16]	; 메모리 영역의 Type을 얻는다.
+	mov ecx, dword[es:di + 16]	; 메모리 영역의 Type을 얻는다.
 	cmp ecx, 0x01				; 1이라면 사용 가능한 메모리 공간
 	jne short .skipent
-	inc ebp
+
+	add ebp, dword[es:si + 8]
 
 ; 이번 엔트리 스킵하기
 .skipent:
@@ -70,18 +71,34 @@ START:
 
 ; 재귀 종료 처리
 .e820f:
-	mov esi, ebp	; mmap_ent 리스트의 맨 처음에 엔트리 수를 저장
-	clc				; 캐리 플래그 clear
+	clc					; 캐리 플래그 clear
 	jmp short .e820end	; 재귀 종료
 
 ; 인터럽트 호출 실패시
 .failed:
 	stc				; 캐리 플래그 1로 세트
+	jmp short .e820end
 
 .e820end:
 	mov ax, 0xB800
 	mov es, ax
 	mov di, 480
+
+	xor edx, edx
+	mov eax, ebp
+	mov ecx, 0x100000
+	div ecx
+
+	xor edx, edx
+	mov ecx, 10
+	div ecx
+
+	add eax, '0'
+	mov byte[es:di], al
+
+	add edx, '0'
+	mov byte[es:di + 2], dl
+
 ;.MESSAGELOOP:
 ;	mov cl, byte[si]
 ;	cmp cl, 0
@@ -94,15 +111,6 @@ START:
 ;	jmp .MESSAGELOOP
 
 ;.MESSAGEEND:
-	xor edx, edx
-	mov eax, esi
-	mov ecx, 10
-	div ecx
-
-	add edx, '0'
-	mov byte[es:di], dl
-	sub dx, '0'
-
 ;	mov eax, edx
 ;	xor edx, edx
 ;	mov ecx, 10
@@ -113,8 +121,8 @@ START:
 
 ;	mov byte[es:di+2], al
 ;	mov byte[es:di+4], dl
-;	mov byte[es:di+6], 'M'
-;	mov byte[es:di+8], 'B'
+	mov byte[es:di+6], 'M'
+	mov byte[es:di+8], 'B'
 
 	jmp .count
 
