@@ -12,41 +12,113 @@ SECTION .text
 ;	코드 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 START:
+; 메모리 맵 첫 순회
+	mov ax, 0x0000
+	mov es, ax
+.do_e820:
+	mov di, 0x0004			; [es:di]위치에 24바이트 정보를 읽어들인다.
+	xor ebx, ebx			; 인터럽트가 사용하는 configuration 값을 0으로 초기화한다.
+	xor ebp, ebp			; 사용 가능한 메모리를 가리키는 엔트리 갯수를 bp에 저장한다.
+	mov edx, 0x0534D4150	; edx에 "SMAP"을 위치시킨다
+	mov eax, 0xe820
+	mov [es:di + 20], dword 1
+	mov ecx, 24
+	int 0x15
 
-	; ; 메모리 출력
-	; 메모리 호출 인터럽트
-	mov ah, 0xe820	; 메모리 검출 인터럽트 (15H - e820H)
-	xor bx, bx		; continuation : 초기 0
-	mov cx, OUTPUT
-	mov es, cx
-	xor di, di		; di 0 초기화
-	mov cx, 20	; 
-	mov dx, 534D4150h  ; "SMAP"
-	int 15h			; CF: 캐리, AX: 사인, ES:DI 포인트버퍼,
-	jc .ERROR
+	jc short .failed
+	mov edx, 0x0534D4150
+	cmp eax, edx			; 성공했을 시 eax는 "SMAP"으로 초기화되었을 것이다
+	jne short .failed
+	test ebx, ebx			; ebx는 configuration 값으로, 0이라면 리스트의 끝에 도달했음을 의미
+							; 첫 순회때 리스트의 끝이라면 이는 계산할 필요가 없다.
+	je short .failed
+	jmp short .jmpin
 
-	mov di, 480      ; 글짜 출력 위치를 세번째 줄로 바꾼다
-	mov si, OUTPUT
-	.MESSAGELOOP:
-		mov cl, byte[si] ; 메시지 한글자를 가져온다
-		cmp cl, 0        ; 0과 비교한다
-		je .MESSAGEEND   ; 0이면 종료한다
-		mov byte[es:di], cl
-						; 비디오 메모리에 저장한다
-		inc si           ; 메시지 인덱스를 글자하나 증가시킨다
-		add di, 2        ; 비디오 메모리 인덱스는 글자하나, 속성하나 증가시킨다
-		jmp .MESSAGELOOP ;
-	.MESSAGEEND:
-	.ERROR:
+; 메모리 맵 재귀순회
+.e820lp:
+	mov eax, 0xe820
+	mov [es:di + 20], dword 1
+	mov ecx, 24				; 24바이트 요청
+	int 0x15
 
-	mov bx, 0xb800
-	mov es, bx
-	mov byte[es:480], 'D'
-	mov byte[es:482], 'E'
-	mov byte[es:484], 'B'
-	mov byte[es:486], 'U'
-	mov byte[es:488], 'G'
+	jc short .e820f			; carry 플래그가 활성화되었다는 것은 리스트의 끝에 이미 도달했다는 의미이다.
+	mov edx, 0x0534D4150
 
+; 24바이트를 온전히 읽었는지 확인
+.jmpin:
+	jcxz .skipent			; 길이 0의 엔트리를 모두 스킵한다. (CX=0일때 jump)
+	cmp cl, 20				; 24바이트를 읽었는지 확인
+	jbe short .notext
+	test byte[es:di + 20], 1	; 24바이트를 읽었다면, 맨 뒤 4바이트가 지워졌는지 확인
+	je short .skipent
+
+; 메모리 영역 길이 확인 및 사용가능 메모리 공간인지 확인
+.notext:
+	mov ecx, dword[es:di + 8]	; 메모리 영역 길이의 lower uint32_t를 얻는다
+	or ecx, dword[es:di + 12]	; 길이가 0인지를 체크하기 위해 upper uint32_t와 or연산을 한다
+	jz short .skipent					; 만일 uint64_t의 길이가 0이라면 엔트리를 스킵한다.
+
+	mov ecx, dword[es:di+16]	; 메모리 영역의 Type을 얻는다.
+	cmp ecx, 0x01				; 1이라면 사용 가능한 메모리 공간
+	jne short .skipent
+	inc ebp
+
+; 이번 엔트리 스킵하기
+.skipent:
+	test ebx, ebx			; ebx가 0이라면 리스트의 끝이다.
+	jne short .e820lp		; 아니라면 재귀 시작
+
+; 재귀 종료 처리
+.e820f:
+	mov esi, ebp	; mmap_ent 리스트의 맨 처음에 엔트리 수를 저장
+	clc				; 캐리 플래그 clear
+	jmp short .e820end	; 재귀 종료
+
+; 인터럽트 호출 실패시
+.failed:
+	stc				; 캐리 플래그 1로 세트
+
+.e820end:
+	mov ax, 0xB800
+	mov es, ax
+	mov di, 480
+;.MESSAGELOOP:
+;	mov cl, byte[si]
+;	cmp cl, 0
+;	je .MESSAGEEND
+;	mov byte[es:di], cl
+
+;	inc si
+;	add di, 2
+
+;	jmp .MESSAGELOOP
+
+;.MESSAGEEND:
+	xor edx, edx
+	mov eax, esi
+	mov ecx, 10
+	div ecx
+
+	add edx, '0'
+	mov byte[es:di], dl
+	sub dx, '0'
+
+;	mov eax, edx
+;	xor edx, edx
+;	mov ecx, 10
+;	div ecx
+
+;	add eax, '0'
+;	add edx, '0'
+
+;	mov byte[es:di+2], al
+;	mov byte[es:di+4], dl
+;	mov byte[es:di+6], 'M'
+;	mov byte[es:di+8], 'B'
+
+	jmp .count
+
+.count:
 	mov ax, 0x1000	; 보호 모드 엔트리 포인트의 시작 어드레스(0x10000)를
 					; 세그먼트 레지스터 값으로 변환
 	mov ds, ax		; DS 세그먼트 레지스터에 설정
@@ -177,9 +249,11 @@ PRINTMESSAGE:
 		pop esi
 		pop ebp					; 베이스 포인터 레지스터(EBP) 복원
 		ret						; 함수를 호출한 다음 코드의 위치로 복귀
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+[BITS 32]
 ; 아래의 데이터들을 8바이트에 맞춰 정렬하기 위해 추가
 align 8, db 0
 
@@ -241,6 +315,5 @@ GDTEND:
 ; 보호 모드로 전환되었다는 메시지
 SWITCHSUCCESSMESSAGE: db 'Switch To Protected Mode Success~!!',0
 ERROR: db 'error',0
-OUTPUT: db '012345678901234567890123456789001234567890',0
 
 times 512 - ($ - $$) db 0x00	; 512바이트를 맞추기 위해 남은 부분을 0으로 채움
