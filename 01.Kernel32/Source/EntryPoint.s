@@ -16,7 +16,7 @@ START:
 	mov ax, 0x0000
 	mov es, ax
 .do_e820:
-	mov di, 0x0004			; [es:di]위치에 24바이트 정보를 읽어들인다.
+	mov di, 0x8004			; [es:di]위치에 24바이트 정보를 읽어들인다.
 	xor ebx, ebx			; 인터럽트가 사용하는 configuration 값을 0으로 초기화한다.
 	xor ebp, ebp			; 사용 가능한 메모리를 가리키는 엔트리 갯수를 bp에 저장한다.
 	mov edx, 0x0534D4150	; edx에 "SMAP"을 위치시킨다
@@ -58,11 +58,7 @@ START:
 	or ecx, dword[es:di + 12]	; 길이가 0인지를 체크하기 위해 upper uint32_t와 or연산을 한다
 	jz short .skipent			; 만일 uint64_t의 길이가 0이라면 엔트리를 스킵한다.
 
-	mov ecx, dword[es:di + 16]	; 메모리 영역의 Type을 얻는다.
-	cmp ecx, 0x01				; 1이라면 사용 가능한 메모리 공간
-	jne short .skipent
-
-	add ebp, dword[es:si + 8]
+	add ebp, dword[es:di + 8]
 
 ; 이번 엔트리 스킵하기
 .skipent:
@@ -90,14 +86,32 @@ START:
 	div ecx
 
 	xor edx, edx
-	mov ecx, 10
+	mov ecx, 1000
 	div ecx
 
 	add eax, '0'
 	mov byte[es:di], al
+	sub eax, '0'
+
+	mov eax, edx
+	xor edx, edx
+	mov ecx, 100
+	div ecx
+
+	add eax, '0'
+	mov byte[es:di+2], al
+	sub eax, '0'
+
+	mov eax, edx
+	xor edx, edx
+	mov ecx, 10
+	div ecx
+
+	add eax, '0'
+	mov byte[es:di+4], al
 
 	add edx, '0'
-	mov byte[es:di + 2], dl
+	mov byte[es:di+6], dl
 
 ;.MESSAGELOOP:
 ;	mov cl, byte[si]
@@ -121,8 +135,8 @@ START:
 
 ;	mov byte[es:di+2], al
 ;	mov byte[es:di+4], dl
-	mov byte[es:di+6], 'M'
-	mov byte[es:di+8], 'B'
+	mov byte[es:di+8], 'M'
+	mov byte[es:di+10], 'B'
 
 	jmp .count
 
