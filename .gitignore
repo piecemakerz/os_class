@@ -1,0 +1,7 @@
+# image files
+Disk.img
+
+# temporal files and folders
+*.bin
+01.Kernel32/Temp
+02.Kernel64/Temp
