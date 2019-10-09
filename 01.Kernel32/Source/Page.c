@@ -40,20 +40,22 @@ void kInitializePageTables( void )
 	// 하나의 페이지 디렉터리가 1GByte까지 매핑 가능 
 	// 여유있게 64개의 페이지 디렉터리를 생성하여 총 64GB까지 지원
 	pstPDEntry = ( PDENTRY* ) 0x102000;
+	// 페이지 테이블 위치 초기화
 	pstPTEntry = ( PTENTRY* ) 0x142000;
 	dwMappingAddress = 0;
 	for( i = 0 ; i < PAGE_MAXENTRYCOUNT * 64 ; i++ )
 	{
 		// 더블 맵핑 구현
 		// 0xAB8000을 0xB800에 맵핑하기 위해  0xA00000 ~ 0xC00000 메모리 공간을
-		// 0x000000 ~ 0x200000 메모리 공간에 맵핑시킨다.
+		// 0x000000 ~ 0x200000 페이지에 맵핑시킨다.
 		DWORD dwUpperAddress = (( i * ( PAGE_DEFAULTSIZE >> 20 ) ) >> 12);
 		if(dwUpperAddress == 0 && dwMappingAddress == 0xA00000)
 		{
 			kSetPageEntryData(&(pstPDEntry[i]), dwUpperAddress, 0x0000, PAGE_FLAGS_DEFAULT | PAGE_FLAGS_PS, 0);
 		}
 
-		// 0~2MB 메모리 공간은 4KB 페이지를 가리키는 페이지 테이블 1개로 관리한다.
+		// 0~2MB 메모리 공간은 2MB 페이지 대신 4KB 페이지 크기로 관리한다.
+		// 이를 위해, 0~2MB 메모리 공간은 4KB 페이지를 가리키는 페이지 테이블 1개로 관리한다.
 		else if(dwUpperAddress == 0 && dwMappingAddress == 0)
 		{
 			kSetPageEntryData(&(pstPDEntry[i]), dwUpperAddress, pstPTEntry, PAGE_FLAGS_DEFAULT, 0);
@@ -73,6 +75,7 @@ void kInitializePageTables( void )
 	for(i = 0; i < 512; i++)
 	{
 		DWORD dwLowerAddress = (i * PAGE_5STEPSIZE);
+		// 최상위 메모리공간인 0x1ff000 공간은 read only 속성을 부여한다.
 		if(i == 511)
 		{
 			kSetPageEntryData( &( pstPTEntry[ i ] ), 0, dwLowerAddress,	PAGE_FLAGS_P, 0 );
