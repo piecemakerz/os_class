@@ -29,7 +29,7 @@
 #define PAGE_TABLESIZE		0x1000
 #define PAGE_MAXENTRYCOUNT 	512
 #define PAGE_DEFAULTSIZE	0x200000
-
+#define PAGE_5STEPSIZE		0x1000
 ////////////////////////////////////////////////////////////////////////////////
 //
 // ±¸Á¶Ã¼
