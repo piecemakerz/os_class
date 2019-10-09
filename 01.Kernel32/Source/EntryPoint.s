@@ -20,7 +20,7 @@ START:
 	mov es, ax
 ; 메모리 맵 첫 순회
 .do_e820:
-	mov di, 0x8004			; 15h 인터럽트는 [es:di]위치에 ecx에 저장된 크기만큼의
+	mov di, 0x0004			; 15h 인터럽트는 [es:di]위치에 ecx에 저장된 크기만큼의
 							; 메모리 정보를 읽어들인다.
 							; 따라서 [es:di] 위치에 20바이트 정보를 읽어들인다.
 	xor ebx, ebx			; 인터럽트가 사용하는 configuration 값을 0으로 초기화한다.
