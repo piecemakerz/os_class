@@ -92,7 +92,7 @@ void CheckMemoryReadWrite()
 	{
 		kPrintString(20, 17, "Pass");
 	}
-
+/*
 	kPrintString(0, 18, "Write to 0x1ff000 [    ]");
 	*checkPos = 0xffffffff;
 	if(*checkPos != 0xffffffff)
@@ -104,4 +104,5 @@ void CheckMemoryReadWrite()
 		kPrintString(19, 18, "Pass");
 	}
 	*checkPos = 0x00000000;
+*/
 }
