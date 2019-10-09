@@ -8,6 +8,7 @@ void kInitializePageTables( void )
 	PML4TENTRY* pstPML4TEntry;
 	PDPTENTRY* pstPDPTEntry;
 	PDENTRY* pstPDEntry;
+	PTENTRY* pstPTEntry;
 	DWORD dwMappingAddress;
 	int i;
 
@@ -42,13 +43,24 @@ void kInitializePageTables( void )
 	dwMappingAddress = 0;
 	for( i = 0 ; i < PAGE_MAXENTRYCOUNT * 64 ; i++ )
 	{
-		// 32비트로는 상위 어드레스를 표현할 수 없으므로, Mbyte 단위로 계산한 다음
-		// 최종 결과를 다시 4Kbyte로 나누어 32비트 이상의 어드레스를 계산함
-		kSetPageEntryData( &( pstPDEntry[ i ] ), 
-				( i * ( PAGE_DEFAULTSIZE >> 20 ) ) >> 12, dwMappingAddress, 
-				PAGE_FLAGS_DEFAULT | PAGE_FLAGS_PS, 0 );
+		DWORD dwUpperAddress = (( i * ( PAGE_DEFAULTSIZE >> 20 ) ) >> 12);
+		if(dwUpperAddress == 0 && dwMappingAddress == 0xA00000)
+		{
+			kSetPageEntryData(&(pstPDEntry[i]), dwUpperAddress, 0x0000, PAGE_FLAGS_DEFAULT | PAGE_FLAGS_PS, 0);
+		}
+		else
+		{
+			// 32비트로는 상위 어드레스를 표현할 수 없으므로, Mbyte 단위로 계산한 다음
+			// 최종 결과를 다시 4Kbyte로 나누어 32비트 이상의 어드레스를 계산함
+			kSetPageEntryData( &( pstPDEntry[ i ] ), dwUpperAddress, dwMappingAddress,
+					PAGE_FLAGS_DEFAULT | PAGE_FLAGS_PS, 0 );
+		}
 		dwMappingAddress += PAGE_DEFAULTSIZE;
-	}	
+	}
+
+	pstPTEntry = (PTENTRY*) 0x142000;
+
+
 }
 
 /**
