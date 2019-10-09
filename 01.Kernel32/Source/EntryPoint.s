@@ -75,68 +75,41 @@ START:
 	stc				; 캐리 플래그 1로 세트
 	jmp short .e820end
 
-.e820end:
+.e820end:					; 출력
 	mov ax, 0xB800
 	mov es, ax
-	mov di, 480
 
-	xor edx, edx
+	mov ax, 0x5241
+	mov byte[es:480], ah	; R
+	mov byte[es:482], al	; A
+	mov ax, 0x4D53
+	mov byte[es:484], ah	; M
+	mov byte[es:488], al	; S
+	mov ax, 0x697A
+	mov byte[es:490], ah	; i	
+	mov byte[es:492], al	; z
+	mov ax, 0x653A
+	mov byte[es:494], ah	; e
+	mov byte[es:496], al 	; :
+
+	xor edx, edx			; mb단위 환산
 	mov eax, ebp
 	mov ecx, 0x100000
 	div ecx
-
-	xor edx, edx
-	mov ecx, 1000
-	div ecx
-
-	add eax, '0'
-	mov byte[es:di], al
-	sub eax, '0'
-
-	mov eax, edx
-	xor edx, edx
-	mov ecx, 100
-	div ecx
-
-	add eax, '0'
-	mov byte[es:di+2], al
-	sub eax, '0'
-
-	mov eax, edx
-	xor edx, edx
+							; 해당 라인에서 eax는 n자리 
+	mov di,508				; 수정 시, MB출력 인덱스도 수정할 것
 	mov ecx, 10
-	div ecx
-
-	add eax, '0'
-	mov byte[es:di+4], al
-
-	add edx, '0'
-	mov byte[es:di+6], dl
-
-;.MESSAGELOOP:
-;	mov cl, byte[si]
-;	cmp cl, 0
-;	je .MESSAGEEND
-;	mov byte[es:di], cl
-
-;	inc si
-;	add di, 2
-
-;	jmp .MESSAGELOOP
-
-;.MESSAGEEND:
-;	mov eax, edx
-;	xor edx, edx
-;	mov ecx, 10
-;	div ecx
-
-;	add eax, '0'
-;	add edx, '0'
-
-;	mov byte[es:di+2], al
-;	mov byte[es:di+4], dl
-	mov byte[es:di+8], 'M'
-	mov byte[es:di+10], 'B'
+	.DIVISIONLOOP:
+		xor edx, edx
+		div ecx				; 몫 eax, 나머지 edx
+		add dl, '0'
+		mov byte[es:di], dl
+		sub di, 2
+		or eax, eax			; 몫이 0이 아닌지 검사한다
+		jnz .DIVISIONLOOP	; 몫이 더이상 남지 않으면 루프를 종료한다
+	
+	mov byte[es:510], 'M'	; M
+	mov byte[es:512], 'B'	; B
 
 	jmp .count
 
@@ -200,77 +173,25 @@ PROTECTEDMODE:
 	mov ebp, 0xFFFE	; EBP 레지스터의 어드레스를 0xFFFE로 설정
 	
 	; 화면에 보호 모드로 전환되었다는 메시지를 찍는다.
-	push ( SWITCHSUCCESSMESSAGE - $$ + 0x10000 )	; 출력할 메시지의 어드레스를 스택에 삽입
-	push 4											; 화면 Y 좌표(2)를 스택에 삽입
-	push 0											; 화면 X 좌표(0)를 스택에 삽입
-	call PRINTMESSAGE								; PRINTMESSAGE 함수 호출
-	add esp, 12										; 삽입한 파라미터 제거
+	mov esi, ( SWITCHSUCCESSMESSAGE - $$ + 0x10000 )	; 출력할 메시지의 어드레스를 스택에 삽입
+	mov edi, 640
+	.MESSAGELOOP:				; 메시지를 출력하는 루프
+		mov cl, byte[esi]
+		cmp cl, 0				; 복사된 문자와 0을 비교
+		je .MESSAGEEND			; 복사한 문자의 값이 0이면 문자열이 종료되었음을 의미하므로
+								; .MESSAGEEND로 이동하여 문자 출력 종료
+		mov byte[edi+0xB8000], cl		; 0이 아니라면 비디오 메모리 어드레스
+										; 0xB8000 + EDI에 문자를 출력
+		inc esi				; ESI 레지스터에 1을 더하여 다음 문자열로 이동
+		add edi, 2				; EDI 레지스터에 2를 더하여 비디오 메모리의 다음 문자 위치로 이동
+								; 비디오 메모리는 (문자, 속성)의 쌍으로 구성되므로 문자만 출력하려면
+								; 2를 더해야 함
+		jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
+	.MESSAGEEND:
 
 	; CS 세그먼트 셀렉터를 커널 코드 디스크립터(0x08)로 변경하면서
 	; 0x10200 어드레스(C언어 커널이 있는 어드레스)로 이동
 	jmp dword 0x18: 0x10200 ; C 언어 커널이 존재하는 0x10200 어드레스로 이동하여 C언어 커널 수행
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	함수 코드 영역
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 메시지를 출력하는 함수
-;	스택에 x좌표, y좌표, 문자열
-PRINTMESSAGE:
-	push ebp		; 베이스 포인터 레지스터(BP)를 스택에 삽입
-	mov ebp, esp	; 베이스 포인터 레지스터(BP)에 스택 포인터 레지스터(SP)의 값을 설정
-	push esi
-	push edi
-	push eax
-	push ecx
-	push edx
-
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; X, Y의 좌표로 비디오 메모리의 어드레스를 계산함
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	; Y 좌표를 이용해서 먼저 라인 어드레스를 구함
-	mov eax, dword[ebp+12]		; 파라미터 2(화면 좌표 Y)를 EAX 레지스터에 설정
-	mov esi, 160				; 한 라인의 바이트 수(2 * 80컬럼)를 ESI 레지스터에 설정
-	mul esi						; EAX 레지스터와 ESI 레지스터를 곱하여 화면 Y 어드레스 계산
-	mov edi, eax				; 계산된 화면 Y 어드레스를 EDI 레지스터에 설정
-
-	; X 좌표를 이용해서 2를 곱한 후 최종 어드레스를 구함
-	mov eax, dword[ebp+8]		; 파라미터 1(화면 좌표 X)를 EAX 레지스터에 설정
-	mov esi, 2					; 한 문자를 나타내는 바이트 수(2)를 ESI 레지스터에 설정
-	mul esi						; EAX레지스터와 ESI 레지스터를 곱하여 화면 X 어드레스 계산
-	add edi, eax				; 화면 Y의 어드레스와 계산된 X 어드레스를 더해서
-								; 실제 비디오 메모리 어드레스를 계산
-
-	; 출력할 문자열의 어드레스
-	mov esi, dword[ebp+16]		; 파라미터 3(출력할 문자열의 어드레스)
-
-	.MESSAGELOOP:				; 메시지를 출력하는 루프
-		mov cl, byte[esi]		; ESI 레지스터가 가리키는 문자열의 위치에서 한 문자를
-								; CL 레지스터에 복사
-								; CL 레지스터는 ECX 레지스터의 하위 1바이트를 의미
-								; 문자열을 1바이트면 충분하므로 ECX 레지스터의 하위 1바이트만 사용
-
-		cmp cl, 0				; 복사된 문자와 0을 비교
-		je .MESSAGEEND			; 복사한 문자의 값이 0이면 문자열이 종료되었음을 의미하므로
-								; .MESSAGEEND로 이동하여 문자 출력 종료
-
-		mov byte[edi+0xB8000], cl		; 0이 아니라면 비디오 메모리 어드레스
-										; 0xB8000 + EDI에 문자를 출력
-
-		add esi, 1				; ESI 레지스터에 1을 더하여 다음 문자열로 이동
-		add edi, 2				; EDI 레지스터에 2를 더하여 비디오 메모리의 다음 문자 위치로 이동
-								; 비디오 메모리는 (문자, 속성)의 쌍으로 구성되므로 문자만 출력하려면
-								; 2를 더해야 함
-
-		jmp .MESSAGELOOP		; 메시지 출력 루프로 이동하여 다음 문자를 출력
-
-	.MESSAGEEND:
-		pop edx					; 함수에서 사용이 끝난 EDX 레지스터부터 EBP 레지스터까지를
-		pop ecx					; 스택에 삽입된 값을 이용해서 복원
-		pop eax					; 스택은 가장 마지막에 들어간 데이터가 가장 먼저 나오는
-		pop edi					; LIFO 자료구조이므로 삽입의 역순으로 제거(pop)해야 한다.
-		pop esi
-		pop ebp					; 베이스 포인터 레지스터(EBP) 복원
-		ret						; 함수를 호출한 다음 코드의 위치로 복귀
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	데이터 영역
@@ -336,6 +257,5 @@ GDTEND:
 
 ; 보호 모드로 전환되었다는 메시지
 SWITCHSUCCESSMESSAGE: db 'Switch To Protected Mode Success~!!',0
-ERROR: db 'error',0
 
 times 512 - ($ - $$) db 0x00	; 512바이트를 맞추기 위해 남은 부분을 0으로 채움
