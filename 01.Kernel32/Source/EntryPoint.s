@@ -11,24 +11,29 @@ SECTION .text
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	코드 영역
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; 15h 인터럽트를 통해 시스템의 메모리 맵 정보를 알아낸다.
+; 이후 사용 가능한 메모리 크기를 추출한다.
+; 메모리 크기는 ebp 레지스터에 저장한다.
 START:
-; 메모리 맵 첫 순회
 	mov ax, 0x0000
 	mov es, ax
+; 메모리 맵 첫 순회
 .do_e820:
-	mov di, 0x8004			; [es:di]위치에 24바이트 정보를 읽어들인다.
+	mov di, 0x0004			; 15h 인터럽트는 [es:di]위치에 ecx에 저장된 크기만큼의
+							; 메모리 정보를 읽어들인다.
+							; 따라서 [es:di] 위치에 20바이트 정보를 읽어들인다.
 	xor ebx, ebx			; 인터럽트가 사용하는 configuration 값을 0으로 초기화한다.
 	xor ebp, ebp			; 사용 가능한 메모리를 가리키는 엔트리 갯수를 bp에 저장한다.
 	mov edx, 0x0534D4150	; edx에 "SMAP"을 위치시킨다
-	mov eax, 0xe820
-	mov [es:di + 20], dword 1
-	mov ecx, 24
-	int 0x15
+	mov eax, 0xe820			; 메모리 맵 기능을 사용하기 위해 eax=0xe820 값을 준 후 인터럽트를 호출한다.
+	mov ecx, 20				; 20바이트 정보 읽어오기
+	int 0x15				; 인터럽트 서비스 호출
 
-	jc short .failed
-	mov edx, 0x0534D4150
+	jc short .failed		; 실패했을 경우 예외처리
+	mov edx, 0x0534D4150	; 인터럽트 호출 후 edx가 초기화될 수 있으므로 edx에 "SMAP"을 재위치시킨다.
 	cmp eax, edx			; 성공했을 시 eax는 "SMAP"으로 초기화되었을 것이다
-	jne short .failed		; 인터럽트 실행 중 오류
+	jne short .failed		; 인터럽트 실행 중 오류 발생 예외처리
 	test ebx, ebx			; ebx는 configuration 값으로, 0이라면 리스트의 끝에 도달했음을 의미
 							; 첫 순회때 리스트의 끝이라면 이는 계산할 필요가 없다.
 	je short .failed
@@ -37,28 +42,24 @@ START:
 ; 메모리 맵 재귀순회
 .e820lp:
 	mov eax, 0xe820
-	mov [es:di + 20], dword 1
-	mov ecx, 24				; 24바이트 요청
+;	mov [es:di + 20], dword 1
+	mov ecx, 20				; 24바이트 요청
 	int 0x15
 
 	jc short .e820f			; carry 플래그가 활성화되었다는 것은 리스트의 끝에 이미 도달했다는 의미이다.
 	mov edx, 0x0534D4150
 
-; 24바이트를 온전히 읽었는지 확인
+; 20바이트를 온전히 읽었는지 확인
 .jmpin:
 	jcxz .skipent				; 길이 0의 엔트리를 모두 스킵한다. (CX=0일때 jump)
-	cmp cl, 20					; 24바이트를 읽었는지 확인
-	jbe short .notext			; 24바이트를 읽지 않은 경우
-	test byte[es:di + 20], 1	; 24바이트를 읽었다면, 맨 뒤 4바이트가 지워졌는지 확인
-	je short .skipent			; 지워지지 않았다면 해당 엔트리 스킵
 
-; 메모리 영역 길이 확인 및 사용가능 메모리 공간인지 확인
+; 메모리 영역이 사용 가능한 메모리 공간인지 확인하고 길이 확인
 .notext:
 	mov ecx, dword[es:di + 8]	; 메모리 영역 길이의 lower uint32_t를 얻는다
 	or ecx, dword[es:di + 12]	; 길이가 0인지를 체크하기 위해 upper uint32_t와 or연산을 한다
 	jz short .skipent			; 만일 uint64_t의 길이가 0이라면 엔트리를 스킵한다.
 
-	add ebp, dword[es:di + 8]
+	add ebp, dword[es:di + 8]	; 메모리가 사용 가능한 공간이라면 ebp에 저장
 
 ; 이번 엔트리 스킵하기
 .skipent:
@@ -75,7 +76,8 @@ START:
 	stc				; 캐리 플래그 1로 세트
 	jmp short .e820end
 
-.e820end:					; 출력
+; ebp에 저장된 사용 가능 메모리 크기 출력
+.e820end:
 	mov ax, 0xB800
 	mov es, ax
 
