@@ -88,7 +88,7 @@ START:
 	mov byte[es:484], ah	; M
 	mov byte[es:488], al	; S
 	mov ax, 0x697A
-	mov byte[es:490], ah	; i	
+	mov byte[es:490], ah	; i
 	mov byte[es:492], al	; z
 	mov ax, 0x653A
 	mov byte[es:494], ah	; e
@@ -101,15 +101,25 @@ START:
 							; 해당 라인에서 eax는 n자리 
 	mov di,508				; 수정 시, MB출력 인덱스도 수정할 것
 	mov ecx, 10
+	mov ebx, 1
 	.DIVISIONLOOP:
 		xor edx, edx
 		div ecx				; 몫 eax, 나머지 edx
 		add dl, '0'
+		cmp ebx, 1
+		je .PLUS_ONE
+	.CONTINUE:
 		mov byte[es:di], dl
 		sub di, 2
 		or eax, eax			; 몫이 0이 아닌지 검사한다
 		jnz .DIVISIONLOOP	; 몫이 더이상 남지 않으면 루프를 종료한다
-	
+		jmp .LOOP_END
+	.PLUS_ONE:
+		add dx, 1
+		sub ebx, 1
+		jmp .CONTINUE
+
+.LOOP_END:
 	mov byte[es:510], 'M'	; M
 	mov byte[es:512], 'B'	; B
 
