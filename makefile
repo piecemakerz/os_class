@@ -63,7 +63,7 @@ Utility:
 	@echo 
 	
 run:
-	qemu-system-x86_64 -L . -fda Disk.img -m 1024 -M pc -rtc base=localtime
+	qemu-system-x86_64 -L . -fda Disk.img -m 64 -M pc -rtc base=localtime
 # 소스 파일을 제외한 나머지 파일 정리	
 clean:
 	make -C 00.BootLoader clean

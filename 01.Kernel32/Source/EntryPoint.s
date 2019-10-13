@@ -42,8 +42,7 @@ START:
 ; 메모리 맵 재귀순회
 .e820lp:
 	mov eax, 0xe820
-;	mov [es:di + 20], dword 1
-	mov ecx, 20				; 24바이트 요청
+	mov ecx, 20				; 20바이트 요청
 	int 0x15
 
 	jc short .e820f			; carry 플래그가 활성화되었다는 것은 리스트의 끝에 이미 도달했다는 의미이다.
