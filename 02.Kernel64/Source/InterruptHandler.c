@@ -87,28 +87,32 @@ void kKeyboardHandler( int iVectorNumber )
 /**
  *  page fault 인터럽트의 핸들러
  */
-void kPageFaultExceptionHandler( int iVectorNumber, QWORD qwErrorCode )
+void kPageFaultExceptionHandler( DWORD iVectorNumber, QWORD qwErrorCode )
 {
-    if(!(qwErrorCode & 0x1)){
+    if(!(qwErrorCode & 1)){
         kPrintString( 0, 0, "====================================================" );
         kPrintString( 0, 1, "               Page Fault Occur~!!!!                " );
         kPrintString( 0, 2, "                Address:                            " );
         kPrintAddress( 25, 2, iVectorNumber);
         kPrintString( 0, 3, "====================================================" );
-        kPrintBit( 8, 3, &qwErrorCode); //print error code
+        kPrint32Bit( 0, 4, &qwErrorCode); //print error code
+        //kPrint64Bit(0,5,(DWORD *)iVectorNumber); //print pagetable entry
+        //*(DWORD *)iVectorNumber = (*(DWORD *)iVectorNumber | 0x00000001);
     }
-    else if (qwErrorCode & 0x1){
+    else if (qwErrorCode & 1){
         kPrintString( 0, 0, "====================================================" );
         kPrintString( 0, 1, "            Protection Fault Occur~!!!!             " );
         kPrintString( 0, 2, "                Address:                            " );
         kPrintAddress( 25, 2, iVectorNumber);
         kPrintString( 0, 3, "====================================================" );
-        kPrintBit( 8, 3, &qwErrorCode); //print error code
+        kPrint32Bit( 0, 4, &qwErrorCode); //print error code
+        //kPrint64Bit(0,5,(DWORD *)iVectorNumber); //print pagetable entry
+        //*(DWORD *)iVectorNumber = (*(DWORD *)iVectorNumber | 0x00000001);
     }
     else{
         kPrintString( 0, 0, "====================================================" );
         kPrintString( 0, 1, "                 Exception Occur~!!!!               " );
         kPrintString( 0, 2, "====================================================" );
     }
-    //while( 1 ) ;
+    //while( 1 ) ; //for debug
 }

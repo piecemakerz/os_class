@@ -141,17 +141,19 @@ void kPrintAddress( int iX, int iY, int address )
 /**
  *  bit을 X, Y 위치에 출력
  */
-void kPrintBit( int iX, int iY, QWORD* address )
+void kPrint32Bit( int iX, int iY, DWORD* bits )
 {
     CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
     char string[32] = { 0, };
+    DWORD mask;
     int i;
     int j;
 
     pstScreen += ( iY * 80 ) + iX;
 
     for(i = 0; i < 32; i++){
-        if((address[i] >> i) & 0x1){
+        mask = 1 << i;
+        if((*bits)&mask){
             string[i] = '1';
         }
         else{
@@ -159,7 +161,32 @@ void kPrintBit( int iX, int iY, QWORD* address )
         }
     }
     for(j = 0; j < 32; j++){
-        pstScreen[j].bCharactor = string[j];
+        pstScreen[j].bCharactor = string[i-1];
+        i--;
+    }
+}
+void kPrint64Bit( int iX, int iY, QWORD* bits )
+{
+    CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
+    char string[64] = { 0, };
+    QWORD mask;
+    int i;
+    int j;
+
+    pstScreen += ( iY * 80 ) + iX;
+
+    for(i = 0; i < 64; i++){
+        mask = 1 << i;
+        if((*bits)&mask){
+            string[i] = '1';
+        }
+        else{
+            string[i] = '0';
+        }
+    }
+    for(j = 0; j < 64; j++){
+        pstScreen[j].bCharactor = string[i-1];
+        i--;
     }
 }
 
