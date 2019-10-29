@@ -138,6 +138,31 @@ void kPrintAddress( int iX, int iY, int address )
     }
 }
 
+/**
+ *  bit을 X, Y 위치에 출력
+ */
+void kPrintBit( int iX, int iY, QWORD* address )
+{
+    CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
+    char string[32] = { 0, };
+    int i;
+    int j;
+
+    pstScreen += ( iY * 80 ) + iX;
+
+    for(i = 0; i < 32; i++){
+        if((address[i] >> i) & 0x1){
+            string[i] = '1';
+        }
+        else{
+            string[i] = '0';
+        }
+    }
+    for(j = 0; j < 32; j++){
+        pstScreen[j].bCharactor = string[j];
+    }
+}
+
 // 문자열을 X, Y 위치에 출력하되, 맵핑된 비디오 메모리 0xAB8000을 기준으로 출력한다.
 void kPrintStringViaRelocated(int iX, int iY, const char* pcString )
 {

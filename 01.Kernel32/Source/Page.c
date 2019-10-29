@@ -78,7 +78,9 @@ void kInitializePageTables( void )
 		// 최상위 메모리공간인 0x1ff000 공간은 read only 속성을 부여한다.
 		if(i == 511)
 		{
+			//kSetPageEntryData( &( pstPTEntry[ i ] ), 0, dwLowerAddress,	PAGE_FLAGS_RW, 0 );
 			kSetPageEntryData( &( pstPTEntry[ i ] ), 0, dwLowerAddress,	PAGE_FLAGS_P, 0 );
+			//kSetPageEntryData( &( pstPTEntry[ i ] ), 0, dwLowerAddress,	PAGE_FLAGS_DEFAULT, 0 );
 		}
 		else
 		{

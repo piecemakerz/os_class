@@ -20,7 +20,6 @@ void kCommonExceptionHandler( int iVectorNumber, QWORD qwErrorCode );
 void kCommonInterruptHandler( int iVectorNumber );
 void kKeyboardHandler( int iVectorNumber );
 void kPageFaultExceptionHandler( int iVectorNumber, QWORD qwErrorCode );
-void kProtectionFaultExceptionHandler( int iVectorNumber, QWORD qwErrorCode );
 
 
 #endif /*__INTERRUPTHANDLER_H__*/

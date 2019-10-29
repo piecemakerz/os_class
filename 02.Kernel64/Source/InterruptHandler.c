@@ -89,25 +89,26 @@ void kKeyboardHandler( int iVectorNumber )
  */
 void kPageFaultExceptionHandler( int iVectorNumber, QWORD qwErrorCode )
 {
-    kPrintString( 0, 0, "====================================================" );
-    kPrintString( 0, 1, "               Page Fault Occur~!!!!                " );
-    kPrintString( 0, 2, "                Address:                            " );
-    kPrintAddress( 25, 2, iVectorNumber);
-    kPrintString( 0, 3, "====================================================" );
-
-    while( 1 ) ;
-}
-
-/**
- *  protection fault 인터럽트의 핸들러
- */
-void kProtectionFaultExceptionHandler( int iVectorNumber, QWORD qwErrorCode )
-{
-    kPrintString( 0, 0, "====================================================" );
-    kPrintString( 0, 1, "            Protection Fault Occur~!!!!             " );
-    kPrintString( 0, 2, "                Address:                            " );
-    kPrintAddress( 25, 2, iVectorNumber);
-    kPrintString( 0, 3, "====================================================" );
-
+    if(!(qwErrorCode & 0x1)){
+        kPrintString( 0, 0, "====================================================" );
+        kPrintString( 0, 1, "               Page Fault Occur~!!!!                " );
+        kPrintString( 0, 2, "                Address:                            " );
+        kPrintAddress( 25, 2, iVectorNumber);
+        kPrintString( 0, 3, "====================================================" );
+        kPrintBit( 8, 3, &qwErrorCode); //print error code
+    }
+    else if (qwErrorCode & 0x1){
+        kPrintString( 0, 0, "====================================================" );
+        kPrintString( 0, 1, "            Protection Fault Occur~!!!!             " );
+        kPrintString( 0, 2, "                Address:                            " );
+        kPrintAddress( 25, 2, iVectorNumber);
+        kPrintString( 0, 3, "====================================================" );
+        kPrintBit( 8, 3, &qwErrorCode); //print error code
+    }
+    else{
+        kPrintString( 0, 0, "====================================================" );
+        kPrintString( 0, 1, "                 Exception Occur~!!!!               " );
+        kPrintString( 0, 2, "====================================================" );
+    }
     while( 1 ) ;
 }
