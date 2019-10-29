@@ -110,5 +110,5 @@ void kPageFaultExceptionHandler( int iVectorNumber, QWORD qwErrorCode )
         kPrintString( 0, 1, "                 Exception Occur~!!!!               " );
         kPrintString( 0, 2, "====================================================" );
     }
-    while( 1 ) ;
+    //while( 1 ) ;
 }
