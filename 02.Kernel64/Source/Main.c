@@ -93,7 +93,7 @@ void kPrintString( int iX, int iY, const char* pcString )
 /**
  *  Address을 X, Y 위치에 출력
  */
-void kPrintAddress( int iX, int iY, int address )
+void kPrintAddress( int iX, int iY, int iAddress )
 {
     CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
     int adr = address;
@@ -131,7 +131,7 @@ void kPrintAddress( int iX, int iY, int address )
 /**
  *  bit을 X, Y 위치에 출력
  */
-void kPrint32Bit( int iX, int iY, DWORD* bits )
+void kPrint32Bit( int iX, int iY, DWORD* dwBits )
 {
     CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
     char string[32] = { 0, };
@@ -155,7 +155,7 @@ void kPrint32Bit( int iX, int iY, DWORD* bits )
         i--;
     }
 }
-void kPrint64Bit( int iX, int iY, QWORD* bits )
+void kPrint64Bit( int iX, int iY, QWORD* qwBits )
 {
     CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
     char string[64] = { 0, };
