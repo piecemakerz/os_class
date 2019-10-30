@@ -87,27 +87,27 @@ void kKeyboardHandler( int iVectorNumber )
 /**
  *  page fault 인터럽트의 핸들러
  */
-void kPageFaultExceptionHandler( DWORD iVectorNumber, QWORD qwErrorCode )
+void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
 {
     if(!(qwErrorCode & 1)){
         kPrintString( 0, 0, "====================================================" );
         kPrintString( 0, 1, "               Page Fault Occur~!!!!                " );
         kPrintString( 0, 2, "                Address:                            " );
-        kPrintAddress( 25, 2, iVectorNumber);
+        kPrintAddress( 25, 2, dwAddress);
         kPrintString( 0, 3, "====================================================" );
         kPrint32Bit( 0, 4, &qwErrorCode); //print error code
-        //kPrint64Bit(0,5,(DWORD *)iVectorNumber); //print pagetable entry
-        //*(DWORD *)iVectorNumber = (*(DWORD *)iVectorNumber | 0x00000001);
+        //kPrint64Bit(0,5,(DWORD *)dwAddress); //print pagetable entry
+        //*(DWORD *)dwAddress = (*(DWORD *)dwAddress | 0x00000001);
     }
     else if (qwErrorCode & 1){
         kPrintString( 0, 0, "====================================================" );
         kPrintString( 0, 1, "            Protection Fault Occur~!!!!             " );
         kPrintString( 0, 2, "                Address:                            " );
-        kPrintAddress( 25, 2, iVectorNumber);
+        kPrintAddress( 25, 2, dwAddress);
         kPrintString( 0, 3, "====================================================" );
         kPrint32Bit( 0, 4, &qwErrorCode); //print error code
-        //kPrint64Bit(0,5,(DWORD *)iVectorNumber); //print pagetable entry
-        //*(DWORD *)iVectorNumber = (*(DWORD *)iVectorNumber | 0x00000001);
+        //kPrint64Bit(0,5,(DWORD *)dwAddress); //print pagetable entry
+        //*(DWORD *)dwAddress = (*(DWORD *)dwAddress | 0x00000001);
     }
     else{
         kPrintString( 0, 0, "====================================================" );

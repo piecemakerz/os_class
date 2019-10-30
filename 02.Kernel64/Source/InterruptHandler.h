@@ -19,7 +19,7 @@
 void kCommonExceptionHandler( int iVectorNumber, QWORD qwErrorCode );
 void kCommonInterruptHandler( int iVectorNumber );
 void kKeyboardHandler( int iVectorNumber );
-void kPageFaultExceptionHandler( DWORD iVectorNumber, QWORD qwErrorCode );
+void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode );
 
 
 #endif /*__INTERRUPTHANDLER_H__*/
