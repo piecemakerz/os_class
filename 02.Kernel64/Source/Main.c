@@ -96,7 +96,7 @@ void kPrintString( int iX, int iY, const char* pcString )
 void kPrintAddress( int iX, int iY, int iAddress )
 {
     CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
-    int adr = address;
+    int adr = iAddress;
     char string[8] = { 0, };
     int i;
     int j;
@@ -143,7 +143,7 @@ void kPrint32Bit( int iX, int iY, DWORD* dwBits )
 
     for(i = 0; i < 32; i++){
         mask = 1 << i;
-        if((*bits)&mask){
+        if((*dwBits)&mask){
             string[i] = '1';
         }
         else{
@@ -167,7 +167,7 @@ void kPrint64Bit( int iX, int iY, QWORD* qwBits )
 
     for(i = 0; i < 64; i++){
         mask = 1 << i;
-        if((*bits)&mask){
+        if((*qwBits)&mask){
             string[i] = '1';
         }
         else{
