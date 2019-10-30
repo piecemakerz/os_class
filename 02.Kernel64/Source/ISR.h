@@ -1,11 +1,3 @@
-/**
- *  file    ISR.h
- *  date    2009/01/24
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   인터럽트 서비스 루틴(ISR) 관련된 헤더 파일
- */
-
 #ifndef __ISR_H__
 #define __ISR_H__
 

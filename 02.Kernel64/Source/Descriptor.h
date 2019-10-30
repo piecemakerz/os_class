@@ -1,11 +1,3 @@
-/**
- *  file    Descriptor.h
- *  date    2009/01/16
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   GDT 및 IDT에 관련된 각종 디스크립터에 대한 헤더 파일
- */
-
 #ifndef __DESCRIPTOR_H__
 #define __DESCRIPTOR_H__
 
@@ -190,6 +182,4 @@ void kInitializeTSSSegment( TSSSEGMENT* pstTSS );
 void kInitializeIDTTables( void );
 void kSetIDTEntry( IDTENTRY* pstEntry, void* pvHandler, WORD wSelector, 
         BYTE bIST, BYTE bFlags, BYTE bType );
-void kDummyHandler( void );
-
 #endif

@@ -1,11 +1,3 @@
-/**
- *  file    PIC.h
- *  date    2009/01/17
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   PIC 컨트롤러에 관련된 헤더 파일
- */
-
 #ifndef __PIC_H__
 #define __PIC_H__
 

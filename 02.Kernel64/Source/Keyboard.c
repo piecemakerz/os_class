@@ -1,11 +1,3 @@
-/**
- *  file    Main.c
- *  date    2009/01/09
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   키보드 디바이스 드라이버에 관련된 소스 파일
- */
-
 #include "Types.h"
 #include "AssemblyUtility.h"
 #include "Keyboard.h"

@@ -1,11 +1,3 @@
-/**
- *  file    PIC.c
- *  date    2009/01/17
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   PIC 컨트롤러에 관련된 소스 파일
- */
-
 #include "PIC.h"
 
 /**

@@ -1,9 +1,3 @@
-# file      ISR.asm
-# date      2009/01/24
-# author    kkamagui
-#           Copyright(c)2008 All rights reserved by kkamagui
-# brief     인터럽트 서비스 루틴(ISR) 관련된 소스 파일
-
 [BITS 64]           ; 이하의 코드는 64비트 코드로 설정
 
 SECTION .text       ; text 섹션(세그먼트)을 정의

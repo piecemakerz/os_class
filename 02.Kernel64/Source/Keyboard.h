@@ -1,11 +1,3 @@
-/**
- *  file    Keyboard.h
- *  date    2009/01/09
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   키보드 디바이스 드라이버 함수들을 정의한 파일
- */
-
 #ifndef __KEYBOARD_H__
 #define __KEYBOARD_H__
 

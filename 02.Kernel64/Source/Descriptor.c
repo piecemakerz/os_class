@@ -1,11 +1,3 @@
-/**
- *  file    Descriptor.c
- *  date    2009/01/16
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   GDT 및 IDT에 관련된 각종 디스크립터에 대한 파일
- */
-
 #include "Descriptor.h"
 #include "Utility.h"
 #include "ISR.h"
@@ -23,7 +15,7 @@ void kInitializeGDTTableAndTSS( void )
     GDTENTRY8* pstEntry;
     TSSSEGMENT* pstTSS;
     int i;
-    
+
     // GDTR 설정
     pstGDTR = ( GDTR* ) GDTR_STARTADDRESS;
     pstEntry = ( GDTENTRY8* ) ( GDTR_STARTADDRESS + sizeof( GDTR ) );
@@ -34,14 +26,14 @@ void kInitializeGDTTableAndTSS( void )
 
     // NULL, 64비트 Code/Data, TSS를 위해 총 4개의 세그먼트를 생성한다.
     kSetGDTEntry8( &( pstEntry[ 0 ] ), 0, 0, 0, 0, 0 );
-    kSetGDTEntry8( &( pstEntry[ 1 ] ), 0, 0xFFFFF, GDT_FLAGS_UPPER_CODE, 
+    kSetGDTEntry8( &( pstEntry[ 1 ] ), 0, 0xFFFFF, GDT_FLAGS_UPPER_CODE,
             GDT_FLAGS_LOWER_KERNELCODE, GDT_TYPE_CODE );
     kSetGDTEntry8( &( pstEntry[ 2 ] ), 0, 0xFFFFF, GDT_FLAGS_UPPER_DATA,
             GDT_FLAGS_LOWER_KERNELDATA, GDT_TYPE_DATA );
-    kSetGDTEntry16( ( GDTENTRY16* ) &( pstEntry[ 3 ] ), ( QWORD ) pstTSS, 
-            sizeof( TSSSEGMENT ) - 1, GDT_FLAGS_UPPER_TSS, GDT_FLAGS_LOWER_TSS, 
-            GDT_TYPE_TSS ); 
-    
+    kSetGDTEntry16( ( GDTENTRY16* ) &( pstEntry[ 3 ] ), ( QWORD ) pstTSS,
+            sizeof( TSSSEGMENT ) - 1, GDT_FLAGS_UPPER_TSS, GDT_FLAGS_LOWER_TSS,
+            GDT_TYPE_TSS );
+
     // TSS 초기화 GDT 이하 영역을 사용함
     kInitializeTSSSegment( pstTSS );
 }
@@ -57,7 +49,7 @@ void kSetGDTEntry8( GDTENTRY8* pstEntry, DWORD dwBaseAddress, DWORD dwLimit,
     pstEntry->wLowerBaseAddress = dwBaseAddress & 0xFFFF;
     pstEntry->bUpperBaseAddress1 = ( dwBaseAddress >> 16 ) & 0xFF;
     pstEntry->bTypeAndLowerFlag = bLowerFlags | bType;
-    pstEntry->bUpperLimitAndUpperFlag = ( ( dwLimit >> 16 ) & 0xFF ) | 
+    pstEntry->bUpperLimitAndUpperFlag = ( ( dwLimit >> 16 ) & 0xFF ) |
         bUpperFlags;
     pstEntry->bUpperBaseAddress2 = ( dwBaseAddress >> 24 ) & 0xFF;
 }
@@ -73,7 +65,7 @@ void kSetGDTEntry16( GDTENTRY16* pstEntry, QWORD qwBaseAddress, DWORD dwLimit,
     pstEntry->wLowerBaseAddress = qwBaseAddress & 0xFFFF;
     pstEntry->bMiddleBaseAddress1 = ( qwBaseAddress >> 16 ) & 0xFF;
     pstEntry->bTypeAndLowerFlag = bLowerFlags | bType;
-    pstEntry->bUpperLimitAndUpperFlag = ( ( dwLimit >> 16 ) & 0xFF ) | 
+    pstEntry->bUpperLimitAndUpperFlag = ( ( dwLimit >> 16 ) & 0xFF ) |
         bUpperFlags;
     pstEntry->bMiddleBaseAddress2 = ( qwBaseAddress >> 24 ) & 0xFF;
     pstEntry->dwUpperBaseAddress = qwBaseAddress >> 32;
@@ -103,14 +95,14 @@ void kInitializeIDTTables( void )
     IDTR* pstIDTR;
     IDTENTRY* pstEntry;
     int i;
-        
+
     // IDTR의 시작 어드레스
     pstIDTR = ( IDTR* ) IDTR_STARTADDRESS;
     // IDT 테이블의 정보 생성
     pstEntry = ( IDTENTRY* ) ( IDTR_STARTADDRESS + sizeof( IDTR ) );
     pstIDTR->qwBaseAddress = ( QWORD ) pstEntry;
     pstIDTR->wLimit = IDT_TABLESIZE - 1;
-    
+
     //==========================================================================
     // 예외 ISR 등록
     //==========================================================================
@@ -208,7 +200,7 @@ void kInitializeIDTTables( void )
 /**
  *  IDT 게이트 디스크립터에 값을 설정
  */
-void kSetIDTEntry( IDTENTRY* pstEntry, void* pvHandler, WORD wSelector, 
+void kSetIDTEntry( IDTENTRY* pstEntry, void* pvHandler, WORD wSelector,
         BYTE bIST, BYTE bFlags, BYTE bType )
 {
     pstEntry->wLowerBaseAddress = ( QWORD ) pvHandler & 0xFFFF;

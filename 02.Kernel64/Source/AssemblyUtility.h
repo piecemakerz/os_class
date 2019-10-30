@@ -1,11 +1,3 @@
-/**
- *  file    Utility.h
- *  date    2009/01/07
- *  author  kkamagui 
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   어셈블리어 유틸리티 함수들을 정의한 헤더 파일
- */
-
 #ifndef __ASSEMBLYUTILITY_H__
 #define __ASSEMBLYUTILITY_H__
 

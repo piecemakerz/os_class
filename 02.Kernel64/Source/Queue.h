@@ -1,11 +1,3 @@
-/**
- *  file    Queue.h
- *  date    2009/01/25
- *  author  kkamagui
- *          Copyright(c)2008 All rights reserved by kkamagui
- *  brief   큐에 관련된 함수를 정의한 헤더 파일
- */
-
 #ifndef __QUEUE_H__
 #define __QUEUE_H__
 
