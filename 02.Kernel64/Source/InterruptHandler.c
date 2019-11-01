@@ -2,6 +2,7 @@
 #include "PIC.h"
 #include "Keyboard.h"
 #include "Console.h"
+#include "../../01.Kernel32/Source/Page.h"
 
 /**
  *  공통으로 사용하는 예외 핸들러
@@ -82,30 +83,33 @@ void kKeyboardHandler( int iVectorNumber )
  */
 void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
 {
+    PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
+    PTENTRY* pstEntry = &(pstPTEntry[dwAddress >> 12]);
+    int iCursorX, iCursorY;
     if(!(qwErrorCode & 1)){
-        kPrintStringXY( 0, 0, "====================================================" );
-        kPrintStringXY( 0, 1, "               Page Fault Occur~!!!!                " );
-        kPrintStringXY( 0, 2, "                Address:                            " );
-        kPrintAddress( 25, 2, dwAddress);
-        kPrintStringXY( 0, 3, "====================================================" );
-        kPrint32Bit( 0, 4, &qwErrorCode); //print error code
-        //kPrint64Bit(0,5,(DWORD *)dwAddress); //print pagetable entry
-        //*(DWORD *)dwAddress = (*(DWORD *)dwAddress | 0x00000001);
+        kPrintf( "====================================================\n" );
+        kPrintf( "               Page Fault Occur~!!!!                \n" );
+        kGetCursor( &iCursorX, &iCursorY );
+        kPrintf( "                Address: " );
+        kPrintAddress( 25, iCursorY++, dwAddress );
+        kPrintf( "\n" );
+        kPrintf("====================================================\n" );
+        pstEntry->dwAttributeAndLowerBaseAddress = pstEntry->dwAttributeAndLowerBaseAddress | 0x1;
     }
     else if (qwErrorCode & 1){
-        kPrintStringXY( 0, 0, "====================================================" );
-        kPrintStringXY( 0, 1, "            Protection Fault Occur~!!!!             " );
-        kPrintStringXY( 0, 2, "                Address:                            " );
-        kPrintAddress( 25, 2, dwAddress);
-        kPrintStringXY( 0, 3, "====================================================" );
-        kPrint32Bit( 0, 4, &qwErrorCode); //print error code
-        //kPrint64Bit(0,5,(DWORD *)dwAddress); //print pagetable entry
-        //*(DWORD *)dwAddress = (*(DWORD *)dwAddress | 0x00000001);
+        kPrintf( "====================================================\n" );
+        kPrintf( "            Protection Fault Occur~!!!!             \n" );
+        kGetCursor( &iCursorX, &iCursorY );
+        kPrintf( "                Address: " );
+        kPrintAddress( 25, iCursorY++, dwAddress );
+        kPrintf( "\n" );
+        kPrintf("====================================================\n" );
+        pstEntry->dwAttributeAndLowerBaseAddress = pstEntry->dwAttributeAndLowerBaseAddress | 0x2;
     }
     else{
-        kPrintStringXY( 0, 0, "====================================================" );
-        kPrintStringXY( 0, 1, "                 Exception Occur~!!!!               " );
-        kPrintStringXY( 0, 2, "====================================================" );
+        kPrintf( "====================================================\n" );
+        kPrintf( "                 Exception Occur~!!!!               \n" );
+        kPrintf( "====================================================\n" );
     }
     //while( 1 ) ; //for debug
 }

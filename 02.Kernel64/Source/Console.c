@@ -89,7 +89,7 @@ int kConsolePrintString( const char* pcBuffer )
     iPrintOffset = gs_stConsoleManager.iCurrentPrintOffset;
 
     // 문자열의 길이만큼 화면에 출력
-    iLength = kStrLen( pcBuffer );    
+    iLength = kStrLen( pcBuffer );
     for( i = 0 ; i < iLength ; i++ )
     {
         // 개행 처리

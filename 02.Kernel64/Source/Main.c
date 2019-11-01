@@ -13,10 +13,13 @@ void Main( void )
     int iCursorX, iCursorY;
 
     // 콘솔을 먼저 초기화한 후, 다음 작업을 수행
-    kInitializeConsole( 0, 10 );    
+    kInitializeConsole( 0, 12 );    
     kPrintf( "Switch To IA-32e Mode Success~!!\n" );
     kPrintf( "IA-32e C Language Kernel Start..............[Pass]\n" );
-    kPrintStringViaRelocated( 0, 14, "This message is printed through the video memory relocated to 0xAB8000");
+    kGetCursor( &iCursorX, &iCursorY );
+    kPrintStringViaRelocated( 0, iCursorY++, "This message is printed through the video memory relocated to 0xAB8000");
+    kPrintf( "\n" );
+    //CheckMemoryReadWrite();
     kPrintf( "Initialize Console..........................[Pass]\n" );
 
     // 부팅 상황을 화면에 출력
@@ -37,8 +40,6 @@ void Main( void )
     kLoadIDTR( IDTR_STARTADDRESS );
     kSetCursor( 45, iCursorY++ );
     kPrintf( "Pass\n" );
-
-	//CheckMemoryReadWrite();
 
     kPrintf( "Total RAM Size Check........................[    ]" );
     kCheckTotalRAMSize();
@@ -124,58 +125,6 @@ void kPrintAddress( int iX, int iY, int iAddress )
     size = i + 1;
     for(j = 0; j < size; j++){
         pstScreen[j+2].bCharactor = string[i];
-        i--;
-    }
-}
-
-/**
- *  bit을 X, Y 위치에 출력
- */
-void kPrint32Bit( int iX, int iY, DWORD* dwBits )
-{
-    CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
-    char string[32] = { 0, };
-    DWORD mask;
-    int i;
-    int j;
-
-    pstScreen += ( iY * 80 ) + iX;
-
-    for(i = 0; i < 32; i++){
-        mask = 1 << i;
-        if((*dwBits)&mask){
-            string[i] = '1';
-        }
-        else{
-            string[i] = '0';
-        }
-    }
-    for(j = 0; j < 32; j++){
-        pstScreen[j].bCharactor = string[i-1];
-        i--;
-    }
-}
-void kPrint64Bit( int iX, int iY, QWORD* qwBits )
-{
-    CHARACTER* pstScreen = ( CHARACTER* ) 0xB8000;
-    char string[64] = { 0, };
-    QWORD mask;
-    int i;
-    int j;
-
-    pstScreen += ( iY * 80 ) + iX;
-
-    for(i = 0; i < 64; i++){
-        mask = 1 << i;
-        if((*qwBits)&mask){
-            string[i] = '1';
-        }
-        else{
-            string[i] = '0';
-        }
-    }
-    for(j = 0; j < 64; j++){
-        pstScreen[j].bCharactor = string[i-1];
         i--;
     }
 }

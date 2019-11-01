@@ -11,6 +11,7 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "totalram", "Show Total RAM Size", kShowTotalRAMSize },
         { "strtod", "String To Decial/Hex Convert", kStringToDecimalHexTest },
         { "shutdown", "Shutdown And Reboot OS", kShutdown },
+        { "raisefault", "Raise Page Fault And Protection Fault", kRaiseFault },
 };                                     
 
 //==============================================================================
@@ -286,4 +287,10 @@ void kShutdown( const char* pcParamegerBuffer )
     kPrintf( "Press Any Key To Reboot PC..." );
     kGetCh();
     kReboot();
+}
+
+void kRaiseFault( const char* pcParamegerBuffer )
+{
+    DWORD* pstPage = 0x1ff000;
+    *pstPage = 1;
 }
