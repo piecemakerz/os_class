@@ -26,16 +26,19 @@ void kStartConsoleShell( void )
     int iCommandBufferIndex = 0;
     BYTE bKey;
     int iCursorX, iCursorY;
-    char* tmp;
+    char lineClear[80];
     char historyBuffer[10][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT];
     int historyIdx;
     int historyCount;
 
+    for(int i=0; i<80; i++)
+	{
+		lineClear[i] = ' ';
+	}
     historyIdx = -1;
     historyCount = 0;
     // 프롬프트 출력
     kPrintf( CONSOLESHELL_PROMPTMESSAGE );
-
     while( 1 )
     {
         // 키가 수신될 때까지 대기
@@ -101,7 +104,13 @@ void kStartConsoleShell( void )
         	kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
         	kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
         	iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
-        	kPrintf( "%s", vcCommandBuffer );
+
+        	kGetCursor( &iCursorX, &iCursorY );
+			kSetCursor( 0, iCursorY );
+			kPrintf("%s", lineClear);
+			kSetCursor( 0, iCursorY );
+			kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
+			kPrintf("%s", vcCommandBuffer );
         	continue;
         }
         else if(bKey == KEY_DOWN)
@@ -115,7 +124,13 @@ void kStartConsoleShell( void )
 			kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
 			kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
 			iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
-			kPrintf( "%s", vcCommandBuffer );
+
+			kGetCursor( &iCursorX, &iCursorY );
+			kSetCursor( 0, iCursorY );
+			kPrintf("%s", lineClear);
+			kSetCursor( 0, iCursorY );
+			kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
+			kPrintf("%s", vcCommandBuffer );
 			continue;
         }
         else
