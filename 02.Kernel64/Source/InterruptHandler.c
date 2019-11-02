@@ -4,6 +4,10 @@
 #include "Console.h"
 #include "../../01.Kernel32/Source/Page.h"
 
+static inline void invlpg(unsigned long m)
+{
+    asm volatile ( "invlpg (%0)" : : "b"(m) : "memory" );
+}
 /**
  *  공통으로 사용하는 예외 핸들러
  */
@@ -95,6 +99,7 @@ void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
         kPrintf( "\n" );
         kPrintf("====================================================\n" );
         pstEntry->dwAttributeAndLowerBaseAddress = pstEntry->dwAttributeAndLowerBaseAddress | 0x1;
+        invlpg(dwAddress);
     }
     else if (qwErrorCode & 1){
         kPrintf( "====================================================\n" );
@@ -105,6 +110,7 @@ void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
         kPrintf( "\n" );
         kPrintf("====================================================\n" );
         pstEntry->dwAttributeAndLowerBaseAddress = pstEntry->dwAttributeAndLowerBaseAddress | 0x2;
+        invlpg(dwAddress);
     }
     else{
         kPrintf( "====================================================\n" );

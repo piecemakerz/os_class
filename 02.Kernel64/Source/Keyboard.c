@@ -151,7 +151,7 @@ BOOL kChangeKeyboardLED( BOOL bCapsLockOn, BOOL bNumLockOn, BOOL bScrollLockOn )
         }
     }
 
-    // 출력 버퍼(포트 0x60)로 LED 상태 변경 커맨드(0xED) 전송
+    // 입력 버퍼(포트 0x60)로 LED 상태 변경 커맨드(0xED) 전송
     kOutPortByte( 0x60, 0xED );
     for( i = 0 ; i < 0xFFFF ; i++ )
     {

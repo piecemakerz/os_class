@@ -26,10 +26,16 @@ void kStartConsoleShell( void )
     int iCommandBufferIndex = 0;
     BYTE bKey;
     int iCursorX, iCursorY;
-    
+    char* tmp;
+    char historyBuffer[10][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT];
+    int historyIdx;
+    int historyCount;
+
+    historyIdx = -1;
+    historyCount = 0;
     // 프롬프트 출력
     kPrintf( CONSOLESHELL_PROMPTMESSAGE );
-    
+
     while( 1 )
     {
         // 키가 수신될 때까지 대기
@@ -56,6 +62,16 @@ void kStartConsoleShell( void )
             {
                 // 커맨드 버퍼에 있는 명령을 실행
                 vcCommandBuffer[ iCommandBufferIndex ] = '\0';
+                if(historyCount >= 10)
+                {
+                	for(int i=1; i<historyCount; i++)
+                	{
+                		kMemCpy(historyBuffer, historyBuffer+i, CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
+                	}
+					historyCount--;
+                }
+                kMemCpy(historyBuffer + historyCount, vcCommandBuffer, iCommandBufferIndex+1);
+                historyCount++;
                 kExecuteCommand( vcCommandBuffer );
             }
             
@@ -70,6 +86,37 @@ void kStartConsoleShell( void )
                  ( bKey == KEY_SCROLLLOCK ) )
         {
             ;
+        }
+        else if(bKey == KEY_UP)
+        {
+        	//history 버퍼가 비었으면 리턴
+        		//이미 처음 history 인덱스를 확인했다면 리턴
+        	if(historyCount == 0 || historyIdx == 0)
+        		continue;
+
+        	if(historyIdx == -1)
+        		historyIdx = historyCount;
+
+        	historyIdx--;
+        	kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
+        	kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
+        	iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
+        	kPrintf( "%s", vcCommandBuffer );
+        	continue;
+        }
+        else if(bKey == KEY_DOWN)
+        {
+        	//history를 검색하고 있는 중이 아니라면 리턴
+        		//이미 마지막 history 인덱스를 확인했다면 리턴
+        	if(historyIdx == -1 || historyIdx == 9)
+        		continue;
+
+        	historyIdx++;
+			kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
+			kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
+			iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
+			kPrintf( "%s", vcCommandBuffer );
+			continue;
         }
         else
         {
@@ -86,6 +133,7 @@ void kStartConsoleShell( void )
                 kPrintf( "%c", bKey );
             }
         }
+        historyIdx = -1;
     }
 }
 
