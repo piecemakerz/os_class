@@ -26,12 +26,12 @@ void kStartConsoleShell( void )
     int iCommandBufferIndex = 0;
     BYTE bKey;
     int iCursorX, iCursorY;
-    char lineClear[80];
+    char lineClear[79];
     char historyBuffer[10][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT];
     int historyIdx;
     int historyCount;
 
-    for(int i=0; i<80; i++)
+    for(int i=0; i<79; i++)
 	{
 		lineClear[i] = ' ';
 	}
@@ -108,6 +108,7 @@ void kStartConsoleShell( void )
         	kGetCursor( &iCursorX, &iCursorY );
 			kSetCursor( 0, iCursorY );
 			kPrintf("%s", lineClear);
+			//kGetCursor( &iCursorX, &iCursorY );
 			kSetCursor( 0, iCursorY );
 			kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
 			kPrintf("%s", vcCommandBuffer );
@@ -117,7 +118,7 @@ void kStartConsoleShell( void )
         {
         	//history를 검색하고 있는 중이 아니라면 리턴
         		//이미 마지막 history 인덱스를 확인했다면 리턴
-        	if(historyIdx == -1 || historyIdx == 9)
+        	if(historyIdx == -1 || historyIdx == historyCount)
         		continue;
 
         	historyIdx++;
@@ -128,6 +129,7 @@ void kStartConsoleShell( void )
 			kGetCursor( &iCursorX, &iCursorY );
 			kSetCursor( 0, iCursorY );
 			kPrintf("%s", lineClear);
+			//kGetCursor( &iCursorX, &iCursorY );
 			kSetCursor( 0, iCursorY );
 			kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
 			kPrintf("%s", vcCommandBuffer );
