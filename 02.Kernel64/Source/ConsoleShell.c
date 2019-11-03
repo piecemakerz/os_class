@@ -173,9 +173,15 @@ void kStartConsoleShell( void )
             			{
 							kMemSet(candidateBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
 							kMemSet(tempStr, '\0', 50);
+							vcCommandBuffer[iCommandBufferIndex] = '\0';
 							candBufferIdx = 0;
 							tempStrIdx = 0;
+
 							kPrintEveryCandidate(resultTrie, vcCommandBuffer, candidateBuffer, tempStr, &candBufferIdx, &tempStrIdx);
+							candidateBuffer[candBufferIdx] = '\0';
+
+							kGetCursor( &iCursorX, &iCursorY );
+							kSetCursor( 0, iCursorY + 1 );
 							kPrintf("%s\n", candidateBuffer);
 
 							kPrintf( "%s", CONSOLESHELL_PROMPTMESSAGE );
@@ -186,7 +192,6 @@ void kStartConsoleShell( void )
             		historyIdx = -1;
             		continue;
             	}
-
             }
             
             // 버퍼에 공간이 남아있을 때만 가능
@@ -549,16 +554,17 @@ void kTrieFindMostSpecific(Trie* trie, char* buffer, int* strIndex)
 void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char* tempStr, int* bufferIdx, int* tempStrIdx)
 {
 	int keyLen;
-	int tempStrLen;
+
 	if(trie->finish == TRUE)
 	{
+		(*tempStrIdx)--;
 		keyLen = kStrLen(key);
-		tempStrLen = kStrLen(tempStr);
-		kMemCpy(resultBuffer, key, keyLen);
+		kMemCpy(resultBuffer + *bufferIdx, key, keyLen);
 		(*bufferIdx) += keyLen;
-		kMemCpy(resultBuffer + *bufferIdx, tempStr, tempStrLen);
-		kMemSet(resultBuffer + *bufferIdx + 1, ' ', 1);
-		(*bufferIdx) += (tempStrLen + 1);
+
+		kMemCpy(resultBuffer + *bufferIdx, tempStr, *tempStrIdx);
+		(*bufferIdx) += (*tempStrIdx);
+		resultBuffer[(*bufferIdx)++] = ' ';
 		return;
 	}
 
@@ -568,7 +574,7 @@ void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char*
 		{
 			tempStr[(*tempStrIdx)++] = i + 'a';
 			kPrintEveryCandidate(trie, key, resultBuffer, tempStr, bufferIdx, tempStrIdx);
-			tempStr[(*tempStrIdx)--] = '\0';
+			tempStr[(*tempStrIdx)] = '\0';
 		}
 	}
 }
