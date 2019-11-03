@@ -40,8 +40,7 @@ void kStartConsoleShell( void )
     int candBufferIdx;
     int tempStrIdx;
 
-    curMallocPos = 0x1436F0;
-    Trie* head = kMalloc(sizeof(Trie));
+    Trie* head;
     Trie* resultTrie = NULL;
     BYTE bKey;
     BOOL candidateExists = FALSE;
@@ -49,12 +48,16 @@ void kStartConsoleShell( void )
     kMemSet(lineClear, ' ', 79);
     lineClear[79] = '\0';
 
+    /*
+    curMallocPos = 0x1436F0;
+    head = kMalloc(sizeof(Trie));
     kTrieInitialize(head);
 
     for(int i=0; i<9; i++)
     {
     	kTrieInsert(head, gs_vstCommandTable[i].pcCommand);
     }
+	*/
 
     // 프롬프트 출력
     kPrintf( CONSOLESHELL_PROMPTMESSAGE );
@@ -143,7 +146,7 @@ void kStartConsoleShell( void )
             {
             	if(iCommandBufferIndex == 0)
             		bKey = ' ';
-
+            	/*
             	else
             	{
             			//명령어 자동입력을 한 번 요청한 경우 명령어를 최대한 자동입력해준다.
@@ -180,6 +183,7 @@ void kStartConsoleShell( void )
             		historyIdx = -1;
             		continue;
             	}
+            	*/
             }
             
             // 버퍼에 공간이 남아있을 때만 가능

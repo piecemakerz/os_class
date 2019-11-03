@@ -4,7 +4,7 @@
 #include "Console.h"
 #include "../../01.Kernel32/Source/Page.h"
 
-static inline void invlpg(unsigned long m)
+static inline void invlpg(void* m)
 {
     asm volatile ( "invlpg (%0)" : : "b"(m) : "memory" );
 }
