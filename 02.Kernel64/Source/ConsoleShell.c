@@ -40,12 +40,11 @@ void kStartConsoleShell( void )
     int candBufferIdx;
     int tempStrIdx;
 
+    curMallocPos = 0x1436F0;
     Trie* head = kMalloc(sizeof(Trie));
     Trie* resultTrie = NULL;
     BYTE bKey;
     BOOL candidateExists = FALSE;
-
-    curMallocPos = 0x1436F0;
 
     kMemSet(lineClear, ' ', 79);
     lineClear[79] = '\0';
