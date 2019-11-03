@@ -45,6 +45,23 @@ typedef struct kParameterListStruct
     int iCurrentPosition;
 } PARAMETERLIST;
 
+typedef struct tTrieStruct
+{
+	BOOL finish;
+	int count;
+	struct tTrieStruct* next[26];
+}Trie;
+
+typedef struct free_block {
+    int size;
+    struct free_block* next;
+} free_block;
+
+static free_block free_block_list_head = { 0, 0 };
+static const int overhead = sizeof(int);
+static const int align_to = 16;
+static int curMallocPos;
+
 #pragma pack( pop )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,5 +82,18 @@ void kShowTotalRAMSize( const char* pcParameterBuffer );
 void kStringToDecimalHexTest( const char* pcParameterBuffer );
 void kShutdown( const char* pcParamegerBuffer );
 void kRaiseFault( const char* pcParamegerBuffer );
+void kHistoryPrint(char* vcCommandBuffer, char historyBuffer[][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT],
+		char* lineClear, int* iCommandBufferIndex, int historyIdx);
+void kCDummy(const char* pcParamegerBuffer);
+void kRDummy1(const char* pcParamegerBuffer);
+void kRDummy2(const char* pcParamegerBuffer);
+
+void* kMalloc(int size);
+void kFree(void* ptr);
+void kTrieInitialize(Trie* trie);
+void kTrieInsert(Trie* trie, const char* key);
+Trie* kTrieFind(Trie* trie, const char* key);
+void kTrieFindMostSpecific(Trie* trie, char* key, int* strIndex);
+void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char* tempStr, int* bufferIdx, int* tempStrIdx);
 
 #endif /*__CONSOLESHELL_H__*/

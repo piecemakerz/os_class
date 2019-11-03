@@ -12,6 +12,9 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "strtod", "String To Decial/Hex Convert", kStringToDecimalHexTest },
         { "shutdown", "Shutdown And Reboot OS", kShutdown },
         { "raisefault", "Raise Page Fault And Protection Fault", kRaiseFault },
+		{ "cdummy", "This is Dummy Command", kCDummy},
+		{ "rdummy1", "This is Dummy Command", kRDummy1},
+		{ "rdummy2", "This is Dummy Command", kRDummy2}
 };                                     
 
 //==============================================================================
@@ -23,20 +26,37 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
 void kStartConsoleShell( void )
 {
     char vcCommandBuffer[ CONSOLESHELL_MAXCOMMANDBUFFERCOUNT ];
-    int iCommandBufferIndex = 0;
-    BYTE bKey;
-    int iCursorX, iCursorY;
-    char lineClear[79];
-    char historyBuffer[10][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT];
-    int historyIdx;
-    int historyCount;
+	char historyBuffer[10][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT];
+	char candidateBuffer[CONSOLESHELL_MAXCOMMANDBUFFERCOUNT];
+	char tempStr[50];
+	char lineClear[80];
 
-    for(int i=0; i<79; i++)
-	{
-		lineClear[i] = ' ';
-	}
-    historyIdx = -1;
-    historyCount = 0;
+    int iCommandBufferIndex = 0;
+    int iCursorX, iCursorY;
+    int historyIdx = -1;
+    int historyCount = 0;
+    int tempLen;
+    int curIdx;
+    int candBufferIdx;
+    int tempStrIdx;
+
+    Trie* head = kMalloc(sizeof(Trie));
+    Trie* resultTrie = NULL;
+    BYTE bKey;
+    BOOL candidateExists = FALSE;
+
+    curMallocPos = 0x1436F0;
+
+    kMemSet(lineClear, ' ', 79);
+    lineClear[79] = '\0';
+
+    kTrieInitialize(head);
+
+    for(int i=0; i<9; i++)
+    {
+    	kTrieInsert(head, gs_vstCommandTable[i].pcCommand);
+    }
+
     // 프롬프트 출력
     kPrintf( CONSOLESHELL_PROMPTMESSAGE );
     while( 1 )
@@ -92,6 +112,7 @@ void kStartConsoleShell( void )
         }
         else if(bKey == KEY_UP)
         {
+        	candidateExists = FALSE;
         	//history 버퍼가 비었으면 리턴
         		//이미 처음 history 인덱스를 확인했다면 리턴
         	if(historyCount == 0 || historyIdx == 0)
@@ -101,38 +122,19 @@ void kStartConsoleShell( void )
         		historyIdx = historyCount;
 
         	historyIdx--;
-        	kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
-        	kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
-        	iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
-
-        	kGetCursor( &iCursorX, &iCursorY );
-			kSetCursor( 0, iCursorY );
-			kPrintf("%s", lineClear);
-			//kGetCursor( &iCursorX, &iCursorY );
-			kSetCursor( 0, iCursorY );
-			kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
-			kPrintf("%s", vcCommandBuffer );
+        	kHistoryPrint(vcCommandBuffer, historyBuffer, lineClear, &iCommandBufferIndex, historyIdx);
         	continue;
         }
         else if(bKey == KEY_DOWN)
         {
+        	candidateExists = FALSE;
         	//history를 검색하고 있는 중이 아니라면 리턴
         		//이미 마지막 history 인덱스를 확인했다면 리턴
         	if(historyIdx == -1 || historyIdx == historyCount)
         		continue;
 
         	historyIdx++;
-			kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
-			kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
-			iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
-
-			kGetCursor( &iCursorX, &iCursorY );
-			kSetCursor( 0, iCursorY );
-			kPrintf("%s", lineClear);
-			//kGetCursor( &iCursorX, &iCursorY );
-			kSetCursor( 0, iCursorY );
-			kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
-			kPrintf("%s", vcCommandBuffer );
+        	kHistoryPrint(vcCommandBuffer, historyBuffer, lineClear, &iCommandBufferIndex, historyIdx);
 			continue;
         }
         else
@@ -140,7 +142,45 @@ void kStartConsoleShell( void )
             // TAB은 공백으로 전환
             if( bKey == KEY_TAB )
             {
-                bKey = ' ';
+            	if(iCommandBufferIndex == 0)
+            		bKey = ' ';
+
+            	else
+            	{
+            			//명령어 자동입력을 한 번 요청한 경우 명령어를 최대한 자동입력해준다.
+            		if(!candidateExists)
+            		{
+						vcCommandBuffer[ iCommandBufferIndex ] = '\0';
+						resultTrie = kTrieFind(head, vcCommandBuffer);
+						if(resultTrie == NULL)
+							;
+						else
+						{
+							candidateExists = TRUE;
+							kTrieFindMostSpecific(resultTrie, vcCommandBuffer, &iCommandBufferIndex);
+						}
+            		}
+            			//후보 명령어가 존재하는 상태에서 명령어 자동입력을 두 번 이상 요청한 경우 후보 명령어들을 출력해준다.
+            			//명령어 입력이 완료된 경우 아무런 동작을 하지 않는다.
+            		else
+            		{
+            			if(resultTrie->finish == FALSE)
+            			{
+							kMemSet(candidateBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
+							kMemSet(tempStr, '\0', 50);
+							candBufferIdx = 0;
+							tempStrIdx = 0;
+							kPrintEveryCandidate(resultTrie, vcCommandBuffer, candidateBuffer, tempStr, &candBufferIdx, &tempStrIdx);
+							kPrintf("%s\n", candidateBuffer);
+
+							kPrintf( "%s", CONSOLESHELL_PROMPTMESSAGE );
+							kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
+							iCommandBufferIndex = 0;
+            			}
+            		}
+            		historyIdx = -1;
+            		continue;
+            	}
             }
             
             // 버퍼에 공간이 남아있을 때만 가능
@@ -151,6 +191,8 @@ void kStartConsoleShell( void )
             }
         }
         historyIdx = -1;
+        candidateExists = FALSE;
+        resultTrie = NULL;
     }
 }
 
@@ -359,3 +401,169 @@ void kRaiseFault( const char* pcParamegerBuffer )
     DWORD* pstPage = 0x1ff000;
     *pstPage = 1;
 }
+
+void kHistoryPrint(char* vcCommandBuffer, char historyBuffer[][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT],
+		char* lineClear, int* iCommandBufferIndex, int historyIdx)
+{
+	int iCursorX;
+	int iCursorY;
+	kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
+	kMemCpy( vcCommandBuffer, historyBuffer[historyIdx], kStrLen(historyBuffer[historyIdx]));
+	*iCommandBufferIndex = kStrLen(historyBuffer[historyIdx]);
+
+	kGetCursor( &iCursorX, &iCursorY );
+	kSetCursor( 0, iCursorY );
+	kPrintf("%s", lineClear);
+	kSetCursor( 0, iCursorY );
+	kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
+	kPrintf("%s", vcCommandBuffer );
+}
+void kCDummy(const char* pcParamegerBuffer)
+{
+
+}
+
+void kRDummy1(const char* pcParamegerBuffer)
+{
+
+}
+
+void kRDummy2(const char* pcParamegerBuffer)
+{
+
+}
+
+void* kMalloc(int size) {
+	//가장 가까운 align_to의 배수로 반올림하여 설정
+	//새로 할당될 메모리 블럭은 size크기만큼의 메모리와 크기를 나타내는 int변수를 추가로 가져야 한다.
+    size = (size + sizeof(int) + (align_to - 1)) & ~ (align_to - 1);
+    //block = 다음 kMalloc 빈 공간
+    free_block* block = free_block_list_head.next;
+    //head = 빈 공간 리스트 헤더의 next 변수에 대한 포인터
+    free_block** head = &(free_block_list_head.next);
+    //만약 다음 kMalloc 빈 공간이 이미 할당되어 있다면
+    while (block != 0) {
+    		//만약 할당된 빈 공간에 size크기의 메모리를 할당할 수 있다면 할당한다.
+        if (block->size >= size) {
+        		//할당한 노드를 빈 공간 리스트에서 제거
+            *head = block->next;
+            	//할당된 빈 공간 반환
+            	//데이터는 next포인터 변수를 덮어쓴다.
+            return ((char*)block) + sizeof(int);
+        }
+        	//다음 빈 공간으로 이동
+        head = &(block->next);
+        block = block->next;
+    }
+
+    //데이터를 저장할 수 있는 할당된 빈 공간이 없다면 빈 공간을 size 크기만큼 할당한다.
+    block = (free_block*)(curMallocPos);
+    block->size = size - sizeof(int);
+    curMallocPos += size;
+
+    return ((char*)block) + sizeof(int);
+}
+
+void kFree(void* ptr) {
+    free_block* block = (free_block*)(((char*)ptr) - sizeof(int));
+    kMemSet((char*)block + sizeof(int), 0, block->size);
+    //kFree된 블럭을 빈 공간 리스트의 맨 앞에 추가
+    block->next = free_block_list_head.next;
+    free_block_list_head.next = block;
+}
+
+void kTrieInitialize(Trie* trie)
+{
+	trie->finish = FALSE;
+	trie->count = 0;
+	kMemSet(trie->next, 0, sizeof(trie->next));
+}
+
+void kTrieInsert(Trie* trie, const char* key)
+{
+	int curr;
+	trie->count++;
+
+	if(*key == '\0')
+		trie->finish = TRUE;
+	else
+	{
+		curr = *key - 'A';
+		if(trie->next[curr] == NULL){
+			trie->next[curr] = (Trie*) kMalloc(sizeof(Trie));
+			kTrieInitialize(trie->next[curr]);
+		}
+		kTrieInsert(trie->next[curr], key+1);
+	}
+}
+
+Trie* kTrieFind(Trie* trie, const char* key)
+{
+	int curr;
+
+	if(*key == '\0')
+		return trie;
+	curr = *key - 'A';
+	if(trie->next[curr] == NULL)
+		return NULL;
+	return kTrieFind(trie->next[curr], key+1);
+}
+
+//명령어를 최대한 자동입력하는 함수(most specific 부분명령어 찾기)
+//kTrieFind함수의 리턴값을 인자로 받는다.
+//1. count가 2 이상일 때, next의 count가 현재 count보다 작아지면 most specific
+//2. count가 1일 때, finish 노드까지의 문자열이 most specific
+void kTrieFindMostSpecific(Trie* trie, char* buffer, int* strIndex)
+{
+	int startCount = trie->count;
+	Trie* curTrie = trie;
+	Trie* nextTrie;
+	BOOL mostSpecificFound;
+
+	while(curTrie->finish == FALSE)
+	{
+		mostSpecificFound = TRUE;
+		for(int i=0; i<26; i++)
+		{
+			nextTrie = curTrie->next[i];
+			if(nextTrie->count == startCount)
+			{
+				mostSpecificFound = FALSE;
+				buffer[(*strIndex)++] = i + 'a';
+				curTrie = nextTrie;
+				break;
+			}
+		}
+		if(mostSpecificFound)
+			return;
+	}
+}
+
+//trie의 모든 후보 명령어들을 출력한다.
+void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char* tempStr, int* bufferIdx, int* tempStrIdx)
+{
+	int keyLen;
+	int tempStrLen;
+	if(trie->finish == TRUE)
+	{
+		keyLen = kStrLen(key);
+		tempStrLen = kStrLen(tempStr);
+		kMemCpy(resultBuffer, key, keyLen);
+		(*bufferIdx) += keyLen;
+		kMemCpy(resultBuffer + *bufferIdx, tempStr, tempStrLen);
+		kMemSet(resultBuffer + *bufferIdx + 1, ' ', 1);
+		(*bufferIdx) += (tempStrLen + 1);
+		return;
+	}
+
+	for(int i=0; i<26; i++)
+	{
+		if(trie->next[i] != NULL)
+		{
+			tempStr[(*tempStrIdx)++] = i + 'a';
+			kPrintEveryCandidate(trie, key, resultBuffer, tempStr, bufferIdx, tempStrIdx);
+			tempStr[(*tempStrIdx)--] = '\0';
+		}
+	}
+}
+
