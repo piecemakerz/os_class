@@ -48,7 +48,6 @@ void kStartConsoleShell( void )
     kMemSet(lineClear, ' ', 79);
     lineClear[79] = '\0';
 
-    /*
     curMallocPos = 0x1436F0;
     head = kMalloc(sizeof(Trie));
     kTrieInitialize(head);
@@ -57,7 +56,6 @@ void kStartConsoleShell( void )
     {
     	kTrieInsert(head, gs_vstCommandTable[i].pcCommand);
     }
-	*/
 
     // 프롬프트 출력
     kPrintf( CONSOLESHELL_PROMPTMESSAGE );
@@ -146,7 +144,7 @@ void kStartConsoleShell( void )
             {
             	if(iCommandBufferIndex == 0)
             		bKey = ' ';
-            	/*
+
             	else
             	{
             			//명령어 자동입력을 한 번 요청한 경우 명령어를 최대한 자동입력해준다.
@@ -160,6 +158,11 @@ void kStartConsoleShell( void )
 						{
 							candidateExists = TRUE;
 							kTrieFindMostSpecific(resultTrie, vcCommandBuffer, &iCommandBufferIndex);
+							kGetCursor( &iCursorX, &iCursorY );
+							kSetCursor( 0, iCursorY );
+							vcCommandBuffer[iCommandBufferIndex] = '\0';
+							kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
+							kPrintf("%s", vcCommandBuffer);
 						}
             		}
             			//후보 명령어가 존재하는 상태에서 명령어 자동입력을 두 번 이상 요청한 경우 후보 명령어들을 출력해준다.
@@ -183,7 +186,7 @@ void kStartConsoleShell( void )
             		historyIdx = -1;
             		continue;
             	}
-            	*/
+
             }
             
             // 버퍼에 공간이 남아있을 때만 가능
@@ -479,7 +482,7 @@ void kTrieInitialize(Trie* trie)
 {
 	trie->finish = FALSE;
 	trie->count = 0;
-	kMemSet(trie->next, 0, sizeof(trie->next));
+	kMemSet(trie->next, NULL, sizeof(trie->next));
 }
 
 void kTrieInsert(Trie* trie, const char* key)
@@ -491,9 +494,9 @@ void kTrieInsert(Trie* trie, const char* key)
 		trie->finish = TRUE;
 	else
 	{
-		curr = *key - 'A';
+		curr = *key - 'a';
 		if(trie->next[curr] == NULL){
-			trie->next[curr] = (Trie*) kMalloc(sizeof(Trie));
+			trie->next[curr] = (Trie*)kMalloc(sizeof(Trie));
 			kTrieInitialize(trie->next[curr]);
 		}
 		kTrieInsert(trie->next[curr], key+1);
@@ -506,7 +509,7 @@ Trie* kTrieFind(Trie* trie, const char* key)
 
 	if(*key == '\0')
 		return trie;
-	curr = *key - 'A';
+	curr = *key - 'a';
 	if(trie->next[curr] == NULL)
 		return NULL;
 	return kTrieFind(trie->next[curr], key+1);
