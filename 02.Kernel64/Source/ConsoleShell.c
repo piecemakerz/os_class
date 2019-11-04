@@ -88,9 +88,9 @@ void kStartConsoleShell( void )
                 vcCommandBuffer[ iCommandBufferIndex ] = '\0';
                 if(historyCount >= 10)
                 {
-                	for(int i=1; i<historyCount; i++)
+                	for(int i=0; i<historyCount-1; i++)
                 	{
-                		kMemCpy(historyBuffer, historyBuffer+i, CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
+                		kMemCpy(historyBuffer+i, historyBuffer+(i+1), CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
                 	}
 					historyCount--;
                 }
