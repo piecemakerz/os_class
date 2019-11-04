@@ -44,6 +44,7 @@ void kStartConsoleShell( void )
     Trie* resultTrie = NULL;
     BYTE bKey;
     BOOL candidateExists = FALSE;
+    BOOL commandWrote = FALSE;
 
     kMemSet(lineClear, ' ', 79);
     lineClear[79] = '\0';
@@ -519,7 +520,7 @@ Trie* kTrieFind(Trie* trie, const char* key)
 	if(*key == '\0')
 		return trie;
 	curr = *key - 'a';
-	if(trie->next[curr] == NULL)
+	if(curr > 26 || curr < 0 || trie->next[curr] == NULL)
 		return NULL;
 	return kTrieFind(trie->next[curr], key+1);
 }
