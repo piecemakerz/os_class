@@ -85,16 +85,17 @@ void kStartConsoleShell( void )
             if( iCommandBufferIndex > 0 )
             {
                 // 커맨드 버퍼에 있는 명령을 실행
-                vcCommandBuffer[ iCommandBufferIndex ] = '\0';
+                vcCommandBuffer[ iCommandBufferIndex++ ] = '\0';
                 if(historyCount >= 10)
                 {
                 	for(int i=0; i<historyCount-1; i++)
                 	{
+                		kMemSet(historyBuffer+i, 0, CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
                 		kMemCpy(historyBuffer+i, historyBuffer+(i+1), CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
                 	}
 					historyCount--;
                 }
-                kMemCpy(historyBuffer + historyCount, vcCommandBuffer, iCommandBufferIndex+1);
+                kMemCpy(historyBuffer + historyCount, vcCommandBuffer, iCommandBufferIndex);
                 historyCount++;
                 kExecuteCommand( vcCommandBuffer );
             }
