@@ -93,7 +93,7 @@ void kFree(void* ptr);
 void kTrieInitialize(Trie* trie);
 void kTrieInsert(Trie* trie, const char* key);
 Trie* kTrieFind(Trie* trie, const char* key);
-void kTrieFindMostSpecific(Trie* trie, char* key, int* strIndex);
+Trie* kTrieFindMostSpecific(Trie* trie, char* key, int* strIndex);
 void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char* tempStr, int* bufferIdx, int* tempStrIdx);
 
 #endif /*__CONSOLESHELL_H__*/

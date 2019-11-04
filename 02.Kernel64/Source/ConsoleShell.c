@@ -13,8 +13,8 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "shutdown", "Shutdown And Reboot OS", kShutdown },
         { "raisefault", "Raise Page Fault And Protection Fault", kRaiseFault },
 		{ "cdummy", "This is Dummy Command", kCDummy},
-		{ "rdummy1", "This is Dummy Command", kRDummy1},
-		{ "rdummy2", "This is Dummy Command", kRDummy2}
+		{ "rdummyfirst", "This is Dummy Command", kRDummy1},
+		{ "rdummysecond", "This is Dummy Command", kRDummy2}
 };                                     
 
 //==============================================================================
@@ -143,13 +143,13 @@ void kStartConsoleShell( void )
             if( bKey == KEY_TAB )
             {
             	if(iCommandBufferIndex == 0)
-            		bKey = ' ';
+            		bKey == ' ';
 
             	else
             	{
-            			//명령어 자동입력을 한 번 요청한 경우 명령어를 최대한 자동입력해준다.
-            		if(!candidateExists)
-            		{
+					//명령어 자동입력을 한 번 요청한 경우 명령어를 최대한 자동입력해준다.
+					if(!candidateExists)
+					{
 						vcCommandBuffer[ iCommandBufferIndex ] = '\0';
 						resultTrie = kTrieFind(head, vcCommandBuffer);
 						if(resultTrie == NULL)
@@ -157,20 +157,23 @@ void kStartConsoleShell( void )
 						else
 						{
 							candidateExists = TRUE;
-							kTrieFindMostSpecific(resultTrie, vcCommandBuffer, &iCommandBufferIndex);
+							resultTrie = kTrieFindMostSpecific(resultTrie, vcCommandBuffer, &iCommandBufferIndex);
 							kGetCursor( &iCursorX, &iCursorY );
 							kSetCursor( 0, iCursorY );
 							vcCommandBuffer[iCommandBufferIndex] = '\0';
 							kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE );
 							kPrintf("%s", vcCommandBuffer);
+
+							historyIdx = -1;
+							continue;
 						}
-            		}
-            			//후보 명령어가 존재하는 상태에서 명령어 자동입력을 두 번 이상 요청한 경우 후보 명령어들을 출력해준다.
-            			//명령어 입력이 완료된 경우 아무런 동작을 하지 않는다.
-            		else
-            		{
-            			if(resultTrie->finish == FALSE)
-            			{
+					}
+					//후보 명령어가 존재하는 상태에서 명령어 자동입력을 두 번 이상 요청한 경우 후보 명령어들을 출력해준다.
+					//명령어 입력이 완료된 경우 아무런 동작을 하지 않는다.
+					else
+					{
+						if(resultTrie->finish == FALSE)
+						{
 							kMemSet(candidateBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
 							kMemSet(tempStr, '\0', 50);
 							vcCommandBuffer[iCommandBufferIndex] = '\0';
@@ -180,26 +183,27 @@ void kStartConsoleShell( void )
 							kPrintEveryCandidate(resultTrie, vcCommandBuffer, candidateBuffer, tempStr, &candBufferIdx, &tempStrIdx);
 							candidateBuffer[candBufferIdx] = '\0';
 
-							kGetCursor( &iCursorX, &iCursorY );
-							kSetCursor( 0, iCursorY + 1 );
+							kPrintf("\n");
 							kPrintf("%s\n", candidateBuffer);
 
 							kPrintf( "%s", CONSOLESHELL_PROMPTMESSAGE );
 							kMemSet( vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT );
 							iCommandBufferIndex = 0;
-            			}
-            		}
-            		historyIdx = -1;
-            		continue;
-            	}
+						}
+					}
+					historyIdx = -1;
+					candidateExists = FALSE;
+					resultTrie = NULL;
+					continue;
+				}
             }
-            
-            // 버퍼에 공간이 남아있을 때만 가능
-            if( iCommandBufferIndex < CONSOLESHELL_MAXCOMMANDBUFFERCOUNT )
-            {
-                vcCommandBuffer[ iCommandBufferIndex++ ] = bKey;
-                kPrintf( "%c", bKey );
-            }
+
+			// 버퍼에 공간이 남아있을 때만 가능
+			if( iCommandBufferIndex < CONSOLESHELL_MAXCOMMANDBUFFERCOUNT )
+			{
+				vcCommandBuffer[ iCommandBufferIndex++ ] = bKey;
+				kPrintf( "%c", bKey );
+			}
         }
         historyIdx = -1;
         candidateExists = FALSE;
@@ -487,7 +491,7 @@ void kTrieInitialize(Trie* trie)
 {
 	trie->finish = FALSE;
 	trie->count = 0;
-	kMemSet(trie->next, NULL, sizeof(trie->next));
+	kMemSet(trie->next, NULL, sizeof(Trie*));
 }
 
 void kTrieInsert(Trie* trie, const char* key)
@@ -524,30 +528,31 @@ Trie* kTrieFind(Trie* trie, const char* key)
 //kTrieFind함수의 리턴값을 인자로 받는다.
 //1. count가 2 이상일 때, next의 count가 현재 count보다 작아지면 most specific
 //2. count가 1일 때, finish 노드까지의 문자열이 most specific
-void kTrieFindMostSpecific(Trie* trie, char* buffer, int* strIndex)
+Trie* kTrieFindMostSpecific(Trie* trie, char* buffer, int* strIndex)
 {
 	int startCount = trie->count;
-	Trie* curTrie = trie;
 	Trie* nextTrie;
 	BOOL mostSpecificFound;
 
-	while(curTrie->finish == FALSE)
+	while(trie->finish == FALSE)
 	{
 		mostSpecificFound = TRUE;
 		for(int i=0; i<26; i++)
 		{
-			nextTrie = curTrie->next[i];
+			nextTrie = trie->next[i];
 			if(nextTrie->count == startCount)
 			{
 				mostSpecificFound = FALSE;
 				buffer[(*strIndex)++] = i + 'a';
-				curTrie = nextTrie;
+				trie = nextTrie;
 				break;
 			}
 		}
 		if(mostSpecificFound)
-			return;
+			return trie;
 	}
+
+	return trie;
 }
 
 //trie의 모든 후보 명령어들을 출력한다.
@@ -557,7 +562,6 @@ void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char*
 
 	if(trie->finish == TRUE)
 	{
-		(*tempStrIdx)--;
 		keyLen = kStrLen(key);
 		kMemCpy(resultBuffer + *bufferIdx, key, keyLen);
 		(*bufferIdx) += keyLen;
@@ -572,9 +576,11 @@ void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char*
 	{
 		if(trie->next[i] != NULL)
 		{
-			tempStr[(*tempStrIdx)++] = i + 'a';
-			kPrintEveryCandidate(trie, key, resultBuffer, tempStr, bufferIdx, tempStrIdx);
-			tempStr[(*tempStrIdx)] = '\0';
+			tempStr[*tempStrIdx] = i + 'a';
+			(*tempStrIdx)++;
+			kPrintEveryCandidate(trie->next[i], key, resultBuffer, tempStr, bufferIdx, tempStrIdx);
+			(*tempStrIdx)--;
+			tempStr[*tempStrIdx] = '\0';
 		}
 	}
 }
