@@ -13,8 +13,8 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "shutdown", "Shutdown And Reboot OS", kShutdown },
         { "raisefault", "Raise Page Fault And Protection Fault", kRaiseFault },
 		{ "cdummy", "This is Dummy Command", kCDummy},
-		{ "rdummyfirst", "This is Dummy Command", kRDummy1},
-		{ "rdummysecond", "This is Dummy Command", kRDummy2}
+		{ "rdummyf", "This is Dummy Command", kRDummy1},
+		{ "rdummys", "This is Dummy Command", kRDummy2}
 };                                     
 
 //==============================================================================
