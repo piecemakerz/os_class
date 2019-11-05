@@ -423,19 +423,23 @@ static inline void invlpg(void* m)
 
 void kRaiseFault( const char* pcParamegerBuffer )
 {
-    PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
-    PTENTRY* pstEntry = &(pstPTEntry[511]);
-    DWORD* pstPage = 0x1ff000;
+    // PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
+    // PTENTRY* pstEntry = &(pstPTEntry[511]);
+    // DWORD* pstPage = 0x1ff000;
+    long *ptr = 0x1ff000;
+    DWORD data = 0x99;
     if(bTry == 0){
-        pstEntry->dwAttributeAndLowerBaseAddress = 0x2;
-        invlpg(0x1ff000);
-        *pstPage = 1;
+        // invlpg(0x1ff000);
+        data = *ptr;
+        // pstEntry->dwAttributeAndLowerBaseAddress = 0x2;
+        // *pstPage = 1;
         bTry++;
     }
     else if (bTry == 1) {
-        pstEntry->dwAttributeAndLowerBaseAddress = 0x1;
-        invlpg(0x1ff000);
-        *pstPage = 1;
+        *ptr = 0;
+        // pstEntry->dwAttributeAndLowerBaseAddress = 0x1;
+        // invlpg(0x1ff000);
+        // *pstPage = 1;
         bTry++;
     }
 }
