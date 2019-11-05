@@ -426,7 +426,6 @@ void kRaiseFault( const char* pcParamegerBuffer )
     PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
     PTENTRY* pstEntry = &(pstPTEntry[511]);
     DWORD* pstPage = 0x1ff000;
-    kPrintf("%d", bTry);
     if(bTry == 0){
         pstEntry->dwAttributeAndLowerBaseAddress = 0x2;
         invlpg(0x1ff000);
