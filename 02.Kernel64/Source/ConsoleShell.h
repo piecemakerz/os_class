@@ -76,24 +76,30 @@ void kInitializeParameter( PARAMETERLIST* pstList, const char* pcParameter );
 int kGetNextParameter( PARAMETERLIST* pstList, char* pcParameter );
 
 // 커맨드를 처리하는 함수
-void kHelp( const char* pcParameterBuffer );
-void kCls( const char* pcParameterBuffer );
-void kShowTotalRAMSize( const char* pcParameterBuffer );
-void kStringToDecimalHexTest( const char* pcParameterBuffer );
-void kShutdown( const char* pcParamegerBuffer );
-void kRaiseFault( const char* pcParamegerBuffer );
-void kHistoryPrint(char* vcCommandBuffer, char historyBuffer[][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT],
+static void kHelp( const char* pcParameterBuffer );
+static void kCls( const char* pcParameterBuffer );
+static void kShowTotalRAMSize( const char* pcParameterBuffer );
+static void kStringToDecimalHexTest( const char* pcParameterBuffer );
+static void kShutdown( const char* pcParamegerBuffer );
+static void kRaiseFault( const char* pcParamegerBuffer );
+static void kHistoryPrint(char* vcCommandBuffer, char historyBuffer[][CONSOLESHELL_MAXCOMMANDBUFFERCOUNT],
 		char* lineClear, int* iCommandBufferIndex, int historyIdx);
-void kCDummy(const char* pcParamegerBuffer);
-void kRDummy1(const char* pcParamegerBuffer);
-void kRDummy2(const char* pcParamegerBuffer);
-
-void* kMalloc(int size);
-void kFree(void* ptr);
-void kTrieInitialize(Trie* trie);
-void kTrieInsert(Trie* trie, const char* key);
-Trie* kTrieFind(Trie* trie, const char* key);
-Trie* kTrieFindMostSpecific(Trie* trie, char* key, int* strIndex);
-void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char* tempStr, int* bufferIdx, int* tempStrIdx);
-
+static void* kMalloc(int size);
+static void kFree(void* ptr);
+static void kTrieInitialize(Trie* trie);
+static void kTrieInsert(Trie* trie, const char* key);
+static Trie* kTrieFind(Trie* trie, const char* key);
+static Trie* kTrieFindMostSpecific(Trie* trie, char* key, int* strIndex);
+static void kPrintEveryCandidate(Trie* trie, const char* key, char* resultBuffer, char* tempStr, int* bufferIdx, int* tempStrIdx);
+static void kSetTimer( const char* pcParameterBuffer );
+static void kWaitUsingPIT( const char* pcParameterBuffer );
+static void kReadTimeStampCounter( const char* pcParameterBuffer );
+static void kMeasureProcessorSpeed( const char* pcParameterBuffer );
+static void kShowDateAndTime( const char* pcParameterBuffer );
+static void kCreateTestTask(const char* pcParameterBuffer);
+static void kChangeTaskPriority( const char* pcParameterBuffer );
+static void kShowTaskList( const char* pcParameterBuffer );
+static void kKillTask( const char* pcParameterBuffer );
+static void kCPULoad( const char* pcParameterBuffer );
+static void kTestMutex(const char* pcParameterBuffer);
 #endif /*__CONSOLESHELL_H__*/

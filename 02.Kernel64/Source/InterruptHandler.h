@@ -12,5 +12,5 @@ void kCommonExceptionHandler( int iVectorNumber, QWORD qwErrorCode );
 void kCommonInterruptHandler( int iVectorNumber );
 void kKeyboardHandler( int iVectorNumber );
 void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode );
-
+void kTimerHandler(int iVertorNumber);
 #endif /*__INTERRUPTHANDLER_H__*/

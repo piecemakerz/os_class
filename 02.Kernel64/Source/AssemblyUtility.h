@@ -2,6 +2,7 @@
 #define __ASSEMBLYUTILITY_H__
 
 #include "Types.h"
+#include "Task.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -16,5 +17,8 @@ void kLoadIDTR( QWORD qwIDTRAddress);
 void kEnableInterrupt( void );
 void kDisableInterrupt( void );
 QWORD kReadRFLAGS( void );
-
+QWORD kReadTSC(void);
+void kSwitchContext(CONTEXT* pstCurrentContext, CONTEXT* pstNextContext);
+void kHlt(void);
+BOOL kTestAndSet(volatile BYTE* pbDestination, BYTE bCompare, BYTE bSource);
 #endif /*__ASSEMBLYUTILITY_H__*/
