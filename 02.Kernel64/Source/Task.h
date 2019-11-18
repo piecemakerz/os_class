@@ -73,6 +73,14 @@
 #define TASK_FLAGS_LOWEST             10
 #define TASK_FLAGS_WAIT               0xFF
 
+// 600을 기준으로 각 태스크의 보폭을 결정한다면
+// 각각 12, 15, 20, 30, 60의 보폭을 가질 것이다.
+#define TASK_STRIDE_NUM				  600
+// 각 태스크의 pass가 60이 되었을 때 모든 태스크의 값이 같아지므로
+// pass을 0으로 초기화한다.
+// pass는 배열에 저장될 것이다.
+#define TASK_PASS_MAX				  60
+
 // 태스크의 플래그
 #define TASK_FLAGS_ENDTASK            0x8000000000000000
 #define TASK_FLAGS_IDLE               0x0800000000000000
@@ -97,6 +105,7 @@ typedef struct kContextStruct
     QWORD vqRegister[ TASK_REGISTERCOUNT ];
 } CONTEXT;
 
+/*
 // 태스크의 상태를 관리하는 자료구조
 typedef struct kTaskControlBlockStruct
 {
@@ -108,6 +117,28 @@ typedef struct kTaskControlBlockStruct
 
     // 콘텍스트
     CONTEXT stContext;
+
+    // 스택의 어드레스와 크기
+    void* pvStackAddress;
+    QWORD qwStackSize;
+} TCB;
+*/
+
+// 보폭 스케줄링을 위한 자료구조
+// 태스크의 상태를 관리하는 자료구조
+typedef struct kTaskControlBlockStruct
+{
+    // 다음 데이터의 위치와 ID
+    LISTLINK stLink;
+
+    // 플래그
+    QWORD qwFlags;
+
+    // 콘텍스트
+    CONTEXT stContext;
+
+    // Pass
+    int iPass;
 
     // 스택의 어드레스와 크기
     void* pvStackAddress;
@@ -153,6 +184,7 @@ typedef struct kSchedulerStruct
 } SCHEDULER;
 */
 
+/*
 // 추첨 스케줄러의 상태를 관리하는 자료구조
 typedef struct kSchedulerStruct
 {
@@ -164,6 +196,30 @@ typedef struct kSchedulerStruct
 
     // 현재 태스크들의 티켓 총 합
     unsigned int curTicketTotal;
+
+    // 실행할 태스크가 준비중인 리스트.
+    // 각 리스트 노드의 태스크는 우선순위에 따라 티켓을 부여받는다.
+    LIST vstReadyList;
+
+    // 종료할 태스크가 대기중인 리스트
+    LIST stWaitList;
+
+    // 프로세서 부하를 계산하기 위한 자료구조
+    QWORD qwProcessorLoad;
+
+    // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
+    QWORD qwSpendProcessorTimeInIdleTask;
+} SCHEDULER;
+*/
+
+// 보폭 스케줄러의 상태를 관리하는 자료구조
+typedef struct kSchedulerStruct
+{
+    // 현재 수행 중인 태스크
+    TCB* pstRunningTask;
+
+    // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
+    int iProcessorTime;
 
     // 실행할 태스크가 준비중인 리스트.
     // 각 리스트 노드의 태스크는 우선순위에 따라 티켓을 부여받는다.
@@ -219,7 +275,8 @@ int kGetTaskCount( void );
 TCB* kGetTCBInTCBPool( int iOffset );
 BOOL kIsTaskExist( QWORD qwID );
 QWORD kGetProcessorLoad( void );
-
+int kGetPass(int stride);
+void kSetAllPassToZero();
 //==============================================================================
 //  유휴 태스크 관련
 //==============================================================================
