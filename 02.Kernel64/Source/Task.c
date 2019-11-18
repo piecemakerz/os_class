@@ -1,5 +1,6 @@
 #include "Task.h"
 #include "Descriptor.h"
+#include "Utility.h"
 
 // 스케줄러 관련 자료구조
 static SCHEDULER gs_stScheduler;
@@ -169,19 +170,42 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
  *  스케줄러를 초기화
  *      스케줄러를 초기화하는데 필요한 TCB 풀과 init 태스크도 같이 초기화
  */
+
+/*
 void kInitializeScheduler( void )
 {
-    int i;
+	int i;
 
+	// 태스크 풀 초기화
+	kInitializeTCBPool();
+
+	// 준비 리스트와 우선 순위별 실행 횟수를 초기화하고 대기 리스트도 초기화
+	for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
+	{
+		kInitializeList( &( gs_stScheduler.vstReadyList[ i ] ) );
+		gs_stScheduler.viExecuteCount[ i ] = 0;
+	}
+	kInitializeList( &( gs_stScheduler.stWaitList ) );
+
+	// TCB를 할당 받아 실행 중인 태스크로 설정하여, 부팅을 수행한 태스크를 저장할 TCB를 준비
+	gs_stScheduler.pstRunningTask = kAllocateTCB();
+	gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
+
+	// 프로세서 사용률을 계산하는데 사용하는 자료구조 초기화
+	gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
+	gs_stScheduler.qwProcessorLoad = 0;
+}
+*/
+
+// 추첨 스케줄러 초기화
+// 스케줄러를 초기화하는데 필요한 TCB 풀과 init 태스크도 같이 초기화
+void kInitializeScheduler( void )
+{
     // 태스크 풀 초기화
     kInitializeTCBPool();
 
-    // 준비 리스트와 우선 순위별 실행 횟수를 초기화하고 대기 리스트도 초기화
-    for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
-    {
-        kInitializeList( &( gs_stScheduler.vstReadyList[ i ] ) );
-        gs_stScheduler.viExecuteCount[ i ] = 0;
-    }
+    // 준비 리스트와 대기 리스트 초기화
+    kInitializeList( &( gs_stScheduler.vstReadyList ) );
     kInitializeList( &( gs_stScheduler.stWaitList ) );
 
     // TCB를 할당 받아 실행 중인 태스크로 설정하여, 부팅을 수행한 태스크를 저장할 TCB를 준비
@@ -191,7 +215,9 @@ void kInitializeScheduler( void )
     // 프로세서 사용률을 계산하는데 사용하는 자료구조 초기화
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
+    gs_stScheduler.curTicketTotal = 0;
 }
+
 /**
  *  현재 수행 중인 태스크를 설정
  */
@@ -230,6 +256,7 @@ TCB* kGetRunningTask( void )
 /**
  *  태스크 리스트에서 다음으로 실행할 태스크를 얻음
  */
+/*
 static TCB* kGetNextTaskToRun( void )
 {
     TCB* pstTarget = NULL;
@@ -268,10 +295,47 @@ static TCB* kGetNextTaskToRun( void )
     }
     return pstTarget;
 }
+*/
+
+/**
+ * 추첨 스케줄러의 태스크 리스트에서 다음으로 실행할 태스크를 얻음
+ */
+static TCB* kGetNextTaskToRun( void )
+{
+    TCB* pstTarget;
+    int iTaskCount, i, randomSelection, curTicketsCount;
+
+    pstTarget = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
+    iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
+    // random 난수 초기화
+    srand(time());
+    randomSelection = rand(gs_stScheduler.curTicketTotal);
+    curTicketsCount = 0;
+
+    if(iTaskCount == 0)
+    {
+    	return NULL;
+    }
+
+	// 추첨 결과에 따라 실행할 태스크 선택
+	for( i = 0 ; i < iTaskCount ; i++ )
+	{
+		curTicketsCount += GETPRIORITY(pstTarget->qwFlags);
+		if( curTicketsCount >= randomSelection )
+		{
+			pstTarget = (TCB*)kRemoveList( &(gs_stScheduler.vstReadyList), pstTarget->stLink.qwID );
+			gs_stScheduler.curTicketTotal -= GETPRIORITY(pstTarget->qwFlags);
+			break;
+		}
+		pstTarget = kGetNextFromList( &(gs_stScheduler.vstReadyList), pstTarget );
+	}
+    return pstTarget;
+}
 
 /**
  *  태스크를 스케줄러의 준비 리스트에 삽입
  */
+/*
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
     BYTE bPriority;
@@ -285,10 +349,27 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
     kAddListToTail( &( gs_stScheduler.vstReadyList[ bPriority ] ), pstTask );
     return TRUE;
 }
+*/
+
+// 추첨 스케줄링에서 태스크를 스케줄러의 준비 리스트에 삽입
+static BOOL kAddTaskToReadyList( TCB* pstTask )
+{
+    BYTE bPriority;
+
+    bPriority = GETPRIORITY( pstTask->qwFlags );
+    if( bPriority > TASK_FLAGS_HIGHEST )
+	{
+		return FALSE;
+	}
+    kAddListToTail( &( gs_stScheduler.vstReadyList ), pstTask );
+    gs_stScheduler.curTicketTotal += bPriority;
+    return TRUE;
+}
 
 /**
  *  준비 큐에서 태스크를 제거
  */
+/*
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
     TCB* pstTarget;
@@ -314,10 +395,37 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
                      qwTaskID );
     return pstTarget;
 }
+*/
+
+// 추첨 스케줄러의 준비 큐에서 태스크를 제거
+static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
+{
+    TCB* pstTarget;
+    BYTE bPriority;
+
+    // 태스크 ID가 유효하지 않으면 실패
+    if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
+    {
+        return NULL;
+    }
+
+    // TCB 풀에서 해당 태스크의 TCB를 찾아 실제로 ID가 일치하는가 확인
+    pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
+    if( pstTarget->stLink.qwID != qwTaskID )
+    {
+        return NULL;
+    }
+
+    bPriority = GETPRIORITY( pstTarget->qwFlags );
+    pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList ), qwTaskID );
+    gs_stScheduler.curTicketTotal -= bPriority;
+    return pstTarget;
+}
 
 /**
  *  태스크의 우선 순위를 변경함
  */
+
 BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
 {
     TCB* pstTarget;
@@ -575,6 +683,8 @@ void kExitTask( void )
 /**
  *  준비 큐에 있는 모든 태스크의 수를 반환
  */
+
+/*
 int kGetReadyTaskCount( void )
 {
     int iTotalCount = 0;
@@ -593,6 +703,25 @@ int kGetReadyTaskCount( void )
     // 임계 영역 끝
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount ;
+}
+*/
+
+// 추첨 스케줄링에서 준비 큐에 있는 모든 태스크의 수를 반환
+int kGetReadyTaskCount( void )
+{
+    int iTotalCount = 0;
+    int i;
+    BOOL bPreviousFlag;
+
+    // 임계 영역 시작
+    bPreviousFlag = kLockForSystemData();
+
+    // 모든 준비 큐를 확인하여 태스크 개수를 구함
+    iTotalCount += kGetListCount( &( gs_stScheduler.vstReadyList ) );
+
+    // 임계 영역 끝
+    kUnlockForSystemData(bPreviousFlag);
+    return iTotalCount;
 }
 
 /**

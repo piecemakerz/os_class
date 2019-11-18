@@ -54,14 +54,23 @@
 #define TASK_PROCESSORTIME      5
 
 // 준비 리스트의 수
-#define TASK_MAXREADYLISTCOUNT  5
+//#define TASK_MAXREADYLISTCOUNT  5
+#define TASK_MAXREADYLISTCOUNT 1
 
 // 태스크의 우선 순위
+/*
 #define TASK_FLAGS_HIGHEST            0
 #define TASK_FLAGS_HIGH               1
 #define TASK_FLAGS_MEDIUM             2
 #define TASK_FLAGS_LOW                3
 #define TASK_FLAGS_LOWEST             4
+*/
+
+#define TASK_FLAGS_HIGHEST            50
+#define TASK_FLAGS_HIGH               40
+#define TASK_FLAGS_MEDIUM             30
+#define TASK_FLAGS_LOW                20
+#define TASK_FLAGS_LOWEST             10
 #define TASK_FLAGS_WAIT               0xFF
 
 // 태스크의 플래그
@@ -117,6 +126,7 @@ typedef struct kTCBPoolManagerStruct
     int iAllocatedCount;
 } TCBPOOLMANAGER;
 
+/*
 // 스케줄러의 상태를 관리하는 자료구조
 typedef struct kSchedulerStruct
 {
@@ -134,6 +144,33 @@ typedef struct kSchedulerStruct
 
     // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
     int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
+
+    // 프로세서 부하를 계산하기 위한 자료구조
+    QWORD qwProcessorLoad;
+
+    // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
+    QWORD qwSpendProcessorTimeInIdleTask;
+} SCHEDULER;
+*/
+
+// 추첨 스케줄러의 상태를 관리하는 자료구조
+typedef struct kSchedulerStruct
+{
+    // 현재 수행 중인 태스크
+    TCB* pstRunningTask;
+
+    // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
+    int iProcessorTime;
+
+    // 현재 태스크들의 티켓 총 합
+    unsigned int curTicketTotal;
+
+    // 실행할 태스크가 준비중인 리스트.
+    // 각 리스트 노드의 태스크는 우선순위에 따라 티켓을 부여받는다.
+    LIST vstReadyList;
+
+    // 종료할 태스크가 대기중인 리스트
+    LIST stWaitList;
 
     // 프로세서 부하를 계산하기 위한 자료구조
     QWORD qwProcessorLoad;
@@ -163,9 +200,11 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
 //  스케줄러 관련
 //==============================================================================
 void kInitializeScheduler( void );
+void kInitializeLotteryScheduler( void );
 void kSetRunningTask( TCB* pstTask );
 TCB* kGetRunningTask( void );
 static TCB* kGetNextTaskToRun( void );
+static TCB* kGetNextTaskToRunLottery(void);
 static BOOL kAddTaskToReadyList( TCB* pstTask );
 void kSchedule( void );
 BOOL kScheduleInInterrupt( void );

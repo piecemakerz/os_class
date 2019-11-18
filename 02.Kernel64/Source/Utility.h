@@ -26,5 +26,7 @@ int kSPrintf( char* pcBuffer, const char* pcFormatString, ... );
 int kVSPrintf( char* pcBuffer, const char* pcFormatString, va_list ap );
 QWORD kGetTickCount(void);
 extern volatile QWORD g_qwTickCount;
-
+unsigned int rand(unsigned int max_rand);
+void srand(unsigned long seed);
+unsigned long time(void);
 #endif /*__UTILITY_H__*/

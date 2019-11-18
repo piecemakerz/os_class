@@ -1,10 +1,12 @@
 #include "Utility.h"
 #include "AssemblyUtility.h"
+#include "RTC.h"
 #include <stdarg.h>
 
 //PIT 컨트롤러가 발생한 횟수를 저장할 카운터
 volatile QWORD g_qwTickCount=0;
-
+static unsigned long next = 1;
+static int daysOfMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 /**
  *  메모리를 특정 값으로 채움
  */
@@ -467,4 +469,56 @@ int kVSPrintf( char* pcBuffer, const char* pcFormatString, va_list ap )
 QWORD kGetTickCount( void )
 {
     return g_qwTickCount;
+}
+
+unsigned int rand(unsigned int max_rand)
+{
+	next = next * 1103515245 + 12345;
+	return (unsigned int)(next/65536) % max_rand;
+}
+
+void srand(unsigned long seed)
+{
+	next = seed;
+}
+
+// 오전 0시부터 현재까지 흐른 초 수를 리턴한다.
+// 현재 년도가 윤년인 경우는 고려하지 않는다.
+unsigned long time(void)
+{
+	WORD i;
+	BYTE j;
+	unsigned long totalSeconds;
+	BYTE hour, minute, second;
+	WORD year;
+	BYTE month, dayOfMonth, dayOfWeek;
+	unsigned long secondsOfDay = 86400;
+
+	totalSeconds = 0;
+	kReadRTCTime( &hour, &minute, &second );
+	kReadRTCDate( &year, &month, &dayOfMonth, &dayOfWeek);
+
+	for(i=1970; i<year; i++)
+	{
+		if((year%4 == 0) && (year%100 != 0) || (year%400 == 0))
+		{
+			totalSeconds += secondsOfDay * 366;
+		}
+		else
+		{
+			totalSeconds += secondsOfDay * 365;
+		}
+	}
+
+	for(j=1; j<month; j++)
+	{
+		totalSeconds += secondsOfDay * daysOfMonth[j];
+	}
+
+	totalSeconds += secondsOfDay * (dayOfMonth - 1);
+	totalSeconds += hour * 3600;
+	totalSeconds += minute * 60;
+	totalSeconds += second;
+
+	return totalSeconds;
 }
