@@ -2,16 +2,16 @@
 #include "Descriptor.h"
 #include "Utility.h"
 
-// �����ٷ� ���� �ڷᱸ��
+// 占쏙옙占쏙옙占쌕뤄옙 占쏙옙占쏙옙 占쌘료구占쏙옙
 static SCHEDULER gs_stScheduler;
 static TCBPOOLMANAGER gs_stTCBPoolManager;
 int trace_task_sequence = 0;
 
 //==============================================================================
-//  �½�ũ Ǯ�� �½�ũ ����
+//  占승쏙옙크 풀占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 //==============================================================================
 /**
- *  �½�ũ Ǯ �ʱ�ȭ
+ *  占승쏙옙크 풀 占십깍옙화
  */
 static void kInitializeTCBPool( void )
 {
@@ -19,23 +19,23 @@ static void kInitializeTCBPool( void )
 
     kMemSet( &( gs_stTCBPoolManager ), 0, sizeof( gs_stTCBPoolManager ) );
 
-    // �½�ũ Ǯ�� ��巹���� �����ϰ� �ʱ�ȭ
+    // 占승쏙옙크 풀占쏙옙 占쏙옙藥뱄옙占쏙옙占� 占쏙옙占쏙옙占싹곤옙 占십깍옙화
     gs_stTCBPoolManager.pstStartAddress = ( TCB* ) TASK_TCBPOOLADDRESS;
     kMemSet( TASK_TCBPOOLADDRESS, 0, sizeof( TCB ) * TASK_MAXCOUNT );
 
-    // TCB�� ID �Ҵ�
+    // TCB占쏙옙 ID 占쌀댐옙
     for( i = 0 ; i < TASK_MAXCOUNT ; i++ )
     {
         gs_stTCBPoolManager.pstStartAddress[ i ].stLink.qwID = i;
     }
 
-    // TCB�� �ִ� ������ �Ҵ�� Ƚ���� �ʱ�ȭ
+    // TCB占쏙옙 占쌍댐옙 占쏙옙占쏙옙占쏙옙 占쌀댐옙占� 횟占쏙옙占쏙옙 占십깍옙화
     gs_stTCBPoolManager.iMaxCount = TASK_MAXCOUNT;
     gs_stTCBPoolManager.iAllocatedCount = 1;
 }
 
 /**
- *  TCB�� �Ҵ� ����
+ *  TCB占쏙옙 占쌀댐옙 占쏙옙占쏙옙
  */
 static TCB* kAllocateTCB( void )
 {
@@ -49,7 +49,7 @@ static TCB* kAllocateTCB( void )
 
     for( i = 0 ; i < gs_stTCBPoolManager.iMaxCount ; i++ )
     {
-        // ID�� ���� 32��Ʈ�� 0�̸� �Ҵ���� ���� TCB
+        // ID占쏙옙 占쏙옙占쏙옙 32占쏙옙트占쏙옙 0占싱몌옙 占쌀댐옙占쏙옙占� 占쏙옙占쏙옙 TCB
         if( ( gs_stTCBPoolManager.pstStartAddress[ i ].stLink.qwID >> 32 ) == 0 )
         {
             pstEmptyTCB = &( gs_stTCBPoolManager.pstStartAddress[ i ] );
@@ -57,7 +57,7 @@ static TCB* kAllocateTCB( void )
         }
     }
 
-    // ���� 32��Ʈ�� 0�� �ƴ� ������ �����ؼ� �Ҵ�� TCB�� ����
+    // 占쏙옙占쏙옙 32占쏙옙트占쏙옙 0占쏙옙 占싣댐옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쌔쇽옙 占쌀댐옙占� TCB占쏙옙 占쏙옙占쏙옙
     pstEmptyTCB->stLink.qwID = ( ( QWORD ) gs_stTCBPoolManager.iAllocatedCount << 32 ) | i;
     gs_stTCBPoolManager.iUseCount++;
     gs_stTCBPoolManager.iAllocatedCount++;
@@ -70,16 +70,16 @@ static TCB* kAllocateTCB( void )
 }
 
 /**
- *  TCB�� ������
+ *  TCB占쏙옙 占쏙옙占쏙옙占쏙옙
  */
 static void kFreeTCB( QWORD qwID )
 {
     int i;
 
-    // �½�ũ ID�� ���� 32��Ʈ�� �ε��� ������ ��
+    // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 32占쏙옙트占쏙옙 占싸듸옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙
    i = GETTCBOFFSET( qwID );
 
-    // TCB�� �ʱ�ȭ�ϰ� ID ����
+    // TCB占쏙옙 占십깍옙화占싹곤옙 ID 占쏙옙占쏙옙
     kMemSet( &( gs_stTCBPoolManager.pstStartAddress[ i ].stContext ), 0, sizeof( CONTEXT ) );
     gs_stTCBPoolManager.pstStartAddress[ i ].stLink.qwID = i;
 
@@ -87,8 +87,8 @@ static void kFreeTCB( QWORD qwID )
 }
 
 /**
- *  �½�ũ�� ����
- *      �½�ũ ID�� ���� ���� Ǯ���� ���� �ڵ� �Ҵ�
+ *  占승쏙옙크占쏙옙 占쏙옙占쏙옙
+ *      占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 풀占쏙옙占쏙옙 占쏙옙占쏙옙 占쌘듸옙 占쌀댐옙
  */
 TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
 {
@@ -96,57 +96,58 @@ TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
     void* pvStackAddress;
     BOOL bPreviousFlag;
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
     pstTask = kAllocateTCB();
     if( pstTask == NULL )
     {
-    		// �Ӱ� ���� ��
+    		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return NULL;
     }
 
-    //�Ӱ� ���� ��
+    //占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
 
-    // �½�ũ ID�� ���� ��巹�� ���, ���� 32��Ʈ�� ���� Ǯ�� ������ ���� ����
+    // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 占쏙옙藥뱄옙占� 占쏙옙占�, 占쏙옙占쏙옙 32占쏙옙트占쏙옙 占쏙옙占쏙옙 풀占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     pvStackAddress = ( void* ) ( TASK_STACKPOOLADDRESS + ( TASK_STACKSIZE *
             GETTCBOFFSET(pstTask->stLink.qwID)) );
 
-    // TCB�� ������ �� �غ� ����Ʈ�� �����Ͽ� �����ٸ��� �� �ֵ��� ��
+    // TCB占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙占싹울옙 占쏙옙占쏙옙占쌕몌옙占쏙옙 占쏙옙 占쌍듸옙占쏙옙 占쏙옙
     kSetUpTask( pstTask, qwFlags, qwEntryPointAddress, pvStackAddress,
             TASK_STACKSIZE );
 
-    pstTask->iPass = TASK_PASS_MAX;
-
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // �½�ũ�� �غ� ����Ʈ�� ����
+    pstTask->iPass = 0;
+    // 占승쏙옙크占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
     kAddTaskToReadyList( pstTask );
 
-    //�Ӱ� ���� ��
+    pstTask->iPass = TASK_PASS_MAX;
+
+    //占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
 
     return pstTask;
 }
 
 /**
- *  �Ķ���͸� �̿��ؼ� TCB�� ����
+ *  占식띰옙占쏙옙拷占� 占싱울옙占쌔쇽옙 TCB占쏙옙 占쏙옙占쏙옙
  */
 static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
                  void* pvStackAddress, QWORD qwStackSize )
 {
-    // ���ؽ�Ʈ �ʱ�ȭ
+    // 占쏙옙占쌔쏙옙트 占십깍옙화
     kMemSet( pstTCB->stContext.vqRegister, 0, sizeof( pstTCB->stContext.vqRegister ) );
 
-    // ���ÿ� ���õ� RSP, RBP �������� ����
+    // 占쏙옙占시울옙 占쏙옙占시듸옙 RSP, RBP 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     pstTCB->stContext.vqRegister[ TASK_RSPOFFSET ] = ( QWORD ) pvStackAddress +
             qwStackSize;
     pstTCB->stContext.vqRegister[ TASK_RBPOFFSET ] = ( QWORD ) pvStackAddress +
             qwStackSize;
 
-    // ���׸�Ʈ ������ ����
+    // 占쏙옙占쌓몌옙트 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     pstTCB->stContext.vqRegister[ TASK_CSOFFSET ] = GDT_KERNELCODESEGMENT;
     pstTCB->stContext.vqRegister[ TASK_DSOFFSET ] = GDT_KERNELDATASEGMENT;
     pstTCB->stContext.vqRegister[ TASK_ESOFFSET ] = GDT_KERNELDATASEGMENT;
@@ -154,25 +155,25 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
     pstTCB->stContext.vqRegister[ TASK_GSOFFSET ] = GDT_KERNELDATASEGMENT;
     pstTCB->stContext.vqRegister[ TASK_SSOFFSET ] = GDT_KERNELDATASEGMENT;
 
-    // RIP �������Ϳ� ���ͷ�Ʈ �÷��� ����
+    // RIP 占쏙옙占쏙옙占쏙옙占싶울옙 占쏙옙占싶뤄옙트 占시뤄옙占쏙옙 占쏙옙占쏙옙
     pstTCB->stContext.vqRegister[ TASK_RIPOFFSET ] = qwEntryPointAddress;
 
-    // RFLAGS ���������� IF ��Ʈ(��Ʈ 9)�� 1�� �����Ͽ� ���ͷ�Ʈ Ȱ��ȭ
+    // RFLAGS 占쏙옙占쏙옙占쏙옙占쏙옙占쏙옙 IF 占쏙옙트(占쏙옙트 9)占쏙옙 1占쏙옙 占쏙옙占쏙옙占싹울옙 占쏙옙占싶뤄옙트 활占쏙옙화
     pstTCB->stContext.vqRegister[ TASK_RFLAGSOFFSET ] |= 0x0200;
 
-    // ���ð� �÷��� ����
+    // 占쏙옙占시곤옙 占시뤄옙占쏙옙 占쏙옙占쏙옙
     pstTCB->pvStackAddress = pvStackAddress;
     pstTCB->qwStackSize = qwStackSize;
     pstTCB->qwFlags = qwFlags;
-    // ���� �����ٷ��� ���� �ڵ�
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쏙옙占쏙옙 占쌘듸옙
 }
 
 //==============================================================================
-//  �����ٷ� ����
+//  占쏙옙占쏙옙占쌕뤄옙 占쏙옙占쏙옙
 //==============================================================================
 /**
- *  �����ٷ��� �ʱ�ȭ
- *      �����ٷ��� �ʱ�ȭ�ϴµ� �ʿ��� TCB Ǯ�� init �½�ũ�� ���� �ʱ�ȭ
+ *  占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화
+ *      占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화占싹는듸옙 占십울옙占쏙옙 TCB 풀占쏙옙 init 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占십깍옙화
  */
 
 /*
@@ -180,10 +181,10 @@ void kInitializeScheduler( void )
 {
 	int i;
 
-	// �½�ũ Ǯ �ʱ�ȭ
+	// 占승쏙옙크 풀 占십깍옙화
 	kInitializeTCBPool();
 
-	// �غ� ����Ʈ�� �켱 ������ ���� Ƚ���� �ʱ�ȭ�ϰ� ��� ����Ʈ�� �ʱ�ȭ
+	// 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 횟占쏙옙占쏙옙 占십깍옙화占싹곤옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙 占십깍옙화
 	for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
 	{
 		kInitializeList( &( gs_stScheduler.vstReadyList[ i ] ) );
@@ -191,97 +192,97 @@ void kInitializeScheduler( void )
 	}
 	kInitializeList( &( gs_stScheduler.stWaitList ) );
 
-	// TCB�� �Ҵ� �޾� ���� ���� �½�ũ�� �����Ͽ�, ������ ������ �½�ũ�� ������ TCB�� �غ�
+	// TCB占쏙옙 占쌀댐옙 占쌨억옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹울옙, 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쌔븝옙
 	gs_stScheduler.pstRunningTask = kAllocateTCB();
 	gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
 
-	// ���μ��� ������ ����ϴµ� ����ϴ� �ڷᱸ�� �ʱ�ȭ
+	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙求쨉占� 占쏙옙占쏙옙求占� 占쌘료구占쏙옙 占십깍옙화
 	gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
 	gs_stScheduler.qwProcessorLoad = 0;
 }
 */
 
 /*
-// ��÷ �����ٷ� �ʱ�ȭ
-// �����ٷ��� �ʱ�ȭ�ϴµ� �ʿ��� TCB Ǯ�� init �½�ũ�� ���� �ʱ�ȭ
+// 占쏙옙첨 占쏙옙占쏙옙占쌕뤄옙 占십깍옙화
+// 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화占싹는듸옙 占십울옙占쏙옙 TCB 풀占쏙옙 init 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占십깍옙화
 void kInitializeScheduler( void )
 {
-    // �½�ũ Ǯ �ʱ�ȭ
+    // 占승쏙옙크 풀 占십깍옙화
     kInitializeTCBPool();
 
-    // �غ� ����Ʈ�� ��� ����Ʈ �ʱ�ȭ
+    // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占� 占쏙옙占쏙옙트 占십깍옙화
     kInitializeList( &( gs_stScheduler.vstReadyList ) );
     kInitializeList( &( gs_stScheduler.stWaitList ) );
 
-    // TCB�� �Ҵ� �޾� ���� ���� �½�ũ�� �����Ͽ�, ������ ������ �½�ũ�� ������ TCB�� �غ�
+    // TCB占쏙옙 占쌀댐옙 占쌨억옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹울옙, 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쌔븝옙
     gs_stScheduler.pstRunningTask = kAllocateTCB();
     gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
 
-    // ���μ��� ������ ����ϴµ� ����ϴ� �ڷᱸ�� �ʱ�ȭ
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙求쨉占� 占쏙옙占쏙옙求占� 占쌘료구占쏙옙 占십깍옙화
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
     gs_stScheduler.curTicketTotal = 0;
 }
 */
 
-// ���� �����ٷ� �ʱ�ȭ
-// �����ٷ��� �ʱ�ȭ�ϴµ� �ʿ��� TCB Ǯ�� init �½�ũ�� ���� �ʱ�ȭ
+// 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕뤄옙 占십깍옙화
+// 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화占싹는듸옙 占십울옙占쏙옙 TCB 풀占쏙옙 init 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占십깍옙화
 void kInitializeScheduler( void )
 {
-    // �½�ũ Ǯ �ʱ�ȭ
+    // 占승쏙옙크 풀 占십깍옙화
     kInitializeTCBPool();
 
-    // �غ� ����Ʈ�� ��� ����Ʈ �ʱ�ȭ
+    // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占� 占쏙옙占쏙옙트 占십깍옙화
     kInitializeList( &( gs_stScheduler.vstReadyList ) );
     kInitializeList( &( gs_stScheduler.stWaitList ) );
 
-    // TCB�� �Ҵ� �޾� ���� ���� �½�ũ�� �����Ͽ�, ������ ������ �½�ũ�� ������ TCB�� �غ�
+    // TCB占쏙옙 占쌀댐옙 占쌨억옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹울옙, 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쌔븝옙
     gs_stScheduler.pstRunningTask = kAllocateTCB();
-    gs_stScheduler.pstRunningTask->qwFlags = kGetPass(TASK_FLAGS_HIGHEST);
-    gs_stScheduler.pstRunningTask->iPass = TASK_FLAGS_HIGHEST;
+    gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
+    gs_stScheduler.pstRunningTask->iPass = TASK_PASS_MAX;
 
-    // ���μ��� ������ ����ϴµ� ����ϴ� �ڷᱸ�� �ʱ�ȭ
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙求쨉占� 占쏙옙占쏙옙求占� 占쌘료구占쏙옙 占십깍옙화
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
 }
 
 /**
- *  ���� ���� ���� �½�ũ�� ����
+ *  占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 void kSetRunningTask( TCB* pstTask )
 {
 	BOOL bPreviousFlag;
 
-	// �Ӱ� ���� ����
+	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
 	bPreviousFlag = kLockForSystemData();
 
     gs_stScheduler.pstRunningTask = pstTask;
 
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
 }
 
 /**
- *  ���� ���� ���� �½�ũ�� ��ȯ
+ *  占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙환
  */
 TCB* kGetRunningTask( void )
 {
 	BOOL bPreviousFlag;
 	TCB* pstRunningTask;
 
-	// �Ӱ� ���� ����
+	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
 	bPreviousFlag = kLockForSystemData();
 
 	pstRunningTask = gs_stScheduler.pstRunningTask;
 
-	// �Ӱ� ���� ��
+	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 
     return pstRunningTask;
 }
 
 /**
- *  �½�ũ ����Ʈ���� �������� ������ �½�ũ�� ����
+ *  占승쏙옙크 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 
 /*
@@ -290,17 +291,17 @@ static TCB* kGetNextTaskToRun( void )
     TCB* pstTarget = NULL;
     int iTaskCount, i, j;
 
-    // ť�� �½�ũ�� ������ ��� ť�� �½�ũ�� 1ȸ�� ����� ���, ��� ť�� ���μ�����
-    // �纸�Ͽ� �½�ũ�� �������� ���� �� ������ NULL�� ��� �ѹ� �� ����
+    // 큐占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占� 큐占쏙옙 占승쏙옙크占쏙옙 1회占쏙옙 占쏙옙占쏙옙占� 占쏙옙占�, 占쏙옙占� 큐占쏙옙 占쏙옙占싸쇽옙占쏙옙占쏙옙
+    // 占썹보占싹울옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙 占쏙옙占쏙옙占쏙옙 NULL占쏙옙 占쏙옙占� 占싼뱄옙 占쏙옙 占쏙옙占쏙옙
     for( j = 0 ; j < 2 ; j++ )
     {
-        // ���� �켱 �������� ���� �켱 �������� ����Ʈ�� Ȯ���Ͽ� �����ٸ��� �½�ũ�� ����
+        // 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 확占쏙옙占싹울옙 占쏙옙占쏙옙占쌕몌옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
         for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
         {
             iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList[ i ] ) );
 
-            // ���� ������ Ƚ������ ����Ʈ�� �½�ũ ���� �� ������ ���� �켱 ������
-            // �½�ũ�� ������
+            // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 횟占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙
+            // 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙
             if( gs_stScheduler.viExecuteCount[ i ] < iTaskCount )
             {
                 pstTarget = ( TCB* ) kRemoveListFromHeader(
@@ -308,14 +309,14 @@ static TCB* kGetNextTaskToRun( void )
                 gs_stScheduler.viExecuteCount[ i ]++;
                 break;
             }
-            // ���� ������ Ƚ���� �� ������ ���� Ƚ���� �ʱ�ȭ�ϰ� ���� �켱 ������ �纸��
+            // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 횟占쏙옙占쏙옙 占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 횟占쏙옙占쏙옙 占십깍옙화占싹곤옙 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占썹보占쏙옙
             else
             {
                 gs_stScheduler.viExecuteCount[ i ] = 0;
             }
         }
 
-        // ���� ������ �½�ũ�� ã������ ����
+        // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
         if( pstTarget != NULL )
         {
             break;
@@ -326,7 +327,7 @@ static TCB* kGetNextTaskToRun( void )
 */
 
 /**
- * ��÷ �����ٷ��� �½�ũ ����Ʈ���� �������� ������ �½�ũ�� ����
+ * 占쏙옙첨 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 /*
 static TCB* kGetNextTaskToRun( void )
@@ -336,7 +337,7 @@ static TCB* kGetNextTaskToRun( void )
 
     pstTarget = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
     iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
-    // random ���� �ʱ�ȭ
+    // random 占쏙옙占쏙옙 占십깍옙화
     srand(time());
     randomSelection = rand(gs_stScheduler.curTicketTotal);
     curTicketsCount = 0;
@@ -346,7 +347,7 @@ static TCB* kGetNextTaskToRun( void )
     	return NULL;
     }
 
-	// ��÷ ����� ���� ������ �½�ũ ����
+	// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 	for( i = 0 ; i < iTaskCount ; i++ )
 	{
 		curTicketsCount += GETPRIORITY(pstTarget->qwFlags);
@@ -363,8 +364,8 @@ static TCB* kGetNextTaskToRun( void )
 */
 
 
-// ���� �����ٷ��� �½�ũ ����Ʈ���� �������� ������ �½�ũ�� ����
-// ���� ���� Pass���� ������ �½�ũ�� �����Ѵ�.
+// 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+// 占쏙옙占쏙옙 占쏙옙占쏙옙 Pass占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싼댐옙.
 static TCB* kGetNextTaskToRun( void )
 {
     TCB* curTask, * pstTarget;
@@ -380,15 +381,16 @@ static TCB* kGetNextTaskToRun( void )
     	return NULL;
     }
 
-    if(curPassMin > gs_stScheduler.pstRunningTask->iPass +
-    		kGetPass(GETPRIORITY(gs_stScheduler.pstRunningTask->qwFlags)))
+    if(curPassMin > gs_stScheduler.pstRunningTask->iPass
+    		+ kGetPass(gs_stScheduler.pstRunningTask->qwFlags))
     {
-    	curPassMin = gs_stScheduler.pstRunningTask->iPass + kGetPass(GETPRIORITY(gs_stScheduler.pstRunningTask->qwFlags));
+    	curPassMin = gs_stScheduler.pstRunningTask->iPass
+    			+ kGetPass(gs_stScheduler.pstRunningTask->qwFlags);
     	pstTarget = gs_stScheduler.pstRunningTask;
     	allPassFull = FALSE;
     }
 
-	// ��÷ ����� ���� ������ �½�ũ ����
+	// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 	for( i = 0 ; i < iTaskCount ; i++ )
 	{
 		if(curPassMin > curTask->iPass)
@@ -397,26 +399,21 @@ static TCB* kGetNextTaskToRun( void )
 			pstTarget = curTask;
 			allPassFull = FALSE;
 		}
-		curTask = kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
+		curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
 	}
 
 	if(allPassFull == TRUE)
 	{
 		kSetAllPassToZero();
-		pstTarget = kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
+		pstTarget = (TCB*)kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
 	}
 
-	kRemoveList( &(gs_stScheduler.vstReadyList), pstTarget->stLink.qwID );
-	if(pstTarget == gs_stScheduler.pstRunningTask)
-	{
-		pstTarget->iPass += kGetPass(GETPRIORITY(pstTarget->qwFlags));
-	}
-
+	kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
 	return pstTarget;
 }
 
 /**
- *  �½�ũ�� �����ٷ��� �غ� ����Ʈ�� ����
+ *  占승쏙옙크占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
  */
 
 /*
@@ -436,7 +433,7 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
 */
 
 /*
-// ��÷ �����ٸ����� �½�ũ�� �����ٷ��� �غ� ����Ʈ�� ����
+// 占쏙옙첨 占쏙옙占쏙옙占쌕몌옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
     BYTE bPriority;
@@ -452,7 +449,7 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
 }
 */
 
-// ���� �����ٸ����� �½�ũ�� �����ٷ��� �غ� ����Ʈ�� ����
+// 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕몌옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
     BYTE bPriority;
@@ -468,7 +465,7 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
 }
 
 /**
- *  �غ� ť���� �½�ũ�� ����
+ *  占쌔븝옙 큐占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 
 /*
@@ -477,20 +474,20 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
     TCB* pstTarget;
     BYTE bPriority;
 
-    // �½�ũ ID�� ��ȿ���� ������ ����
+    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
     {
         return NULL;
     }
 
-    // TCB Ǯ���� �ش� �½�ũ�� TCB�� ã�� ������ ID�� ��ġ�ϴ°� Ȯ��
+    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
     pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
     if( pstTarget->stLink.qwID != qwTaskID )
     {
         return NULL;
     }
 
-    // �½�ũ�� �����ϴ� �غ� ����Ʈ���� �½�ũ ����
+    // 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹댐옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
     bPriority = GETPRIORITY( pstTarget->qwFlags );
 
     pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList[ bPriority ]),
@@ -500,19 +497,19 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 */
 
 /*
-// ��÷ �����ٷ��� �غ� ť���� �½�ũ�� ����
+// 占쏙옙첨 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 큐占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
     TCB* pstTarget;
     BYTE bPriority;
 
-    // �½�ũ ID�� ��ȿ���� ������ ����
+    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
     {
         return NULL;
     }
 
-    // TCB Ǯ���� �ش� �½�ũ�� TCB�� ã�� ������ ID�� ��ġ�ϴ°� Ȯ��
+    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
     pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
     if( pstTarget->stLink.qwID != qwTaskID )
     {
@@ -526,32 +523,31 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 }
 */
 
-// ���� �����ٷ��� �غ� ť���� �½�ũ�� ����
+// 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 큐占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
     TCB* pstTarget;
 
-    // �½�ũ ID�� ��ȿ���� ������ ����
+    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
     {
         return NULL;
     }
 
-    // TCB Ǯ���� �ش� �½�ũ�� TCB�� ã�� ������ ID�� ��ġ�ϴ°� Ȯ��
+    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
     pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
     if( pstTarget->stLink.qwID != qwTaskID )
     {
         return NULL;
     }
 
-    pstTarget->iPass = TASK_PASS_MAX;
     pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList ), qwTaskID );
     return pstTarget;
 }
 
 
 /**
- *  �½�ũ�� �켱 ������ ������
+ *  占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
  */
 /*
 BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
@@ -564,40 +560,40 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
         return FALSE;
     }
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // ���� �������� �½�ũ�̸� �켱 ������ ����
-    // PIT ��Ʈ�ѷ��� ���ͷ�Ʈ(IRQ 0)�� �߻��Ͽ� �½�ũ ��ȯ�� ����� �� �����
-    // �켱 ������ ����Ʈ�� �̵�
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占싱몌옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // PIT 占쏙옙트占싼뤄옙占쏙옙 占쏙옙占싶뤄옙트(IRQ 0)占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쏙옙占쏙옙占�
+    // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
     pstTarget = gs_stScheduler.pstRunningTask;
     if( pstTarget->stLink.qwID == qwTaskID )
     {
         SETPRIORITY( pstTarget->qwFlags, bPriority );
     }
-    // �������� �½�ũ�� �ƴϸ� �غ� ����Ʈ���� ã�Ƽ� �ش� �켱 ������ ����Ʈ�� �̵�
+    // 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占싣니몌옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 찾占싣쇽옙 占쌔댐옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
     else
     {
-        // �غ� ����Ʈ���� �½�ũ�� ã�� ���ϸ� ���� �½�ũ�� ã�Ƽ� �켱 ������ ����
+        // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
         pstTarget = kRemoveTaskFromReadyList( qwTaskID );
         if( pstTarget == NULL )
         {
-            // �½�ũ ID�� ���� ã�Ƽ� ����
+            // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占쏙옙
             pstTarget = kGetTCBInTCBPool( GETTCBOFFSET( qwTaskID ) );
             if( pstTarget != NULL )
             {
-                // �켱 ������ ����
+                // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
                 SETPRIORITY( pstTarget->qwFlags, bPriority );
             }
         }
         else
         {
-            // �켱 ������ �����ϰ� �غ� ����Ʈ�� �ٽ� ����
+            // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싹곤옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쌕쏙옙 占쏙옙占쏙옙
             SETPRIORITY( pstTarget->qwFlags, bPriority );
             kAddTaskToReadyList( pstTarget );
         }
     }
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return TRUE;
 }
@@ -613,48 +609,48 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
         return FALSE;
     }
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // ���� �������� �½�ũ�̸� �켱 ������ ����
-    // PIT ��Ʈ�ѷ��� ���ͷ�Ʈ(IRQ 0)�� �߻��Ͽ� �½�ũ ��ȯ�� ����� �� �����
-    // �켱 ������ ����Ʈ�� �̵�
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占싱몌옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // PIT 占쏙옙트占싼뤄옙占쏙옙 占쏙옙占싶뤄옙트(IRQ 0)占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쏙옙占쏙옙占�
+    // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
     pstTarget = gs_stScheduler.pstRunningTask;
     if( pstTarget->stLink.qwID == qwTaskID )
     {
         SETPRIORITY( pstTarget->qwFlags, bPriority );
     }
-    // �������� �½�ũ�� �ƴϸ� �غ� ����Ʈ���� ã�Ƽ� �ش� �켱 ������ ����Ʈ�� �̵�
+    // 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占싣니몌옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 찾占싣쇽옙 占쌔댐옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
     else
     {
-        // �غ� ����Ʈ���� �½�ũ�� ã�� ���ϸ� ���� �½�ũ�� ã�Ƽ� �켱 ������ ����
+        // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
         pstTarget = kRemoveTaskFromReadyList( qwTaskID );
         if( pstTarget == NULL )
         {
-            // �½�ũ ID�� ���� ã�Ƽ� ����
+            // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占쏙옙
             pstTarget = kGetTCBInTCBPool( GETTCBOFFSET( qwTaskID ) );
             if( pstTarget != NULL )
             {
-                // �켱 ������ ����
+                // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
                 SETPRIORITY( pstTarget->qwFlags, bPriority );
             }
         }
         else
         {
-            // �켱 ������ �����ϰ� �غ� ����Ʈ�� �ٽ� ����
+            // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싹곤옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쌕쏙옙 占쏙옙占쏙옙
             SETPRIORITY( pstTarget->qwFlags, bPriority );
             kAddTaskToReadyList( pstTarget );
         }
     }
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return TRUE;
 }
 
 
 /**
- *  �ٸ� �½�ũ�� ã�Ƽ� ��ȯ
- *      ���ͷ�Ʈ�� ���ܰ� �߻����� �� ȣ���ϸ� �ȵ�
+ *  占쌕몌옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쏙옙환
+ *      占쏙옙占싶뤄옙트占쏙옙 占쏙옙占쌤곤옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙 호占쏙옙占싹몌옙 占싫듸옙
  */
 /*
 void kSchedule( void )
@@ -662,21 +658,21 @@ void kSchedule( void )
     TCB* pstRunningTask, * pstNextTask;
     BOOL bPreviousFlag;
 
-    // ��ȯ�� �½�ũ�� �־�� ��
+    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쌍억옙占� 占쏙옙
     if( kGetReadyTaskCount() < 1 )
     {
         return ;
     }
 
-    // ��ȯ�ϴ� ���� ���ͷ�Ʈ�� �߻��Ͽ� �½�ũ ��ȯ�� �� �Ͼ�� ����ϹǷ� ��ȯ�ϴ�
-    // ���� ���ͷ�Ʈ�� �߻����� ���ϵ��� ����
+    // 占쏙옙환占싹댐옙 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙 占싹어나占쏙옙 占쏙옙占쏙옙球퓐占� 占쏙옙환占싹댐옙
+    // 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙占싹듸옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
-    // ������ ���� �½�ũ�� ����
+    // 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
     pstNextTask = kGetNextTaskToRun();
 
     if( pstNextTask == NULL )
     {
-        // �Ӱ� ���� ��
+        // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return ;
     }
@@ -686,22 +682,22 @@ void kSchedule( void )
     	kPrintf("%d\n", pstNextTask->stLink.qwID);
     	trace_task_sequence--;
     }
-    // ���� �������� �½�ũ�� ������ ������ �� ���ؽ�Ʈ ��ȯ
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	pstRunningTask = gs_stScheduler.pstRunningTask;
 	gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// ���� �½�ũ���� ��ȯ�Ǿ��ٸ� ����� ���μ��� �ð��� ������Ŵ
+	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
 	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
 	{
 		gs_stScheduler.qwSpendProcessorTimeInIdleTask +=
 			TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
 	}
 
-	// ���μ��� ��� �ð��� ������Ʈ
+	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
 	gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
 
-	// �½�ũ ���� �÷��װ� ������ ��� ���ؽ�Ʈ�� ������ �ʿ䰡 �����Ƿ�, ��� ����Ʈ��
-	// �����ϰ� ���ؽ�Ʈ ��ȯ
+	// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占� 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙 占십요가 占쏙옙占쏙옙占실뤄옙, 占쏙옙占� 占쏙옙占쏙옙트占쏙옙
+	// 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
 	{
 		kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
@@ -713,56 +709,53 @@ void kSchedule( void )
 		kSwitchContext( &( pstRunningTask->stContext ), &( pstNextTask->stContext ) );
 	}
 
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 }
 */
 
 void kSchedule( void )
 {
-    TCB* pstRunningTask, * pstNextTask;
+    TCB* pstRunningTask, * pstNextTask, * curTask;
+    int iTaskCount, i;
     BOOL bPreviousFlag;
 
-    // ��ȯ�� �½�ũ�� �־�� ��
+    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쌍억옙占� 占쏙옙
     if( kGetReadyTaskCount() < 1 )
     {
         return ;
     }
 
-    // ��ȯ�ϴ� ���� ���ͷ�Ʈ�� �߻��Ͽ� �½�ũ ��ȯ�� �� �Ͼ�� ����ϹǷ� ��ȯ�ϴ�
-    // ���� ���ͷ�Ʈ�� �߻����� ���ϵ��� ����
+    // 占쏙옙환占싹댐옙 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙 占싹어나占쏙옙 占쏙옙占쏙옙球퓐占� 占쏙옙환占싹댐옙
+    // 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙占싹듸옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
-    // ������ ���� �½�ũ�� ����
+    // 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+
     pstNextTask = kGetNextTaskToRun();
 
     if( pstNextTask == NULL )
     {
-        // �Ӱ� ���� ��
+        // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return ;
     }
 
-    if(trace_task_sequence != 0)
-    {
-    	kPrintf("%d\n", pstNextTask->stLink.qwID);
-    	trace_task_sequence--;
-    }
-    // ���� �������� �½�ũ�� ������ ������ �� ���ؽ�Ʈ ��ȯ
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	pstRunningTask = gs_stScheduler.pstRunningTask;
 	gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// ���� �½�ũ���� ��ȯ�Ǿ��ٸ� ����� ���μ��� �ð��� ������Ŵ
+	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
 	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
 	{
 		gs_stScheduler.qwSpendProcessorTimeInIdleTask +=
 			TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
 	}
 
-	// ���μ��� ��� �ð��� ������Ʈ
+	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
 	gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
 
-	// �½�ũ ���� �÷��װ� ������ ��� ���ؽ�Ʈ�� ������ �ʿ䰡 �����Ƿ�, ��� ����Ʈ��
-	// �����ϰ� ���ؽ�Ʈ ��ȯ
+	// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占� 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙 占십요가 占쏙옙占쏙옙占실뤄옙, 占쏙옙占� 占쏙옙占쏙옙트占쏙옙
+	// 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	if(pstRunningTask != pstNextTask)
 	{
 		if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
@@ -776,49 +769,67 @@ void kSchedule( void )
 			kSwitchContext( &( pstRunningTask->stContext ), &( pstNextTask->stContext ) );
 		}
 	}
-    // �Ӱ� ���� ��
+	else
+	{
+		pstNextTask->iPass += kGetPass(GETPRIORITY(pstNextTask->qwFlags));
+	}
+
+	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
+
+	if(trace_task_sequence != 0)
+	{
+		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
+		iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
+
+	    kPrintf("readyList: ");
+	    // 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+		for( i = 0 ; i < iTaskCount ; i++ )
+		{
+			kPrintf("%d / %d, ", curTask->stLink.qwID, curTask->iPass);
+			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
+		}
+
+		kPrintf("curTask: %d / %d\n", gs_stScheduler.pstRunningTask->stLink.qwID,
+				gs_stScheduler.pstRunningTask->iPass);
+		trace_task_sequence--;
+	}
 }
 
 /**
- *  ���ͷ�Ʈ�� �߻����� ��, �ٸ� �½�ũ�� ã�� ��ȯ
- *      �ݵ�� ���ͷ�Ʈ�� ���ܰ� �߻����� �� ȣ���ؾ� ��
+ *  占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙, 占쌕몌옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙환
+ *      占쌥듸옙占� 占쏙옙占싶뤄옙트占쏙옙 占쏙옙占쌤곤옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙 호占쏙옙占쌔억옙 占쏙옙
  */
 BOOL kScheduleInInterrupt( void )
 {
-    TCB* pstRunningTask, * pstNextTask;
+    TCB* pstRunningTask, * pstNextTask, * curTask;
+    int iTaskCount, i;
     char* pcContextAddress;
     BOOL bPreviousFlag;
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // ��ȯ�� �½�ũ�� ������ ����
+    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     pstNextTask = kGetNextTaskToRun();
     if( pstNextTask == NULL )
     {
-    		// �Ӱ� ���� ��
+    		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return FALSE;
     }
 
-    if(trace_task_sequence != 0)
-	{
-		kPrintf("%d\n", pstNextTask->stLink.qwID);
-		trace_task_sequence--;
-	}
-
     //==========================================================================
-    //  �½�ũ ��ȯ ó��
-    //      ���ͷ�Ʈ �ڵ鷯���� ������ ���ؽ�Ʈ�� �ٸ� ���ؽ�Ʈ�� ����� ������� ó��
+    //  占승쏙옙크 占쏙옙환 처占쏙옙
+    //      占쏙옙占싶뤄옙트 占쌘들러占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쌔쏙옙트占쏙옙 占쌕몌옙 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏘쓰占쏙옙 占쏙옙占쏙옙占쏙옙占� 처占쏙옙
     //==========================================================================
     pcContextAddress = ( char* ) IST_STARTADDRESS + IST_SIZE - sizeof( CONTEXT );
 
-    // ���� �������� �½�ũ�� ������ ������ �� ���ؽ�Ʈ ��ȯ
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	pstRunningTask = gs_stScheduler.pstRunningTask;
 	gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// ���� �½�ũ���� ��ȯ�Ǿ��ٸ� ����� ���μ��� �ð��� ������Ŵ
+	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
 	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
 	{
 		gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME;
@@ -826,36 +837,59 @@ BOOL kScheduleInInterrupt( void )
 
 	if(pstRunningTask != pstNextTask)
 	{
-		// �½�ũ ���� �÷��װ� ������ ���, ���ؽ�Ʈ�� �������� �ʰ� ��� ����Ʈ���� ����
+		// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占�, 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占십곤옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙
 		if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
 		{
 			kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
 		}
-		// �½�ũ�� ������� ������ IST�� �ִ� ���ؽ�Ʈ�� �����ϰ�, ���� �½�ũ�� �غ� ����Ʈ��
-		// �ű�
+		// 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙占쏙옙 IST占쏙옙 占쌍댐옙 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占싹곤옙, 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙
+		// 占신깍옙
 		else
 		{
 			kMemCpy( &( pstRunningTask->stContext ), pcContextAddress, sizeof( CONTEXT ) );
 			kAddTaskToReadyList( pstRunningTask );
 		}
 	}
+	else
+	{
+		pstNextTask->iPass += kGetPass(GETPRIORITY(pstNextTask->qwFlags));
+	}
 
-	// �Ӱ� ���� ��
+	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 
-    // ��ȯ�ؼ� ������ �½�ũ�� Running Task�� �����ϰ� ���ؽ�Ʈ�� IST�� �����ؼ�
-    // �ڵ����� �½�ũ ��ȯ�� �Ͼ���� ��
+	if(trace_task_sequence != 0)
+	{
+		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
+		iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
+
+		kPrintf("readyList: ");
+		// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+		for( i = 0 ; i < iTaskCount ; i++ )
+		{
+			kPrintf("%d / %d, ", curTask->stLink.qwID, curTask->iPass);
+			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
+		}
+
+		kPrintf("curTask: %d / %d\n", gs_stScheduler.pstRunningTask->stLink.qwID,
+				gs_stScheduler.pstRunningTask->iPass);
+		trace_task_sequence--;
+	}
+
+    // 占쏙옙환占쌔쇽옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 Running Task占쏙옙 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트占쏙옙 IST占쏙옙 占쏙옙占쏙옙占쌔쇽옙
+    // 占쌘듸옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙환占쏙옙 占싹어나占쏙옙占쏙옙 占쏙옙
 	if(pstRunningTask != pstNextTask)
 	{
 		kMemCpy( pcContextAddress, &( pstNextTask->stContext ), sizeof( CONTEXT ) );
 	}
-    // ���μ��� ��� �ð��� ������Ʈ
+
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
     return TRUE;
 }
 
 /**
- *  ���μ����� ����� �� �ִ� �ð��� �ϳ� ����
+ *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占시곤옙占쏙옙 占싹놂옙 占쏙옙占쏙옙
  */
 void kDecreaseProcessorTime( void )
 {
@@ -866,7 +900,7 @@ void kDecreaseProcessorTime( void )
 }
 
 /**
- *  ���μ����� ����� �� �ִ� �ð��� �� �Ǿ����� ���θ� ��ȯ
+ *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占시곤옙占쏙옙 占쏙옙 占실억옙占쏙옙占쏙옙 占쏙옙占싸몌옙 占쏙옙환
  */
 BOOL kIsProcessorTimeExpired( void )
 {
@@ -878,7 +912,7 @@ BOOL kIsProcessorTimeExpired( void )
 }
 
 /**
- *  �½�ũ�� ����
+ *  占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 BOOL kEndTask( QWORD qwTaskID )
 {
@@ -886,40 +920,40 @@ BOOL kEndTask( QWORD qwTaskID )
     BYTE bPriority;
     BOOL bPreviousFlag;
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // ���� �������� �½�ũ�̸� EndTask ��Ʈ�� �����ϰ� �½�ũ�� ��ȯ
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占싱몌옙 EndTask 占쏙옙트占쏙옙 占쏙옙占쏙옙占싹곤옙 占승쏙옙크占쏙옙 占쏙옙환
     pstTarget = gs_stScheduler.pstRunningTask;
     if( pstTarget->stLink.qwID == qwTaskID )
     {
         pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
         SETPRIORITY( pstTarget->qwFlags, TASK_FLAGS_WAIT );
 
-        	// �Ӱ� ���� ��
+        	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
         kUnlockForSystemData(bPreviousFlag);
 
         kSchedule();
 
-        // �½�ũ�� ��ȯ �Ǿ����Ƿ� �Ʒ� �ڵ�� ���� ������� ����
+        // 占승쏙옙크占쏙옙 占쏙옙환 占실억옙占쏙옙占실뤄옙 占싣뤄옙 占쌘듸옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙
         while( 1 ) ;
     }
-    // ���� ���� �½�ũ�� �ƴϸ� �غ� ť���� ���� ã�Ƽ� ��� ����Ʈ�� ����
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占싣니몌옙 占쌔븝옙 큐占쏙옙占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
     else
     {
-        // �غ� ����Ʈ���� �½�ũ�� ã�� ���ϸ� ���� �½�ũ�� ã�Ƽ� �½�ũ ���� ��Ʈ��
-        // ����
+        // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙트占쏙옙
+        // 占쏙옙占쏙옙
         pstTarget = kRemoveTaskFromReadyList( qwTaskID );
         if( pstTarget == NULL )
         {
-            // �½�ũ ID�� ���� ã�Ƽ� ����
+            // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占쏙옙
             pstTarget = kGetTCBInTCBPool( GETTCBOFFSET( qwTaskID ) );
             if( pstTarget != NULL )
             {
                 pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
                 SETPRIORITY( pstTarget->qwFlags, TASK_FLAGS_WAIT );
             }
-            	// �Ӱ� ���� ��
+            	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
             kUnlockForSystemData(bPreviousFlag);
             return TRUE;
         }
@@ -932,7 +966,7 @@ BOOL kEndTask( QWORD qwTaskID )
 }
 
 /**
- *  �½�ũ�� �ڽ��� ������
+ *  占승쏙옙크占쏙옙 占쌘쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
  */
 void kExitTask( void )
 {
@@ -940,7 +974,7 @@ void kExitTask( void )
 }
 
 /**
- *  �غ� ť�� �ִ� ��� �½�ũ�� ���� ��ȯ
+ *  占쌔븝옙 큐占쏙옙 占쌍댐옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
  */
 /*
 int kGetReadyTaskCount( void )
@@ -949,65 +983,65 @@ int kGetReadyTaskCount( void )
     int i;
     BOOL bPreviousFlag;
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // ��� �غ� ť�� Ȯ���Ͽ� �½�ũ ������ ����
+    // 占쏙옙占� 占쌔븝옙 큐占쏙옙 확占쏙옙占싹울옙 占승쏙옙크 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
     {
         iTotalCount += kGetListCount( &( gs_stScheduler.vstReadyList[ i ] ) );
     }
 
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount ;
 }
 */
 
 
-// ��÷ �����ٸ����� �غ� ť�� �ִ� ��� �½�ũ�� ���� ��ȯ
-// ���� �����ٸ����� �غ� ť�� �ִ� ��� �½�ũ�� ���� ��ȯ
+// 占쏙옙첨 占쏙옙占쏙옙占쌕몌옙占쏙옙占쏙옙 占쌔븝옙 큐占쏙옙 占쌍댐옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
+// 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕몌옙占쏙옙占쏙옙 占쌔븝옙 큐占쏙옙 占쌍댐옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
 int kGetReadyTaskCount( void )
 {
     int iTotalCount = 0;
     int i;
     BOOL bPreviousFlag;
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // ��� �غ� ť�� Ȯ���Ͽ� �½�ũ ������ ����
+    // 占쏙옙占� 占쌔븝옙 큐占쏙옙 확占쏙옙占싹울옙 占승쏙옙크 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     iTotalCount += kGetListCount( &( gs_stScheduler.vstReadyList ) );
 
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount;
 }
 
 
 /**
- *  ��ü �½�ũ�� ���� ��ȯ
+ *  占쏙옙체 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
  */
 int kGetTaskCount( void )
 {
     int iTotalCount;
     BOOL bPreviousFlag;
 
-    // �غ� ť�� �½�ũ ���� ���� ��, ��� ť�� �½�ũ ���� ���� ���� ���� �½�ũ ���� ����
+    // 占쌔븝옙 큐占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙, 占쏙옙占� 큐占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙占쏙옙
     iTotalCount = kGetReadyTaskCount();
 
-    // �Ӱ� ���� ����
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
     iTotalCount += kGetListCount( &( gs_stScheduler.stWaitList ) ) + 1;
 
-    // �Ӱ� ���� ��
+    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount;
 }
 
 /**
- *  TCB Ǯ���� �ش� �������� TCB�� ��ȯ
+ *  TCB 풀占쏙옙占쏙옙 占쌔댐옙 占쏙옙占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쏙옙환
  */
 TCB* kGetTCBInTCBPool( int iOffset )
 {
@@ -1020,15 +1054,15 @@ TCB* kGetTCBInTCBPool( int iOffset )
 }
 
 /**
- *  �½�ũ�� �����ϴ��� ���θ� ��ȯ
+ *  占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹댐옙占쏙옙 占쏙옙占싸몌옙 占쏙옙환
  */
 BOOL kIsTaskExist( QWORD qwID )
 {
     TCB* pstTCB;
 
-    // ID�� TCB�� ��ȯ
+    // ID占쏙옙 TCB占쏙옙 占쏙옙환
     pstTCB = kGetTCBInTCBPool( GETTCBOFFSET( qwID ) );
-    // TCB�� ���ų� ID�� ��ġ���� ������ �������� �ʴ� ����
+    // TCB占쏙옙 占쏙옙占신놂옙 ID占쏙옙 占쏙옙치占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占십댐옙 占쏙옙占쏙옙
     if( ( pstTCB == NULL ) || ( pstTCB->stLink.qwID != qwID ) )
     {
         return FALSE;
@@ -1037,7 +1071,7 @@ BOOL kIsTaskExist( QWORD qwID )
 }
 
 /**
- *  ���μ����� ������ ��ȯ
+ *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙환
  */
 QWORD kGetProcessorLoad( void )
 {
@@ -1045,11 +1079,11 @@ QWORD kGetProcessorLoad( void )
 }
 
 //==============================================================================
-//  ���� �½�ũ ����
+//  占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 //==============================================================================
 /**
- *  ���� �½�ũ
- *      ��� ť�� ���� ������� �½�ũ�� ����
+ *  占쏙옙占쏙옙 占승쏙옙크
+ *      占쏙옙占� 큐占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 void kIdleTask( void )
 {
@@ -1059,19 +1093,19 @@ void kIdleTask( void )
     BOOL bPreviousFlag;
     QWORD qwTaskID;
 
-    // ���μ��� ��뷮 ����� ���� ���� ������ ����
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙酉� 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     qwLastSpendTickInIdleTask = gs_stScheduler.qwSpendProcessorTimeInIdleTask;
     qwLastMeasureTickCount = kGetTickCount();
 
     while( 1 )
     {
-        // ���� ���¸� ����
+        // 占쏙옙占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙
         qwCurrentMeasureTickCount = kGetTickCount();
         qwCurrentSpendTickInIdleTask = gs_stScheduler.qwSpendProcessorTimeInIdleTask;
 
-        // ���μ��� ��뷮�� ���
-        // 100 - ( ���� �½�ũ�� ����� ���μ��� �ð� ) * 100 / ( �ý��� ��ü����
-        // ����� ���μ��� �ð� )
+        // 占쏙옙占싸쇽옙占쏙옙 占쏙옙酉�占쏙옙 占쏙옙占�
+        // 100 - ( 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙 ) * 100 / ( 占시쏙옙占쏙옙 占쏙옙체占쏙옙占쏙옙
+        // 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙 )
         if( qwCurrentMeasureTickCount - qwLastMeasureTickCount == 0 )
         {
             gs_stScheduler.qwProcessorLoad = 0;
@@ -1083,30 +1117,30 @@ void kIdleTask( void )
                 100 /( qwCurrentMeasureTickCount - qwLastMeasureTickCount );
         }
 
-        // ���� ���¸� ���� ���¿� ����
+        // 占쏙옙占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙 占쏙옙占승울옙 占쏙옙占쏙옙
         qwLastMeasureTickCount = qwCurrentMeasureTickCount;
         qwLastSpendTickInIdleTask = qwCurrentSpendTickInIdleTask;
 
-        // ���μ����� ���Ͽ� ���� ���� ��
+        // 占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占싹울옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙
         kHaltProcessorByLoad();
 
-        // ��� ť�� ������� �½�ũ�� ������ �½�ũ�� ������
+        // 占쏙옙占� 큐占쏙옙 占쏙옙占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙
         if( kGetListCount( &( gs_stScheduler.stWaitList ) ) >= 0 )
         {
             while( 1 )
             {
-            		// �Ӱ� ���� ����
+            		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
             	bPreviousFlag = kLockForSystemData();
                 pstTask = kRemoveListFromHeader( &( gs_stScheduler.stWaitList ) );
                 if( pstTask == NULL )
                 {
-                		// �Ӱ� ���� ��
+                		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
                 	kUnlockForSystemData(bPreviousFlag);
                 	break;
                 }
                 qwTaskID = pstTask->stLink.qwID;
                 kFreeTCB( qwTaskID );
-                	// �Ӱ� ���� ��
+                	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
                 kUnlockForSystemData(bPreviousFlag);
                 kPrintf( "IDLE: Task ID[0x%q] is completely ended.\n",
                                         qwTaskID );
@@ -1118,7 +1152,7 @@ void kIdleTask( void )
 }
 
 /**
- *  ������ ���μ��� ���Ͽ� ���� ���μ����� ���� ��
+ *  占쏙옙占쏙옙占쏙옙 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹울옙 占쏙옙占쏙옙 占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙
  */
 void kHaltProcessorByLoad( void )
 {
@@ -1159,7 +1193,7 @@ void kSetAllPassToZero()
 		return NULL;
 	}
 
-	// ��÷ ����� ���� ������ �½�ũ ����
+	// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 	for( i = 0 ; i < iTaskCount ; i++ )
 	{
 		pstTarget->iPass = 0;
