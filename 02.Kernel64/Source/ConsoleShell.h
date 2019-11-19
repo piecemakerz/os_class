@@ -2,46 +2,47 @@
 #define __CONSOLESHELL_H__
 
 #include "Types.h"
+#include "Task.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ¸ÅÅ©·Î
+// ï¿½ï¿½Å©ï¿½ï¿½
 //
 ////////////////////////////////////////////////////////////////////////////////
 #define CONSOLESHELL_MAXCOMMANDBUFFERCOUNT  300
 #define CONSOLESHELL_PROMPTMESSAGE          "MINT64>"
 
-// ¹®ÀÚ¿­ Æ÷ÀÎÅÍ¸¦ ÆÄ¶ó¹ÌÅÍ·Î ¹Þ´Â ÇÔ¼ö Æ÷ÀÎÅÍ Å¸ÀÔ Á¤ÀÇ
+// ï¿½ï¿½ï¿½Ú¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½Ä¶ï¿½ï¿½ï¿½Í·ï¿½ ï¿½Þ´ï¿½ ï¿½Ô¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 typedef void ( * CommandFunction ) ( const char* pcParameter );
 
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ±¸Á¶Ã¼
+// ï¿½ï¿½ï¿½ï¿½Ã¼
 //
 ////////////////////////////////////////////////////////////////////////////////
-// 1¹ÙÀÌÆ®·Î Á¤·Ä
+// 1ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 #pragma pack( push, 1 )
 
-// ¼ÐÀÇ Ä¿¸Çµå¸¦ ÀúÀåÇÏ´Â ÀÚ·á±¸Á¶
+// ï¿½ï¿½ï¿½ï¿½ Ä¿ï¿½Çµå¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ú·á±¸ï¿½ï¿½
 typedef struct kShellCommandEntryStruct
 {
-    // Ä¿¸Çµå ¹®ÀÚ¿­
+    // Ä¿ï¿½Çµï¿½ ï¿½ï¿½ï¿½Ú¿ï¿½
     char* pcCommand;
-    // Ä¿¸ÇµåÀÇ µµ¿ò¸»
+    // Ä¿ï¿½Çµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     char* pcHelp;
-    // Ä¿¸Çµå¸¦ ¼öÇàÇÏ´Â ÇÔ¼öÀÇ Æ÷ÀÎÅÍ
+    // Ä¿ï¿½Çµå¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     CommandFunction pfFunction;
 } SHELLCOMMANDENTRY;
 
-// ÆÄ¶ó¹ÌÅÍ¸¦ Ã³¸®ÇÏ±âÀ§ÇØ Á¤º¸¸¦ ÀúÀåÇÏ´Â ÀÚ·á±¸Á¶
+// ï¿½Ä¶ï¿½ï¿½ï¿½Í¸ï¿½ Ã³ï¿½ï¿½ï¿½Ï±ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ú·á±¸ï¿½ï¿½
 typedef struct kParameterListStruct
 {
-    // ÆÄ¶ó¹ÌÅÍ ¹öÆÛÀÇ ¾îµå·¹½º
+    // ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½å·¹ï¿½ï¿½
     const char* pcBuffer;
-    // ÆÄ¶ó¹ÌÅÍÀÇ ±æÀÌ
+    // ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     int iLength;
-    // ÇöÀç Ã³¸®ÇÒ ÆÄ¶ó¹ÌÅÍ°¡ ½ÃÀÛÇÏ´Â À§Ä¡
+    // ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½Ä¶ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½Ä¡
     int iCurrentPosition;
 } PARAMETERLIST;
 
@@ -61,21 +62,21 @@ static free_block free_block_list_head = { 0, 0 };
 static const int overhead = sizeof(int);
 static const int align_to = 16;
 static int curMallocPos;
-
+extern int trace_task_sequence;
 #pragma pack( pop )
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ÇÔ¼ö
+// ï¿½Ô¼ï¿½
 //
 ////////////////////////////////////////////////////////////////////////////////
-// ½ÇÁ¦ ¼Ð ÄÚµå
+// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Úµï¿½
 void kStartConsoleShell( void );
 void kExecuteCommand( const char* pcCommandBuffer );
 void kInitializeParameter( PARAMETERLIST* pstList, const char* pcParameter );
 int kGetNextParameter( PARAMETERLIST* pstList, char* pcParameter );
 
-// Ä¿¸Çµå¸¦ Ã³¸®ÇÏ´Â ÇÔ¼ö
+// Ä¿ï¿½Çµå¸¦ Ã³ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½
 static void kHelp( const char* pcParameterBuffer );
 static void kCls( const char* pcParameterBuffer );
 static void kShowTotalRAMSize( const char* pcParameterBuffer );
@@ -102,4 +103,5 @@ static void kShowTaskList( const char* pcParameterBuffer );
 static void kKillTask( const char* pcParameterBuffer );
 static void kCPULoad( const char* pcParameterBuffer );
 static void kTestMutex(const char* pcParameterBuffer);
+void kTraceScheduler(const char* pcParameterBuffer);
 #endif /*__CONSOLESHELL_H__*/
