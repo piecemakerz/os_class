@@ -8,14 +8,14 @@
 extern int trace_task_sequence;
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ��ũ��
+// 占쏙옙크占쏙옙
 //
 ////////////////////////////////////////////////////////////////////////////////
-// SS, RSP, RFLAGS, CS, RIP + ISR���� �����ϴ� 19���� ��������
+// SS, RSP, RFLAGS, CS, RIP + ISR占쏙옙占쏙옙 占쏙옙占쏙옙占싹댐옙 19占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙
 #define TASK_REGISTERCOUNT     ( 5 + 19 )
 #define TASK_REGISTERSIZE       8
 
-// Context �ڷᱸ���� �������� ������
+// Context 占쌘료구占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
 #define TASK_GSOFFSET           0
 #define TASK_FSOFFSET           1
 #define TASK_ESOFFSET           2
@@ -41,53 +41,54 @@ extern int trace_task_sequence;
 #define TASK_RSPOFFSET          22
 #define TASK_SSOFFSET           23
 
-// �½�ũ Ǯ�� ��巹��
+// 占승쏙옙크 풀占쏙옙 占쏙옙藥뱄옙占�
 #define TASK_TCBPOOLADDRESS     0x800000
 #define TASK_MAXCOUNT           1024
 
-// ���� Ǯ�� ������ ũ��
+// 占쏙옙占쏙옙 풀占쏙옙 占쏙옙占쏙옙占쏙옙 크占쏙옙
 #define TASK_STACKPOOLADDRESS   ( TASK_TCBPOOLADDRESS + sizeof( TCB ) * TASK_MAXCOUNT )
 #define TASK_STACKSIZE          8192
 
-// ��ȿ���� ���� �½�ũ ID
+// 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크 ID
 #define TASK_INVALIDID          0xFFFFFFFFFFFFFFFF
 
-// �½�ũ�� �ִ�� �� �� �ִ� ���μ��� �ð�(5 ms)
+// 占승쏙옙크占쏙옙 占쌍댐옙占� 占쏙옙 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙(5 ms)
 #define TASK_PROCESSORTIME      5
 
-// �غ� ����Ʈ�� ��
+// 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙
 #define TASK_MAXREADYLISTCOUNT  5
 
-// �½�ũ�� �켱 ����
-/*
+// 占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙
+
+
 #define TASK_FLAGS_HIGHEST            0
 #define TASK_FLAGS_HIGH               1
 #define TASK_FLAGS_MEDIUM             2
 #define TASK_FLAGS_LOW                3
 #define TASK_FLAGS_LOWEST             4
-*/
 
+/*
 #define TASK_FLAGS_HIGHEST            50
 #define TASK_FLAGS_HIGH               40
 #define TASK_FLAGS_MEDIUM             30
 #define TASK_FLAGS_LOW                20
 #define TASK_FLAGS_LOWEST             10
-
+*/
 #define TASK_FLAGS_WAIT               0xFF
 
-// 600�� �������� �� �½�ũ�� ������ �����Ѵٸ�
-// ���� 12, 15, 20, 30, 60�� ������ ���� ���̴�.
+// 600占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싼다몌옙
+// 占쏙옙占쏙옙 12, 15, 20, 30, 60占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占싱댐옙.
 #define TASK_STRIDE_NUM				  600
-// �� �½�ũ�� pass�� 60�� �Ǿ��� �� ��� �½�ũ�� ���� �������Ƿ�
-// pass�� 0���� �ʱ�ȭ�Ѵ�.
-// pass�� �迭�� ����� ���̴�.
+// 占쏙옙 占승쏙옙크占쏙옙 pass占쏙옙 60占쏙옙 占실억옙占쏙옙 占쏙옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占실뤄옙
+// pass占쏙옙 0占쏙옙占쏙옙 占십깍옙화占싼댐옙.
+// pass占쏙옙 占썼열占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싱댐옙.
 #define TASK_PASS_MAX				  60
 
-// �½�ũ�� �÷���
+// 占승쏙옙크占쏙옙 占시뤄옙占쏙옙
 #define TASK_FLAGS_ENDTASK            0x8000000000000000
 #define TASK_FLAGS_IDLE               0x0800000000000000
 
-// �Լ� ��ũ��
+// 占쌉쇽옙 占쏙옙크占쏙옙
 #define GETPRIORITY( x )        ( ( x ) & 0xFF )
 #define SETPRIORITY( x, priority )  ( ( x ) = ( ( x ) & 0xFFFFFFFFFFFFFF00 ) | \
         ( priority ) )
@@ -95,158 +96,156 @@ extern int trace_task_sequence;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ����ü
+// 占쏙옙占쏙옙체
 //
 ////////////////////////////////////////////////////////////////////////////////
-// 1����Ʈ�� ����
+// 1占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
 #pragma pack( push, 1 )
 
-// ���ؽ�Ʈ�� ���õ� �ڷᱸ��
+// 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占시듸옙 占쌘료구占쏙옙
 typedef struct kContextStruct
 {
     QWORD vqRegister[ TASK_REGISTERCOUNT ];
 } CONTEXT;
 
-/*
-// �½�ũ�� ���¸� �����ϴ� �ڷᱸ��
 typedef struct kTaskControlBlockStruct
 {
-    // ���� �������� ��ġ�� ID
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙치占쏙옙 ID
     LISTLINK stLink;
 
-    // �÷���
+    // 占시뤄옙占쏙옙
     QWORD qwFlags;
 
-    // ���ؽ�Ʈ
+    // 占쏙옙占쌔쏙옙트
     CONTEXT stContext;
 
-    // ������ ��巹���� ũ��
+    // 占쏙옙占쏙옙占쏙옙 占쏙옙藥뱄옙占쏙옙占� 크占쏙옙
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
-*/
 
-// ���� �����ٸ��� ���� �ڷᱸ��
-// �½�ũ�� ���¸� �����ϴ� �ڷᱸ��
+/*
+// 보폭 스케줄링을 위한 TCB
 typedef struct kTaskControlBlockStruct
 {
-    // ���� �������� ��ġ�� ID
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙치占쏙옙 ID
     LISTLINK stLink;
 
-    // �÷���
+    // 占시뤄옙占쏙옙
     QWORD qwFlags;
 
-    // ���ؽ�Ʈ
+    // 占쏙옙占쌔쏙옙트
     CONTEXT stContext;
 
     // Pass
     int iPass;
 
-    // ������ ��巹���� ũ��
+    // 占쏙옙占쏙옙占쏙옙 占쏙옙藥뱄옙占쏙옙占� 크占쏙옙
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
+*/
 
-// TCB Ǯ�� ���¸� �����ϴ� �ڷᱸ��
+// TCB 풀占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
 typedef struct kTCBPoolManagerStruct
 {
-    // �½�ũ Ǯ�� ���� ����
+    // 占승쏙옙크 풀占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     TCB* pstStartAddress;
     int iMaxCount;
     int iUseCount;
 
-    // TCB�� �Ҵ�� Ƚ��
+    // TCB占쏙옙 占쌀댐옙占� 횟占쏙옙
     int iAllocatedCount;
 } TCBPOOLMANAGER;
 
 
-/*
-// �����ٷ��� ���¸� �����ϴ� �ڷᱸ��
+// 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
 typedef struct kSchedulerStruct
 {
-    // ���� ���� ���� �½�ũ
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
     TCB* pstRunningTask;
 
-    // ���� ���� ���� �½�ũ�� ����� �� �ִ� ���μ��� �ð�
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     int iProcessorTime;
 
-    // ������ �½�ũ�� �غ����� ����Ʈ, �½�ũ�� �켱 ������ ���� ����
+    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙占쏙옙占쏙옙 占쏙옙占쏙옙트, 占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
 
-    // ������ �½�ũ�� ������� ����Ʈ
+    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙트
     LIST stWaitList;
 
-    // �� �켱 �������� �½�ũ�� ������ Ƚ���� �����ϴ� �ڷᱸ��
+    // 占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 횟占쏙옙占쏙옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
     int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
 
-    // ���μ��� ���ϸ� ����ϱ� ���� �ڷᱸ��
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙歐占� 占쏙옙占쏙옙 占쌘료구占쏙옙
     QWORD qwProcessorLoad;
 
-    // ���� �½�ũ(Idle Task)���� ����� ���μ��� �ð�
+    // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
+    QWORD qwSpendProcessorTimeInIdleTask;
+} SCHEDULER;
+
+
+/*
+// 추첨 스케줄링을 위한 SCHEDULER
+typedef struct kSchedulerStruct
+{
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
+    TCB* pstRunningTask;
+
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙
+    int iProcessorTime;
+
+    // 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 티占쏙옙 占쏙옙 占쏙옙
+    unsigned int curTicketTotal;
+
+    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙占쏙옙占쏙옙 占쏙옙占쏙옙트.
+    // 占쏙옙 占쏙옙占쏙옙트 占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쎌선占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 티占쏙옙占쏙옙 占싸울옙占쌨는댐옙.
+    LIST vstReadyList;
+
+    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙트
+    LIST stWaitList;
+
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙歐占� 占쏙옙占쏙옙 占쌘료구占쏙옙
+    QWORD qwProcessorLoad;
+
+    // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
 */
 
 /*
-// ��÷ �����ٷ��� ���¸� �����ϴ� �ڷᱸ��
+// 보폭 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
-    // ���� ���� ���� �½�ũ
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
     TCB* pstRunningTask;
 
-    // ���� ���� ���� �½�ũ�� ����� �� �ִ� ���μ��� �ð�
+    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     int iProcessorTime;
 
-    // ���� �½�ũ���� Ƽ�� �� ��
-    unsigned int curTicketTotal;
-
-    // ������ �½�ũ�� �غ����� ����Ʈ.
-    // �� ����Ʈ ����� �½�ũ�� �켱������ ���� Ƽ���� �ο��޴´�.
+    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙占쏙옙占쏙옙 占쏙옙占쏙옙트.
+    // 占쏙옙 占쏙옙占쏙옙트 占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쎌선占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 티占쏙옙占쏙옙 占싸울옙占쌨는댐옙.
     LIST vstReadyList;
 
-    // ������ �½�ũ�� ������� ����Ʈ
+    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙트
     LIST stWaitList;
 
-    // ���μ��� ���ϸ� ����ϱ� ���� �ڷᱸ��
+    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙歐占� 占쏙옙占쏙옙 占쌘료구占쏙옙
     QWORD qwProcessorLoad;
 
-    // ���� �½�ũ(Idle Task)���� ����� ���μ��� �ð�
+    // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
 */
-
-// ���� �����ٷ��� ���¸� �����ϴ� �ڷᱸ��
-typedef struct kSchedulerStruct
-{
-    // ���� ���� ���� �½�ũ
-    TCB* pstRunningTask;
-
-    // ���� ���� ���� �½�ũ�� ����� �� �ִ� ���μ��� �ð�
-    int iProcessorTime;
-
-    // ������ �½�ũ�� �غ����� ����Ʈ.
-    // �� ����Ʈ ����� �½�ũ�� �켱������ ���� Ƽ���� �ο��޴´�.
-    LIST vstReadyList;
-
-    // ������ �½�ũ�� ������� ����Ʈ
-    LIST stWaitList;
-
-    // ���μ��� ���ϸ� ����ϱ� ���� �ڷᱸ��
-    QWORD qwProcessorLoad;
-
-    // ���� �½�ũ(Idle Task)���� ����� ���μ��� �ð�
-    QWORD qwSpendProcessorTimeInIdleTask;
-} SCHEDULER;
-
 #pragma pack( pop )
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// �Լ�
+// 占쌉쇽옙
 //
 ////////////////////////////////////////////////////////////////////////////////
 //==============================================================================
-//  �½�ũ Ǯ�� �½�ũ ����
+//  占승쏙옙크 풀占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 //==============================================================================
 static void kInitializeTCBPool( void );
 static TCB* kAllocateTCB( void );
@@ -256,7 +255,7 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
         void* pvStackAddress, QWORD qwStackSize );
 
 //==============================================================================
-//  �����ٷ� ����
+//  占쏙옙占쏙옙占쌕뤄옙 占쏙옙占쏙옙
 //==============================================================================
 void kInitializeScheduler( void );
 void kInitializeLotteryScheduler( void );
@@ -279,9 +278,9 @@ TCB* kGetTCBInTCBPool( int iOffset );
 BOOL kIsTaskExist( QWORD qwID );
 QWORD kGetProcessorLoad( void );
 int kGetPass(int stride);
-void kSetAllPassToZero();
+//void kSetAllPassToZero();
 //==============================================================================
-//  ���� �½�ũ ����
+//  占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 //==============================================================================
 void kIdleTask( void );
 void kHaltProcessorByLoad( void );
