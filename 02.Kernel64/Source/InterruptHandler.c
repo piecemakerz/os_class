@@ -90,8 +90,18 @@ void kKeyboardHandler( int iVectorNumber )
  */
 void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
 {
-    PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
-    PTENTRY* pstEntry = &(pstPTEntry[dwAddress >> 12]);
+    PTENTRY* pstEntry;
+    // 0MB ~ 2MB: PTEntry 수정
+    if ((dwAddress >> 20) < 2){
+        PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
+        pstEntry = &(pstPTEntry[dwAddress >> 12]);
+
+    }
+    // 2MB ~ : PDEntry 수정
+    else{
+        PDENTRY* pstPDEntry = ( PDENTRY* )0x102000;
+        pstEntry = &(pstPDEntry[dwAddress >> 20]);
+    }
     int iCursorX, iCursorY;
     if(!(qwErrorCode & 1)){
         kPrintf( "====================================================\n" );
