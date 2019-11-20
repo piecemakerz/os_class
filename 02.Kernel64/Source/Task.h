@@ -60,20 +60,20 @@ extern int trace_task_sequence;
 
 // 占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙
 
-
+/*
 #define TASK_FLAGS_HIGHEST            0
 #define TASK_FLAGS_HIGH               1
 #define TASK_FLAGS_MEDIUM             2
 #define TASK_FLAGS_LOW                3
 #define TASK_FLAGS_LOWEST             4
+*/
 
-/*
 #define TASK_FLAGS_HIGHEST            50
 #define TASK_FLAGS_HIGH               40
 #define TASK_FLAGS_MEDIUM             30
 #define TASK_FLAGS_LOW                20
 #define TASK_FLAGS_LOWEST             10
-*/
+
 #define TASK_FLAGS_WAIT               0xFF
 
 // 600占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싼다몌옙
@@ -158,8 +158,7 @@ typedef struct kTCBPoolManagerStruct
     int iAllocatedCount;
 } TCBPOOLMANAGER;
 
-
-// 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
+/*
 typedef struct kSchedulerStruct
 {
     // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
@@ -183,9 +182,9 @@ typedef struct kSchedulerStruct
     // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
+*/
 
 
-/*
 // 추첨 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
@@ -211,7 +210,7 @@ typedef struct kSchedulerStruct
     // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
-*/
+
 
 /*
 // 보폭 스케줄링을 위한 SCHEDULER

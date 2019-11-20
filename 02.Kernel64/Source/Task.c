@@ -217,7 +217,7 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
  *  占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화
  *      占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화占싹는듸옙 占십울옙占쏙옙 TCB 풀占쏙옙 init 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占십깍옙화
  */
-
+/*
 void kInitializeScheduler( void )
 {
 	int i;
@@ -241,8 +241,9 @@ void kInitializeScheduler( void )
 	gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
 	gs_stScheduler.qwProcessorLoad = 0;
 }
+*/
 
-/*
+
 // 추첨 스케줄링 전용 kInitializeScheduler
 void kInitializeScheduler( void )
 {
@@ -262,7 +263,7 @@ void kInitializeScheduler( void )
     gs_stScheduler.qwProcessorLoad = 0;
     gs_stScheduler.curTicketTotal = 0;
 }
-*/
+
 
 /*
 // 보폭 스케줄링 전용 kInitializeScheduler
@@ -324,7 +325,7 @@ TCB* kGetRunningTask( void )
 /**
  *  占승쏙옙크 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
-
+/*
 static TCB* kGetNextTaskToRun( void )
 {
     TCB* pstTarget = NULL;
@@ -374,20 +375,19 @@ static TCB* kGetNextTaskToRun( void )
 
     return pstTarget;
 }
+*/
 
-
-/*
 // 추첨 스케줄링 전용 kGetNextTaskToRun
 static TCB* kGetNextTaskToRun( void )
 {
     TCB* pstTarget, * curTask;
     int iTaskCount, i, randomSelection, curTicketsCount;
 
+    srand(time());
     kAddTaskToReadyList(gs_stScheduler.pstRunningTask);
+
     pstTarget = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
     iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
-    // random 占쏙옙占쏙옙 占십깍옙화
-    srand(time());
     randomSelection = rand(gs_stScheduler.curTicketTotal);
     curTicketsCount = 0;
 
@@ -404,7 +404,7 @@ static TCB* kGetNextTaskToRun( void )
 
 		for( i = 0 ; i < iTaskCount ; i++ )
 		{
-			kPrintf("%d / %d, ", curTask->stLink.qwID, GETPRIORITY(curTask->qwFlags));
+			kPrintf("%d/%d, ", curTask->stLink.qwID, GETPRIORITY(curTask->qwFlags));
 			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
 		}
 	}
@@ -421,14 +421,20 @@ static TCB* kGetNextTaskToRun( void )
 		pstTarget = kGetNextFromList( &(gs_stScheduler.vstReadyList), pstTarget );
 	}
 
+	if(pstTarget != gs_stScheduler.pstRunningTask)
+	{
+		kRemoveTaskFromReadyList( gs_stScheduler.pstRunningTask->stLink.qwID );
+	}
+
 	if(trace_task_sequence != 0)
 	{
 		kPrintf("Select: %d\n", pstTarget->stLink.qwID);
 		trace_task_sequence--;
 	}
+
     return pstTarget;
 }
-*/
+
 
 /*
 // 보폭 스케줄링 전용 kGetNextTaskToRun
@@ -474,7 +480,7 @@ static TCB* kGetNextTaskToRun( void )
 
 		for( i = 0 ; i < iTaskCount ; i++ )
 		{
-			kPrintf("%d / %d, ", curTask->stLink.qwID, curTask->iPass);
+			kPrintf("%d/%d, ", curTask->stLink.qwID, curTask->iPass);
 			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
 		}
 
@@ -491,6 +497,7 @@ static TCB* kGetNextTaskToRun( void )
  *  占승쏙옙크占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
  */
 
+/*
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
     BYTE bPriority;
@@ -504,8 +511,8 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
     kAddListToTail( &( gs_stScheduler.vstReadyList[ bPriority ] ), pstTask );
     return TRUE;
 }
+*/
 
-/*
 // 추첨 스케줄링 전용 kAddTaskToReadyList
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
@@ -520,7 +527,6 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
     gs_stScheduler.curTicketTotal += bPriority;
     return TRUE;
 }
-*/
 
 /*
 // 보폭 스케줄링 전용 kAddTaskToReadyList
@@ -543,7 +549,7 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
  *  占쌔븝옙 큐占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
  */
 
-// 보폭 스케줄링에도 사용
+/*
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
     TCB* pstTarget;
@@ -569,8 +575,8 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
                      qwTaskID );
     return pstTarget;
 }
+*/
 
-/*
 // 추첨 스케줄링 전용 kRemoveTaskFromReadyList
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
@@ -595,12 +601,35 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
     gs_stScheduler.curTicketTotal -= bPriority;
     return pstTarget;
 }
+
+/*
+// 보폭 스케줄링 전용 kRemoveTaskFromReadyList
+static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
+{
+    TCB* pstTarget;
+
+    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
+    {
+        return NULL;
+    }
+
+    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
+    pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
+    if( pstTarget->stLink.qwID != qwTaskID )
+    {
+        return NULL;
+    }
+
+    pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList ), qwTaskID );
+    return pstTarget;
+}
 */
 
 /**
  *  占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
  */
-
+/*
 BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
 {
     TCB* pstTarget;
@@ -648,8 +677,9 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
     kUnlockForSystemData(bPreviousFlag);
     return TRUE;
 }
+*/
 
-/*
+
 // 추첨 스케줄링과 보폭 스케줄링 전용 kChangePriority
 BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
 {
@@ -698,13 +728,13 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
     kUnlockForSystemData(bPreviousFlag);
     return TRUE;
 }
-*/
+
 
 /**
  *  占쌕몌옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쏙옙환
  *      占쏙옙占싶뤄옙트占쏙옙 占쏙옙占쌤곤옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙 호占쏙옙占싹몌옙 占싫듸옙
  */
-
+/*
 void kSchedule( void )
 {
     TCB* pstRunningTask, * pstNextTask;
@@ -759,14 +789,12 @@ void kSchedule( void )
     // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 }
+*/
 
-
-/*
 // 추첨 스케줄링과 보폭 스케줄링 전용 kSchedule
 void kSchedule( void )
 {
-    TCB* pstRunningTask, * pstNextTask, * curTask;
-    int iTaskCount, i;
+    TCB* pstRunningTask, * pstNextTask;
     BOOL bPreviousFlag;
 
     // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쌍억옙占� 占쏙옙
@@ -799,7 +827,6 @@ void kSchedule( void )
 		gs_stScheduler.qwSpendProcessorTimeInIdleTask +=
 			TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
 	}
-
 	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
 	gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
 
@@ -818,11 +845,11 @@ void kSchedule( void )
 			kSwitchContext( &( pstRunningTask->stContext ), &( pstNextTask->stContext ) );
 		}
 	}
-
 	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 }
-*/
+
+/*
 BOOL kScheduleInInterrupt( void )
 {
     TCB* pstRunningTask, * pstNextTask;
@@ -881,17 +908,17 @@ BOOL kScheduleInInterrupt( void )
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
     return TRUE;
 }
+*/
 
 /**
  *  占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙, 占쌕몌옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙환
  *      占쌥듸옙占� 占쏙옙占싶뤄옙트占쏙옙 占쏙옙占쌤곤옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙 호占쏙옙占쌔억옙 占쏙옙
  */
-/*
+
 // 추첨 스케줄링 및 보폭 스케줄링 전용 kScheduleInInterrupt
 BOOL kScheduleInInterrupt( void )
 {
-    TCB* pstRunningTask, * pstNextTask, * curTask;
-    int iTaskCount, i;
+    TCB* pstRunningTask, * pstNextTask;
     char* pcContextAddress;
     BOOL bPreviousFlag;
 
@@ -953,7 +980,7 @@ BOOL kScheduleInInterrupt( void )
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
     return TRUE;
 }
-*/
+
 
 /**
  *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占시곤옙占쏙옙 占싹놂옙 占쏙옙占쏙옙
@@ -1044,6 +1071,7 @@ void kExitTask( void )
  *  占쌔븝옙 큐占쏙옙 占쌍댐옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
  */
 
+/*
 int kGetReadyTaskCount( void )
 {
     int iTotalCount = 0;
@@ -1063,9 +1091,9 @@ int kGetReadyTaskCount( void )
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount ;
 }
+*/
 
 
-/*
 // 추첨 스케줄링 및 보폭 스케줄링 전용 kGetReadyTaskCount
 int kGetReadyTaskCount( void )
 {
@@ -1083,7 +1111,7 @@ int kGetReadyTaskCount( void )
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount;
 }
-*/
+
 
 /**
  *  占쏙옙체 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
