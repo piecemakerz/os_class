@@ -108,6 +108,7 @@ typedef struct kContextStruct
     QWORD vqRegister[ TASK_REGISTERCOUNT ];
 } CONTEXT;
 
+/*
 typedef struct kTaskControlBlockStruct
 {
     // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙치占쏙옙 ID
@@ -123,8 +124,8 @@ typedef struct kTaskControlBlockStruct
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
+*/
 
-/*
 // 보폭 스케줄링을 위한 TCB
 typedef struct kTaskControlBlockStruct
 {
@@ -144,7 +145,6 @@ typedef struct kTaskControlBlockStruct
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
-*/
 
 // TCB 풀占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
 typedef struct kTCBPoolManagerStruct
@@ -184,7 +184,7 @@ typedef struct kSchedulerStruct
 } SCHEDULER;
 */
 
-
+/*
 // 추첨 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
@@ -210,9 +210,9 @@ typedef struct kSchedulerStruct
     // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
+*/
 
 
-/*
 // 보폭 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
@@ -235,7 +235,7 @@ typedef struct kSchedulerStruct
     // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
-*/
+
 #pragma pack( pop )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,7 +277,7 @@ TCB* kGetTCBInTCBPool( int iOffset );
 BOOL kIsTaskExist( QWORD qwID );
 QWORD kGetProcessorLoad( void );
 int kGetPass(int stride);
-//void kSetAllPassToZero();
+void kSetAllPassToZero();
 //==============================================================================
 //  占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 //==============================================================================

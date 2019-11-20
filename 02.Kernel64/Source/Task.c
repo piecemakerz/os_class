@@ -91,6 +91,7 @@ static void kFreeTCB( QWORD qwID )
  *      占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 풀占쏙옙占쏙옙 占쏙옙占쏙옙 占쌘듸옙 占쌀댐옙
  */
 
+/*
 TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
 {
     TCB* pstTask;
@@ -129,9 +130,10 @@ TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
 
     return pstTask;
 }
+*/
 
 // 보폭 스케줄링 전용 kCreateTask
-/*
+
 TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
 {
     TCB* pstTask;
@@ -173,7 +175,6 @@ TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
     return pstTask;
 }
 
-*/
 /**
  *  占식띰옙占쏙옙拷占� 占싱울옙占쌔쇽옙 TCB占쏙옙 占쏙옙占쏙옙
  */
@@ -243,7 +244,7 @@ void kInitializeScheduler( void )
 }
 */
 
-
+/*
 // 추첨 스케줄링 전용 kInitializeScheduler
 void kInitializeScheduler( void )
 {
@@ -263,9 +264,9 @@ void kInitializeScheduler( void )
     gs_stScheduler.qwProcessorLoad = 0;
     gs_stScheduler.curTicketTotal = 0;
 }
+*/
 
 
-/*
 // 보폭 스케줄링 전용 kInitializeScheduler
 void kInitializeScheduler( void )
 {
@@ -285,7 +286,7 @@ void kInitializeScheduler( void )
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
 }
-*/
+
 
 /**
  *  占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
@@ -377,6 +378,7 @@ static TCB* kGetNextTaskToRun( void )
 }
 */
 
+/*
 // 추첨 스케줄링 전용 kGetNextTaskToRun
 static TCB* kGetNextTaskToRun( void )
 {
@@ -434,9 +436,8 @@ static TCB* kGetNextTaskToRun( void )
 
     return pstTarget;
 }
+*/
 
-
-/*
 // 보폭 스케줄링 전용 kGetNextTaskToRun
 static TCB* kGetNextTaskToRun( void )
 {
@@ -488,10 +489,18 @@ static TCB* kGetNextTaskToRun( void )
 		trace_task_sequence--;
 	}
 
-	kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
+
+	pstTarget = kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
+
+	if(pstTarget != gs_stScheduler.pstRunningTask)
+	{
+		kRemoveTaskFromReadyList( gs_stScheduler.pstRunningTask->stLink.qwID );
+		gs_stScheduler.pstRunningTask->iPass -= kGetPass(gs_stScheduler.pstRunningTask->qwFlags);
+	}
+
 	return pstTarget;
 }
-*/
+
 
 /**
  *  占승쏙옙크占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
@@ -513,6 +522,7 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
 }
 */
 
+/*
 // 추첨 스케줄링 전용 kAddTaskToReadyList
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
@@ -527,8 +537,8 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
     gs_stScheduler.curTicketTotal += bPriority;
     return TRUE;
 }
+*/
 
-/*
 // 보폭 스케줄링 전용 kAddTaskToReadyList
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
@@ -543,7 +553,6 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
     pstTask->iPass += kGetPass(bPriority);
     return TRUE;
 }
-*/
 
 /**
  *  占쌔븝옙 큐占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
@@ -577,6 +586,7 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 }
 */
 
+/*
 // 추첨 스케줄링 전용 kRemoveTaskFromReadyList
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
@@ -601,8 +611,8 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
     gs_stScheduler.curTicketTotal -= bPriority;
     return pstTarget;
 }
+*/
 
-/*
 // 보폭 스케줄링 전용 kRemoveTaskFromReadyList
 static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
@@ -624,7 +634,6 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
     pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList ), qwTaskID );
     return pstTarget;
 }
-*/
 
 /**
  *  占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
@@ -1272,7 +1281,6 @@ int kGetPass(int stride)
 	return TASK_STRIDE_NUM / stride;
 }
 
-/*
 void kSetAllPassToZero()
 {
 	TCB * pstTarget;
@@ -1295,4 +1303,3 @@ void kSetAllPassToZero()
 		pstTarget = kGetNextFromList( &(gs_stScheduler.vstReadyList), pstTarget );
 	}
 }
-*/
