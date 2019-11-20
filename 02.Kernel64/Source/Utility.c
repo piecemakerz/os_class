@@ -1,6 +1,7 @@
 #include "Utility.h"
 #include "AssemblyUtility.h"
 #include "RTC.h"
+#include "PIT.h"
 #include <stdarg.h>
 
 //PIT 컨트롤러가 발생한 횟수를 저장할 카운터
@@ -471,17 +472,26 @@ QWORD kGetTickCount( void )
     return g_qwTickCount;
 }
 
-unsigned int rand(unsigned int max_rand)
+// 선형 합동 생성기 코드
+// time()이 초 단위로 시간을 측정하기 때문에,
+// 밀리초 단위의 스케줄링에는 적합하지 않았다.
+
+DWORD rand(WORD max_rand)
 {
 	next = next * 1103515245 + 12345;
-	return (unsigned int)(next/65536) % max_rand;
+	return (DWORD)(next/65536) % max_rand;
 }
 
-void srand(unsigned long seed)
+void srand(WORD seed)
 {
 	next = seed;
 }
 
+WORD time(void)
+{
+	return kReadCounter0();
+}
+/*
 // 오전 0시부터 현재까지 흐른 초 수를 리턴한다.
 // 현재 년도가 윤년인 경우는 고려하지 않는다.
 unsigned long time(void)
@@ -522,3 +532,4 @@ unsigned long time(void)
 
 	return totalSeconds;
 }
+*/
