@@ -60,20 +60,20 @@ extern int trace_task_sequence;
 
 // 占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙
 
-/*
+
 #define TASK_FLAGS_HIGHEST            0
 #define TASK_FLAGS_HIGH               1
 #define TASK_FLAGS_MEDIUM             2
 #define TASK_FLAGS_LOW                3
 #define TASK_FLAGS_LOWEST             4
-*/
 
+/*
 #define TASK_FLAGS_HIGHEST            50
 #define TASK_FLAGS_HIGH               40
 #define TASK_FLAGS_MEDIUM             30
 #define TASK_FLAGS_LOW                20
 #define TASK_FLAGS_LOWEST             10
-
+*/
 #define TASK_FLAGS_WAIT               0xFF
 
 // 600占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싼다몌옙
