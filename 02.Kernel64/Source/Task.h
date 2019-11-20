@@ -8,14 +8,14 @@
 extern int trace_task_sequence;
 ////////////////////////////////////////////////////////////////////////////////
 //
-// 占쏙옙크占쏙옙
+// 매크로
 //
 ////////////////////////////////////////////////////////////////////////////////
-// SS, RSP, RFLAGS, CS, RIP + ISR占쏙옙占쏙옙 占쏙옙占쏙옙占싹댐옙 19占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙
+// SS, RSP, RFLAGS, CS, RIP + ISR에서 저장하는 19개의 레지스터
 #define TASK_REGISTERCOUNT     ( 5 + 19 )
 #define TASK_REGISTERSIZE       8
 
-// Context 占쌘료구占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
+// Context 자료구조의 레지스터 오프셋
 #define TASK_GSOFFSET           0
 #define TASK_FSOFFSET           1
 #define TASK_ESOFFSET           2
@@ -41,25 +41,26 @@ extern int trace_task_sequence;
 #define TASK_RSPOFFSET          22
 #define TASK_SSOFFSET           23
 
-// 占승쏙옙크 풀占쏙옙 占쏙옙藥뱄옙占�
+// 태스크 풀의 어드레스
 #define TASK_TCBPOOLADDRESS     0x800000
 #define TASK_MAXCOUNT           1024
 
-// 占쏙옙占쏙옙 풀占쏙옙 占쏙옙占쏙옙占쏙옙 크占쏙옙
+// 스택 풀과 스택의 크기
 #define TASK_STACKPOOLADDRESS   ( TASK_TCBPOOLADDRESS + sizeof( TCB ) * TASK_MAXCOUNT )
 #define TASK_STACKSIZE          8192
 
-// 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크 ID
+// 유효하지 않은 태스크 ID
 #define TASK_INVALIDID          0xFFFFFFFFFFFFFFFF
 
-// 占승쏙옙크占쏙옙 占쌍댐옙占� 占쏙옙 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙(5 ms)
+// 태스크가 최대로 쓸 수 있는 프로세서 시간(5 ms)
 #define TASK_PROCESSORTIME      5
 
-// 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙
+// 준비 리스트의 수
 #define TASK_MAXREADYLISTCOUNT  5
 
-// 占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙
+// 태스크의 우선 순위
 
+// 멀티레벨 큐의 우선순위 플래그
 /*
 #define TASK_FLAGS_HIGHEST            0
 #define TASK_FLAGS_HIGH               1
@@ -68,6 +69,8 @@ extern int trace_task_sequence;
 #define TASK_FLAGS_LOWEST             4
 */
 
+// 추첨 스케줄링과 보폭 스케줄링의 우선순위 플래그
+// 각 우선순위의 태스크가 가지는 티켓의 수를 나타낸다.
 #define TASK_FLAGS_HIGHEST            50
 #define TASK_FLAGS_HIGH               40
 #define TASK_FLAGS_MEDIUM             30
@@ -76,19 +79,17 @@ extern int trace_task_sequence;
 
 #define TASK_FLAGS_WAIT               0xFF
 
-// 600占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싼다몌옙
-// 占쏙옙占쏙옙 12, 15, 20, 30, 60占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占싱댐옙.
+// 태스크의 티켓 수를 600으로 나눠 보폭을 구한다.
+// 각 태스크는 우선순위 별로 12, 15, 20, 30, 60의 보폭 값을 가진다.
 #define TASK_STRIDE_NUM				  600
-// 占쏙옙 占승쏙옙크占쏙옙 pass占쏙옙 60占쏙옙 占실억옙占쏙옙 占쏙옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占실뤄옙
-// pass占쏙옙 0占쏙옙占쏙옙 占십깍옙화占싼댐옙.
-// pass占쏙옙 占썼열占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싱댐옙.
+// 모든 태스크의 pass가 60에 도달하면 모두 pass값을 0으로 초기화시킨다.
 #define TASK_PASS_MAX				  60
 
-// 占승쏙옙크占쏙옙 占시뤄옙占쏙옙
+// 태스크의 플래그
 #define TASK_FLAGS_ENDTASK            0x8000000000000000
 #define TASK_FLAGS_IDLE               0x0800000000000000
 
-// 占쌉쇽옙 占쏙옙크占쏙옙
+// 함수 매크로
 #define GETPRIORITY( x )        ( ( x ) & 0xFF )
 #define SETPRIORITY( x, priority )  ( ( x ) = ( ( x ) & 0xFFFFFFFFFFFFFF00 ) | \
         ( priority ) )
@@ -96,31 +97,33 @@ extern int trace_task_sequence;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// 占쏙옙占쏙옙체
+// 구조체
 //
 ////////////////////////////////////////////////////////////////////////////////
-// 1占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
+// 1바이트로 정렬
 #pragma pack( push, 1 )
 
-// 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占시듸옙 占쌘료구占쏙옙
+// 콘텍스트에 관련된 자료구조
 typedef struct kContextStruct
 {
     QWORD vqRegister[ TASK_REGISTERCOUNT ];
 } CONTEXT;
 
 /*
+// 태스크의 상태를 관리하는 자료구조
+// 멀티레벨 큐와 추첨 스케줄링에 사용
 typedef struct kTaskControlBlockStruct
 {
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙치占쏙옙 ID
+    // 다음 데이터의 위치와 ID
     LISTLINK stLink;
 
-    // 占시뤄옙占쏙옙
+    // 플래그
     QWORD qwFlags;
 
-    // 占쏙옙占쌔쏙옙트
+    // 콘텍스트
     CONTEXT stContext;
 
-    // 占쏙옙占쏙옙占쏙옙 占쏙옙藥뱄옙占쏙옙占� 크占쏙옙
+    // 스택의 어드레스와 크기
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
@@ -129,57 +132,55 @@ typedef struct kTaskControlBlockStruct
 // 보폭 스케줄링을 위한 TCB
 typedef struct kTaskControlBlockStruct
 {
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙치占쏙옙 ID
     LISTLINK stLink;
 
-    // 占시뤄옙占쏙옙
     QWORD qwFlags;
 
-    // 占쏙옙占쌔쏙옙트
     CONTEXT stContext;
 
-    // Pass
+    // 해당 태스크의 pass값
     int iPass;
 
-    // 占쏙옙占쏙옙占쏙옙 占쏙옙藥뱄옙占쏙옙占� 크占쏙옙
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
 
-// TCB 풀占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
+// TCB 풀의 상태를 관리하는 자료구조
 typedef struct kTCBPoolManagerStruct
 {
-    // 占승쏙옙크 풀占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 태스크 풀에 대한 정보
     TCB* pstStartAddress;
     int iMaxCount;
     int iUseCount;
 
-    // TCB占쏙옙 占쌀댐옙占� 횟占쏙옙
+    // TCB가 할당된 횟수
     int iAllocatedCount;
 } TCBPOOLMANAGER;
 
+
 /*
+// 스케줄러의 상태를 관리하는 자료구조
 typedef struct kSchedulerStruct
 {
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
+    // 현재 수행 중인 태스크
     TCB* pstRunningTask;
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙
+    // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
     int iProcessorTime;
 
-    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙占쏙옙占쏙옙 占쏙옙占쏙옙트, 占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 실행할 태스크가 준비중인 리스트, 태스크의 우선 순위에 따라 구분
     LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
 
-    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙트
+    // 종료할 태스크가 대기중인 리스트
     LIST stWaitList;
 
-    // 占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 횟占쏙옙占쏙옙 占쏙옙占쏙옙占싹댐옙 占쌘료구占쏙옙
+    // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
     int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙歐占� 占쏙옙占쏙옙 占쌘료구占쏙옙
+    // 프로세서 부하를 계산하기 위한 자료구조
     QWORD qwProcessorLoad;
 
-    // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
+    // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
 */
@@ -188,26 +189,19 @@ typedef struct kSchedulerStruct
 // 추첨 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
     TCB* pstRunningTask;
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     int iProcessorTime;
 
-    // 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 티占쏙옙 占쏙옙 占쏙옙
+	// ReadyList의 모든 ticket의 수를 나타낸다.
     unsigned int curTicketTotal;
 
-    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙占쏙옙占쏙옙 占쏙옙占쏙옙트.
-    // 占쏙옙 占쏙옙占쏙옙트 占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쎌선占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 티占쏙옙占쏙옙 占싸울옙占쌨는댐옙.
     LIST vstReadyList;
 
-    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙트
     LIST stWaitList;
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙歐占� 占쏙옙占쏙옙 占쌘료구占쏙옙
     QWORD qwProcessorLoad;
 
-    // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
 */
@@ -216,23 +210,16 @@ typedef struct kSchedulerStruct
 // 보폭 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크
     TCB* pstRunningTask;
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     int iProcessorTime;
 
-    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙占쏙옙占쏙옙 占쏙옙占쏙옙트.
-    // 占쏙옙 占쏙옙占쏙옙트 占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쎌선占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 티占쏙옙占쏙옙 占싸울옙占쌨는댐옙.
     LIST vstReadyList;
 
-    // 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙트
     LIST stWaitList;
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙歐占� 占쏙옙占쏙옙 占쌘료구占쏙옙
     QWORD qwProcessorLoad;
 
-    // 占쏙옙占쏙옙 占승쏙옙크(Idle Task)占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
 
@@ -240,11 +227,11 @@ typedef struct kSchedulerStruct
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// 占쌉쇽옙
+// 함수
 //
 ////////////////////////////////////////////////////////////////////////////////
 //==============================================================================
-//  占승쏙옙크 풀占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+//  태스크 풀과 태스크 관련
 //==============================================================================
 static void kInitializeTCBPool( void );
 static TCB* kAllocateTCB( void );
@@ -254,7 +241,7 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
         void* pvStackAddress, QWORD qwStackSize );
 
 //==============================================================================
-//  占쏙옙占쏙옙占쌕뤄옙 占쏙옙占쏙옙
+//  스케줄러 관련
 //==============================================================================
 void kInitializeScheduler( void );
 void kInitializeLotteryScheduler( void );
@@ -279,7 +266,7 @@ QWORD kGetProcessorLoad( void );
 int kGetPass(int stride);
 void kSetAllPassToZero();
 //==============================================================================
-//  占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+//  유휴 태스크 관련
 //==============================================================================
 void kIdleTask( void );
 void kHaltProcessorByLoad( void );

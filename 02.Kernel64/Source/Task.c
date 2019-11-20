@@ -2,16 +2,18 @@
 #include "Descriptor.h"
 #include "Utility.h"
 
-// 占쏙옙占쏙옙占쌕뤄옙 占쏙옙占쏙옙 占쌘료구占쏙옙
+// 스케줄러 관련 자료구조
 static SCHEDULER gs_stScheduler;
 static TCBPOOLMANAGER gs_stTCBPoolManager;
+// 스케줄링 순서 출력 함수인 kTraceScheduler에서 사용하는 전역변수
+// ConsoleShell.c에서 참조한다.
 int trace_task_sequence = 0;
 
 //==============================================================================
-//  占승쏙옙크 풀占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+//  태스크 풀과 태스크 관련
 //==============================================================================
 /**
- *  占승쏙옙크 풀 占십깍옙화
+ *  태스크 풀 초기화
  */
 static void kInitializeTCBPool( void )
 {
@@ -19,23 +21,23 @@ static void kInitializeTCBPool( void )
 
     kMemSet( &( gs_stTCBPoolManager ), 0, sizeof( gs_stTCBPoolManager ) );
 
-    // 占승쏙옙크 풀占쏙옙 占쏙옙藥뱄옙占쏙옙占� 占쏙옙占쏙옙占싹곤옙 占십깍옙화
+    // 태스크 풀의 어드레스를 지정하고 초기화
     gs_stTCBPoolManager.pstStartAddress = ( TCB* ) TASK_TCBPOOLADDRESS;
     kMemSet( TASK_TCBPOOLADDRESS, 0, sizeof( TCB ) * TASK_MAXCOUNT );
 
-    // TCB占쏙옙 ID 占쌀댐옙
+    // TCB에 ID 할당
     for( i = 0 ; i < TASK_MAXCOUNT ; i++ )
     {
         gs_stTCBPoolManager.pstStartAddress[ i ].stLink.qwID = i;
     }
 
-    // TCB占쏙옙 占쌍댐옙 占쏙옙占쏙옙占쏙옙 占쌀댐옙占� 횟占쏙옙占쏙옙 占십깍옙화
+    // TCB의 최대 개수와 할당된 횟수를 초기화
     gs_stTCBPoolManager.iMaxCount = TASK_MAXCOUNT;
     gs_stTCBPoolManager.iAllocatedCount = 1;
 }
 
 /**
- *  TCB占쏙옙 占쌀댐옙 占쏙옙占쏙옙
+ *  TCB를 할당 받음
  */
 static TCB* kAllocateTCB( void )
 {
@@ -49,7 +51,7 @@ static TCB* kAllocateTCB( void )
 
     for( i = 0 ; i < gs_stTCBPoolManager.iMaxCount ; i++ )
     {
-        // ID占쏙옙 占쏙옙占쏙옙 32占쏙옙트占쏙옙 0占싱몌옙 占쌀댐옙占쏙옙占� 占쏙옙占쏙옙 TCB
+        // ID의 상위 32비트가 0이면 할당되지 않은 TCB
         if( ( gs_stTCBPoolManager.pstStartAddress[ i ].stLink.qwID >> 32 ) == 0 )
         {
             pstEmptyTCB = &( gs_stTCBPoolManager.pstStartAddress[ i ] );
@@ -57,7 +59,7 @@ static TCB* kAllocateTCB( void )
         }
     }
 
-    // 占쏙옙占쏙옙 32占쏙옙트占쏙옙 0占쏙옙 占싣댐옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쌔쇽옙 占쌀댐옙占� TCB占쏙옙 占쏙옙占쏙옙
+    // 상위 32비트를 0이 아닌 값으로 설정해서 할당된 TCB로 설정
     pstEmptyTCB->stLink.qwID = ( ( QWORD ) gs_stTCBPoolManager.iAllocatedCount << 32 ) | i;
     gs_stTCBPoolManager.iUseCount++;
     gs_stTCBPoolManager.iAllocatedCount++;
@@ -70,16 +72,16 @@ static TCB* kAllocateTCB( void )
 }
 
 /**
- *  TCB占쏙옙 占쏙옙占쏙옙占쏙옙
+ *  TCB를 해제함
  */
 static void kFreeTCB( QWORD qwID )
 {
     int i;
 
-    // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 32占쏙옙트占쏙옙 占싸듸옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙
+    // 태스크 ID의 하위 32비트가 인덱스 역할을 함
    i = GETTCBOFFSET( qwID );
 
-    // TCB占쏙옙 占십깍옙화占싹곤옙 ID 占쏙옙占쏙옙
+   // TCB를 초기화하고 ID 설정
     kMemSet( &( gs_stTCBPoolManager.pstStartAddress[ i ].stContext ), 0, sizeof( CONTEXT ) );
     gs_stTCBPoolManager.pstStartAddress[ i ].stLink.qwID = i;
 
@@ -87,45 +89,46 @@ static void kFreeTCB( QWORD qwID )
 }
 
 /**
- *  占승쏙옙크占쏙옙 占쏙옙占쏙옙
- *      占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 풀占쏙옙占쏙옙 占쏙옙占쏙옙 占쌘듸옙 占쌀댐옙
+ *  태스크를 생성
+ *      태스크 ID에 따라서 스택 풀에서 스택 자동 할당
  */
 
 /*
+// 멀티레벨 큐와 추첨 스케줄링을 위한 kCreateTask
 TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
 {
     TCB* pstTask;
     void* pvStackAddress;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
     pstTask = kAllocateTCB();
     if( pstTask == NULL )
     {
-    		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
+        // 임계영역 끝
     	kUnlockForSystemData(bPreviousFlag);
         return NULL;
     }
 
-    //占쌈곤옙 占쏙옙占쏙옙 占쏙옙
+    // 임계 영역 끝
     kUnlockForSystemData(bPreviousFlag);
 
-    // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 占쏙옙藥뱄옙占� 占쏙옙占�, 占쏙옙占쏙옙 32占쏙옙트占쏙옙 占쏙옙占쏙옙 풀占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 태스크 ID로 스택 어드레스 계산, 하위 32비트가 스택 풀의 오프셋 역할 수행
     pvStackAddress = ( void* ) ( TASK_STACKPOOLADDRESS + ( TASK_STACKSIZE *
             GETTCBOFFSET(pstTask->stLink.qwID)) );
 
-    // TCB占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙占싹울옙 占쏙옙占쏙옙占쌕몌옙占쏙옙 占쏙옙 占쌍듸옙占쏙옙 占쏙옙
+    // TCB를 설정한 후 준비 리스트에 삽입하여 스케줄링될 수 있도록 함
     kSetUpTask( pstTask, qwFlags, qwEntryPointAddress, pvStackAddress,
             TASK_STACKSIZE );
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
 
-    // 占승쏙옙크占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
+    // 태스크를 준비 리스트에 삽입
     kAddTaskToReadyList( pstTask );
 
-    //占쌈곤옙 占쏙옙占쏙옙 占쏙옙
+    // 임계 영역 끝
     kUnlockForSystemData(bPreviousFlag);
 
     return pstTask;
@@ -140,57 +143,53 @@ TCB* kCreateTask( QWORD qwFlags, QWORD qwEntryPointAddress )
     void* pvStackAddress;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
     pstTask = kAllocateTCB();
     if( pstTask == NULL )
     {
-    		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return NULL;
     }
 
-    //占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
 
-    // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 占쏙옙藥뱄옙占� 占쏙옙占�, 占쏙옙占쏙옙 32占쏙옙트占쏙옙 占쏙옙占쏙옙 풀占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     pvStackAddress = ( void* ) ( TASK_STACKPOOLADDRESS + ( TASK_STACKSIZE *
             GETTCBOFFSET(pstTask->stLink.qwID)) );
 
-    // TCB占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙占싹울옙 占쏙옙占쏙옙占쌕몌옙占쏙옙 占쏙옙 占쌍듸옙占쏙옙 占쏙옙
     kSetUpTask( pstTask, qwFlags, qwEntryPointAddress, pvStackAddress,
             TASK_STACKSIZE );
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
     pstTask->iPass = 0;
-    // 占승쏙옙크占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
     kAddTaskToReadyList( pstTask );
+
+    // 새로 추가되는 태스크는 TASK_PASS_MAX의 pass값을 가진다.
+    // 따라서, 모든 태스크가 TASK_PASS_MAX 이상의 pass값을 가져
+   // pass값이 0으로 초기와된 이후 스케줄링 될 기회를 얻는다.
     pstTask->iPass = TASK_PASS_MAX;
 
-    //占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
 
     return pstTask;
 }
 
 /**
- *  占식띰옙占쏙옙拷占� 占싱울옙占쌔쇽옙 TCB占쏙옙 占쏙옙占쏙옙
+ *  파라미터를 이용해서 TCB를 설정
  */
 static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
                  void* pvStackAddress, QWORD qwStackSize )
 {
-    // 占쏙옙占쌔쏙옙트 占십깍옙화
+    // 콘텍스트 초기화
     kMemSet( pstTCB->stContext.vqRegister, 0, sizeof( pstTCB->stContext.vqRegister ) );
 
-    // 占쏙옙占시울옙 占쏙옙占시듸옙 RSP, RBP 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 스택에 관련된 RSP, RBP 레지스터 설정
     pstTCB->stContext.vqRegister[ TASK_RSPOFFSET ] = ( QWORD ) pvStackAddress +
             qwStackSize;
     pstTCB->stContext.vqRegister[ TASK_RBPOFFSET ] = ( QWORD ) pvStackAddress +
             qwStackSize;
 
-    // 占쏙옙占쌓몌옙트 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 세그먼트 셀렉터 설정
     pstTCB->stContext.vqRegister[ TASK_CSOFFSET ] = GDT_KERNELCODESEGMENT;
     pstTCB->stContext.vqRegister[ TASK_DSOFFSET ] = GDT_KERNELDATASEGMENT;
     pstTCB->stContext.vqRegister[ TASK_ESOFFSET ] = GDT_KERNELDATASEGMENT;
@@ -198,35 +197,35 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
     pstTCB->stContext.vqRegister[ TASK_GSOFFSET ] = GDT_KERNELDATASEGMENT;
     pstTCB->stContext.vqRegister[ TASK_SSOFFSET ] = GDT_KERNELDATASEGMENT;
 
-    // RIP 占쏙옙占쏙옙占쏙옙占싶울옙 占쏙옙占싶뤄옙트 占시뤄옙占쏙옙 占쏙옙占쏙옙
+    // RIP 레지스터와 인터럽트 플래그 설정
     pstTCB->stContext.vqRegister[ TASK_RIPOFFSET ] = qwEntryPointAddress;
 
-    // RFLAGS 占쏙옙占쏙옙占쏙옙占쏙옙占쏙옙 IF 占쏙옙트(占쏙옙트 9)占쏙옙 1占쏙옙 占쏙옙占쏙옙占싹울옙 占쏙옙占싶뤄옙트 활占쏙옙화
-    pstTCB->stContext.vqRegister[ TASK_RFLAGSOFFSET ] |= 0x0200;
+    // RFLAGS 레지스터의 IF 비트(비트 9)를 1로 설정하여 인터럽트 활성화
+        pstTCB->stContext.vqRegister[ TASK_RFLAGSOFFSET ] |= 0x0200;
 
-    // 占쏙옙占시곤옙 占시뤄옙占쏙옙 占쏙옙占쏙옙
-    pstTCB->pvStackAddress = pvStackAddress;
-    pstTCB->qwStackSize = qwStackSize;
-    pstTCB->qwFlags = qwFlags;
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쏙옙占쏙옙 占쌘듸옙
+        // 스택과 플래그 저장
+        pstTCB->pvStackAddress = pvStackAddress;
+        pstTCB->qwStackSize = qwStackSize;
+        pstTCB->qwFlags = qwFlags;
 }
 
 //==============================================================================
-//  占쏙옙占쏙옙占쌕뤄옙 占쏙옙占쏙옙
+//  스케줄러 관련
 //==============================================================================
 /**
- *  占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화
- *      占쏙옙占쏙옙占쌕뤄옙占쏙옙 占십깍옙화占싹는듸옙 占십울옙占쏙옙 TCB 풀占쏙옙 init 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占십깍옙화
+ *  스케줄러를 초기화
+ *      스케줄러를 초기화하는데 필요한 TCB 풀과 init 태스크도 같이 초기화
  */
 /*
+// 멀티레벨 큐 전용 kInitializeScheduler
 void kInitializeScheduler( void )
 {
 	int i;
 
-	// 占승쏙옙크 풀 占십깍옙화
+	// 태스크 풀 초기화
 	kInitializeTCBPool();
 
-	// 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 횟占쏙옙占쏙옙 占십깍옙화占싹곤옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙 占십깍옙화
+	// 준비 리스트와 우선 순위별 실행 횟수를 초기화하고 대기 리스트도 초기화
 	for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
 	{
 		kInitializeList( &( gs_stScheduler.vstReadyList[ i ] ) );
@@ -234,11 +233,11 @@ void kInitializeScheduler( void )
 	}
 	kInitializeList( &( gs_stScheduler.stWaitList ) );
 
-	// TCB占쏙옙 占쌀댐옙 占쌨억옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹울옙, 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쌔븝옙
+	// TCB를 할당 받아 실행 중인 태스크로 설정하여, 부팅을 수행한 태스크를 저장할 TCB를 준비
 	gs_stScheduler.pstRunningTask = kAllocateTCB();
 	gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
 
-	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙求쨉占� 占쏙옙占쏙옙求占� 占쌘료구占쏙옙 占십깍옙화
+	// 프로세서 사용률을 계산하는데 사용하는 자료구조 초기화
 	gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
 	gs_stScheduler.qwProcessorLoad = 0;
 }
@@ -248,20 +247,17 @@ void kInitializeScheduler( void )
 // 추첨 스케줄링 전용 kInitializeScheduler
 void kInitializeScheduler( void )
 {
-    // 占승쏙옙크 풀 占십깍옙화
     kInitializeTCBPool();
 
-    // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占� 占쏙옙占쏙옙트 占십깍옙화
     kInitializeList( &( gs_stScheduler.vstReadyList ) );
     kInitializeList( &( gs_stScheduler.stWaitList ) );
 
-    // TCB占쏙옙 占쌀댐옙 占쌨억옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹울옙, 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쌔븝옙
     gs_stScheduler.pstRunningTask = kAllocateTCB();
     gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙求쨉占� 占쏙옙占쏙옙求占� 占쌘료구占쏙옙 占십깍옙화
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
+
     gs_stScheduler.curTicketTotal = 0;
 }
 */
@@ -270,83 +266,77 @@ void kInitializeScheduler( void )
 // 보폭 스케줄링 전용 kInitializeScheduler
 void kInitializeScheduler( void )
 {
-    // 占승쏙옙크 풀 占십깍옙화
     kInitializeTCBPool();
 
-    // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占� 占쏙옙占쏙옙트 占십깍옙화
     kInitializeList( &( gs_stScheduler.vstReadyList ) );
     kInitializeList( &( gs_stScheduler.stWaitList ) );
 
-    // TCB占쏙옙 占쌀댐옙 占쌨억옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹울옙, 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쌔븝옙
     gs_stScheduler.pstRunningTask = kAllocateTCB();
     gs_stScheduler.pstRunningTask->qwFlags = TASK_FLAGS_HIGHEST;
     gs_stScheduler.pstRunningTask->iPass = TASK_PASS_MAX;
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙求쨉占� 占쏙옙占쏙옙求占� 占쌘료구占쏙옙 占십깍옙화
     gs_stScheduler.qwSpendProcessorTimeInIdleTask = 0;
     gs_stScheduler.qwProcessorLoad = 0;
 }
 
 
 /**
- *  占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+ *  현재 수행 중인 태스크를 설정
  */
 void kSetRunningTask( TCB* pstTask )
 {
 	BOOL bPreviousFlag;
 
-	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+	// 임계 영역 시작
 	bPreviousFlag = kLockForSystemData();
 
-    gs_stScheduler.pstRunningTask = pstTask;
+	gs_stScheduler.pstRunningTask = pstTask;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-    kUnlockForSystemData(bPreviousFlag);
+	// 임계 영역 끝
+	kUnlockForSystemData( bPreviousFlag );
 }
 
 /**
- *  占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙환
+ *  현재 수행 중인 태스크를 반환
  */
 TCB* kGetRunningTask( void )
 {
-	BOOL bPreviousFlag;
-	TCB* pstRunningTask;
+    BOOL bPreviousFlag;
+    TCB* pstRunningTask;
 
-	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
-	bPreviousFlag = kLockForSystemData();
+    // 임계 영역 시작
+    bPreviousFlag = kLockForSystemData();
 
-	pstRunningTask = gs_stScheduler.pstRunningTask;
+    pstRunningTask = gs_stScheduler.pstRunningTask;
 
-	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-	kUnlockForSystemData(bPreviousFlag);
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
 
     return pstRunningTask;
 }
 
 /**
- *  占승쏙옙크 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+ *  태스크 리스트에서 다음으로 실행할 태스크를 얻음
  */
+
 /*
+// 멀티레벨 큐 전용 kGetNextTaskToRun
 static TCB* kGetNextTaskToRun( void )
 {
-    TCB* pstTarget = NULL;
+	TCB* pstTarget = NULL;
     int iTaskCount, i, j;
 
-    if(trace_task_sequence != 0)
-	{
-		kPrintf("curTask: %d, ", gs_stScheduler.pstRunningTask->stLink.qwID);
-	}
-    // 큐占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占� 큐占쏙옙 占승쏙옙크占쏙옙 1회占쏙옙 占쏙옙占쏙옙占� 占쏙옙占�, 占쏙옙占� 큐占쏙옙 占쏙옙占싸쇽옙占쏙옙占쏙옙
-    // 占썹보占싹울옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙 占쏙옙占쏙옙占쏙옙 NULL占쏙옙 占쏙옙占� 占싼뱄옙 占쏙옙 占쏙옙占쏙옙
+    // 큐에 태스크가 있으나 모든 큐의 태스크가 1회씩 실행된 경우, 모든 큐가 프로세서를
+    // 양보하여 태스크를 선택하지 못할 수 있으니 NULL일 경우 한번 더 수행
     for( j = 0 ; j < 2 ; j++ )
     {
-        // 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 확占쏙옙占싹울옙 占쏙옙占쏙옙占쌕몌옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+        // 높은 우선 순위에서 낮은 우선 순위까지 리스트를 확인하여 스케줄링할 태스크를 선택
         for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
         {
             iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList[ i ] ) );
 
-            // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 횟占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙
-            // 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙
+            // 만약 실행한 횟수보다 리스트의 태스크 수가 더 많으면 현재 우선 순위의
+            // 태스크를 실행함
             if( gs_stScheduler.viExecuteCount[ i ] < iTaskCount )
             {
                 pstTarget = ( TCB* ) kRemoveListFromHeader(
@@ -354,20 +344,21 @@ static TCB* kGetNextTaskToRun( void )
                 gs_stScheduler.viExecuteCount[ i ]++;
                 break;
             }
-            // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 횟占쏙옙占쏙옙 占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 횟占쏙옙占쏙옙 占십깍옙화占싹곤옙 占쏙옙占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占썹보占쏙옙
+            // 만약 실행한 횟수가 더 많으면 실행 횟수를 초기화하고 다음 우선 순위로 양보함
             else
             {
                 gs_stScheduler.viExecuteCount[ i ] = 0;
             }
         }
 
-        // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+        // 만약 수행할 태스크를 찾았으면 종료
         if( pstTarget != NULL )
         {
             break;
         }
     }
 
+	// tracescheduler가 요청되었다면 trace_task_sequence 개의 태스크 출력
     if(trace_task_sequence != 0)
 	{
 		kPrintf("nextTask: %d\n", pstTarget->stLink.qwID);
@@ -385,11 +376,16 @@ static TCB* kGetNextTaskToRun( void )
     TCB* pstTarget, * curTask;
     int iTaskCount, i, randomSelection, curTicketsCount;
 
+	// rand를 호출하기 전 seed값 초기화
     srand(time());
+
+    // 현재 수행중인 태스크도 스케줄링에서 고려하기 위해 ReadyList에 추가
     kAddTaskToReadyList(gs_stScheduler.pstRunningTask);
 
     pstTarget = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
     iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
+
+    // 추첨 스케줄러가 다음 스케줄 할 태스크를 결정하기 위해 추첨
     randomSelection = rand(gs_stScheduler.curTicketTotal);
     curTicketsCount = 0;
 
@@ -398,6 +394,7 @@ static TCB* kGetNextTaskToRun( void )
     	return NULL;
     }
 
+	// tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
     if(trace_task_sequence != 0)
 	{
 		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
@@ -411,10 +408,10 @@ static TCB* kGetNextTaskToRun( void )
 		}
 	}
 
-	// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 	for( i = 0 ; i < iTaskCount ; i++ )
 	{
 		curTicketsCount += GETPRIORITY(pstTarget->qwFlags);
+		// 현재까지의 ticket 값의 합이 추첨 값 이상이면 현재 태스크 스케줄링
 		if( curTicketsCount >= randomSelection )
 		{
 			pstTarget = (TCB*)kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
@@ -423,6 +420,8 @@ static TCB* kGetNextTaskToRun( void )
 		pstTarget = kGetNextFromList( &(gs_stScheduler.vstReadyList), pstTarget );
 	}
 
+	// 현재 이미 실행중이던 태스크가 다시 스케줄링 되는 경우
+	// ReadyList에서 해당 태스크를 제거한다.
 	if(pstTarget != gs_stScheduler.pstRunningTask)
 	{
 		kRemoveTaskFromReadyList( gs_stScheduler.pstRunningTask->stLink.qwID );
@@ -445,6 +444,7 @@ static TCB* kGetNextTaskToRun( void )
     int iTaskCount, i, curPassMin;
     BOOL allPassFull = TRUE;
 
+    // 현재 실행중인 태스크도 스케줄링에 고려하기 위해 ReadyList에 추가
     kAddTaskToReadyList(gs_stScheduler.pstRunningTask);
     curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
     iTaskCount = kGetListCount( &( gs_stScheduler.vstReadyList ) );
@@ -455,7 +455,6 @@ static TCB* kGetNextTaskToRun( void )
     	return NULL;
     }
 
-	// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 	for( i = 0 ; i < iTaskCount ; i++ )
 	{
 		if(curPassMin > curTask->iPass)
@@ -467,12 +466,15 @@ static TCB* kGetNextTaskToRun( void )
 		curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
 	}
 
+	// 만약 ReadyList 태스크의 모든 pass값이 TASK_PASS_MAX 이상이라면
+	// 모든 태스크의 pass값을 0으로 초기화한 후 리스트의 가장 첫 태스크를 스케줄링한다.
 	if(allPassFull == TRUE)
 	{
 		kSetAllPassToZero();
 		pstTarget = (TCB*)kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
 	}
 
+	// tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
 	if(trace_task_sequence != 0)
 	{
 		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
@@ -492,6 +494,8 @@ static TCB* kGetNextTaskToRun( void )
 
 	pstTarget = kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
 
+	// 현재 이미 실행중이던 태스크가 다시 스케줄링 되는 경우
+	// ReadyList에서 해당 태스크를 제거한다.
 	if(pstTarget != gs_stScheduler.pstRunningTask)
 	{
 		kRemoveTaskFromReadyList( gs_stScheduler.pstRunningTask->stLink.qwID );
@@ -503,16 +507,20 @@ static TCB* kGetNextTaskToRun( void )
 
 
 /**
- *  占승쏙옙크占쏙옙 占쏙옙占쏙옙占쌕뤄옙占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
+ *  태스크를 스케줄러의 준비 리스트에 삽입
  */
-
 /*
 static BOOL kAddTaskToReadyList( TCB* pstTask )
 {
     BYTE bPriority;
 
     bPriority = GETPRIORITY( pstTask->qwFlags );
-    if( bPriority >= TASK_MAXREADYLISTCOUNT )
+    if( bPriority == TASK_FLAGS_WAIT )
+    {
+        kAddListToTail( &( gs_stScheduler.stWaitList ), pstTask );
+        return TRUE;
+    }
+    else if( bPriority >= TASK_MAXREADYLISTCOUNT )
     {
         return FALSE;
     }
@@ -534,6 +542,8 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
 		return FALSE;
 	}
     kAddListToTail( &( gs_stScheduler.vstReadyList ), pstTask );
+
+    // 태스크가 ReadyList에 추가되면 리스트의 총 ticket의 합 갱신
     gs_stScheduler.curTicketTotal += bPriority;
     return TRUE;
 }
@@ -550,12 +560,13 @@ static BOOL kAddTaskToReadyList( TCB* pstTask )
 		return FALSE;
 	}
     kAddListToTail( &( gs_stScheduler.vstReadyList ), pstTask );
+    // 태스크가 ReadyList에 추가되면 해당 태스크의 pass값 갱신
     pstTask->iPass += kGetPass(bPriority);
     return TRUE;
 }
 
 /**
- *  占쌔븝옙 큐占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+ *  준비 큐에서 태스크를 제거
  */
 
 /*
@@ -564,21 +575,25 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
     TCB* pstTarget;
     BYTE bPriority;
 
-    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 태스크 ID가 유효하지 않으면 실패
     if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
     {
         return NULL;
     }
 
-    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
+    // TCB 풀에서 해당 태스크의 TCB를 찾아 실제로 ID가 일치하는가 확인
     pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
     if( pstTarget->stLink.qwID != qwTaskID )
     {
         return NULL;
     }
 
-    // 占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹댐옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+    // 태스크가 존재하는 준비 리스트에서 태스크 제거
     bPriority = GETPRIORITY( pstTarget->qwFlags );
+    if( bPriority >= TASK_MAXREADYLISTCOUNT )
+    {
+        return NULL;
+    }
 
     pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList[ bPriority ]),
                      qwTaskID );
@@ -593,13 +608,11 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
     TCB* pstTarget;
     BYTE bPriority;
 
-    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
     {
         return NULL;
     }
 
-    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
     pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
     if( pstTarget->stLink.qwID != qwTaskID )
     {
@@ -608,6 +621,8 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 
     bPriority = GETPRIORITY( pstTarget->qwFlags );
     pstTarget = kRemoveList( &( gs_stScheduler.vstReadyList ), qwTaskID );
+
+    // ReadyList에서 태스크가 제거된다면 전체 태스크 티켓 수 갱신
     gs_stScheduler.curTicketTotal -= bPriority;
     return pstTarget;
 }
@@ -618,13 +633,11 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 {
     TCB* pstTarget;
 
-    // 占승쏙옙크 ID占쏙옙 占쏙옙효占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     if( GETTCBOFFSET( qwTaskID ) >= TASK_MAXCOUNT )
     {
         return NULL;
     }
 
-    // TCB 풀占쏙옙占쏙옙 占쌔댐옙 占승쏙옙크占쏙옙 TCB占쏙옙 찾占쏙옙 占쏙옙占쏙옙占쏙옙 ID占쏙옙 占쏙옙치占싹는곤옙 확占쏙옙
     pstTarget = &( gs_stTCBPoolManager.pstStartAddress[ GETTCBOFFSET( qwTaskID ) ] );
     if( pstTarget->stLink.qwID != qwTaskID )
     {
@@ -636,9 +649,10 @@ static TCB* kRemoveTaskFromReadyList( QWORD qwTaskID )
 }
 
 /**
- *  占승쏙옙크占쏙옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
+ *  태스크의 우선 순위를 변경함
  */
 /*
+// 멀티레벨 큐 전용 kChangePriority
 BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
 {
     TCB* pstTarget;
@@ -649,45 +663,44 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
         return FALSE;
     }
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占싱몌옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
-    // PIT 占쏙옙트占싼뤄옙占쏙옙 占쏙옙占싶뤄옙트(IRQ 0)占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쏙옙占쏙옙占�
-    // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
+    // 현재 실행중인 태스크이면 우선 순위만 변경
+    // PIT 컨트롤러의 인터럽트(IRQ 0)가 발생하여 태스크 전환이 수행될 때 변경된
+    // 우선 순위의 리스트로 이동
     pstTarget = gs_stScheduler.pstRunningTask;
     if( pstTarget->stLink.qwID == qwTaskID )
     {
         SETPRIORITY( pstTarget->qwFlags, bPriority );
     }
-    // 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占싣니몌옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 찾占싣쇽옙 占쌔댐옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
+    // 실행중인 태스크가 아니면 준비 리스트에서 찾아서 해당 우선 순위의 리스트로 이동
     else
     {
-        // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+        // 준비 리스트에서 태스크를 찾지 못하면 직접 태스크를 찾아서 우선 순위를 설정
         pstTarget = kRemoveTaskFromReadyList( qwTaskID );
         if( pstTarget == NULL )
         {
-            // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占쏙옙
+            // 태스크 ID로 직접 찾아서 설정
             pstTarget = kGetTCBInTCBPool( GETTCBOFFSET( qwTaskID ) );
             if( pstTarget != NULL )
             {
-                // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+                // 우선 순위를 설정
                 SETPRIORITY( pstTarget->qwFlags, bPriority );
             }
         }
         else
         {
-            // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싹곤옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쌕쏙옙 占쏙옙占쏙옙
+            // 우선 순위를 설정하고 준비 리스트에 다시 삽입
             SETPRIORITY( pstTarget->qwFlags, bPriority );
             kAddTaskToReadyList( pstTarget );
         }
     }
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-    kUnlockForSystemData(bPreviousFlag);
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
     return TRUE;
 }
 */
-
 
 // 추첨 스케줄링과 보폭 스케줄링 전용 kChangePriority
 BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
@@ -700,25 +713,18 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
         return FALSE;
     }
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占싱몌옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
-    // PIT 占쏙옙트占싼뤄옙占쏙옙 占쏙옙占싶뤄옙트(IRQ 0)占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쏙옙占쏙옙占�
-    // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
     pstTarget = gs_stScheduler.pstRunningTask;
     if( pstTarget->stLink.qwID == qwTaskID )
     {
         SETPRIORITY( pstTarget->qwFlags, bPriority );
     }
-    // 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占싣니몌옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 찾占싣쇽옙 占쌔댐옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙트占쏙옙 占싱듸옙
     else
     {
-        // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
         pstTarget = kRemoveTaskFromReadyList( qwTaskID );
         if( pstTarget == NULL )
         {
-            // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占쏙옙
             pstTarget = kGetTCBInTCBPool( GETTCBOFFSET( qwTaskID ) );
             if( pstTarget != NULL )
             {
@@ -728,75 +734,75 @@ BOOL kChangePriority( QWORD qwTaskID, BYTE bPriority )
         }
         else
         {
-            // 占쎌선 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占싹곤옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙 占쌕쏙옙 占쏙옙占쏙옙
             SETPRIORITY( pstTarget->qwFlags, bPriority );
             kAddTaskToReadyList( pstTarget );
         }
     }
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return TRUE;
 }
 
 
 /**
- *  占쌕몌옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占쏙옙환
- *      占쏙옙占싶뤄옙트占쏙옙 占쏙옙占쌤곤옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙 호占쏙옙占싹몌옙 占싫듸옙
+ *  다른 태스크를 찾아서 전환
+ *      인터럽트나 예외가 발생했을 때 호출하면 안됨
  */
 /*
+// 멀티레벨 큐 전용 kSchedule
 void kSchedule( void )
 {
     TCB* pstRunningTask, * pstNextTask;
     BOOL bPreviousFlag;
 
-    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쌍억옙占� 占쏙옙
+    // 전환할 태스크가 있어야 함
     if( kGetReadyTaskCount() < 1 )
     {
         return ;
     }
 
-    // 占쏙옙환占싹댐옙 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙 占싹어나占쏙옙 占쏙옙占쏙옙球퓐占� 占쏙옙환占싹댐옙
-    // 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙占싹듸옙占쏙옙 占쏙옙占쏙옙
+    // 전환하는 도중 인터럽트가 발생하여 태스크 전환이 또 일어나면 곤란하므로 전환하는
+    // 동안 인터럽트가 발생하지 못하도록 설정
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
-    // 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
-    pstNextTask = kGetNextTaskToRun();
 
+    // 실행할 다음 태스크를 얻음
+    pstNextTask = kGetNextTaskToRun();
     if( pstNextTask == NULL )
     {
-        // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-    	kUnlockForSystemData(bPreviousFlag);
+        // 임계 영역 끝
+        kUnlockForSystemData( bPreviousFlag );
         return ;
     }
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
-	pstRunningTask = gs_stScheduler.pstRunningTask;
-	gs_stScheduler.pstRunningTask = pstNextTask;
+    // 현재 수행중인 태스크의 정보를 수정한 뒤 콘텍스트 전환
+    pstRunningTask = gs_stScheduler.pstRunningTask;
+    gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
-	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
-	{
-		gs_stScheduler.qwSpendProcessorTimeInIdleTask +=
-			TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
-	}
+    // 유휴 태스크에서 전환되었다면 사용한 프로세서 시간을 증가시킴
+    if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
+    {
+        gs_stScheduler.qwSpendProcessorTimeInIdleTask +=
+            TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
+    }
 
-	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
-	gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
+    // 태스크 종료 플래그가 설정된 경우 콘텍스트를 저장할 필요가 없으므로, 대기 리스트에
+    // 삽입하고 콘텍스트 전환
+    if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
+    {
+        kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
+        kSwitchContext( NULL, &( pstNextTask->stContext ) );
+    }
+    else
+    {
+        kAddTaskToReadyList( pstRunningTask );
+        kSwitchContext( &( pstRunningTask->stContext ), &( pstNextTask->stContext ) );
+    }
 
-	// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占� 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙 占십요가 占쏙옙占쏙옙占실뤄옙, 占쏙옙占� 占쏙옙占쏙옙트占쏙옙
-	// 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트 占쏙옙환
-	if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
-	{
-		kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
-		kSwitchContext( NULL, &( pstNextTask->stContext ) );
-	}
-	else
-	{
-		kAddTaskToReadyList( pstRunningTask );
-		kSwitchContext( &( pstRunningTask->stContext ), &( pstNextTask->stContext ) );
-	}
+    // 프로세서 사용 시간을 업데이트
+    gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-	kUnlockForSystemData(bPreviousFlag);
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
 }
 */
 
@@ -806,41 +812,32 @@ void kSchedule( void )
     TCB* pstRunningTask, * pstNextTask;
     BOOL bPreviousFlag;
 
-    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쌍억옙占� 占쏙옙
     if( kGetReadyTaskCount() < 1 )
     {
         return ;
     }
 
-    // 占쏙옙환占싹댐옙 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占싹울옙 占승쏙옙크 占쏙옙환占쏙옙 占쏙옙 占싹어나占쏙옙 占쏙옙占쏙옙球퓐占� 占쏙옙환占싹댐옙
-    // 占쏙옙占쏙옙 占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙占싹듸옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
-    // 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙
 
     pstNextTask = kGetNextTaskToRun();
 
     if( pstNextTask == NULL )
     {
-        // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return ;
     }
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	pstRunningTask = gs_stScheduler.pstRunningTask;
 	gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
 	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
 	{
 		gs_stScheduler.qwSpendProcessorTimeInIdleTask +=
 			TASK_PROCESSORTIME - gs_stScheduler.iProcessorTime;
 	}
-	// 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
 	gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
 
-	// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占� 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙 占십요가 占쏙옙占쏙옙占실뤄옙, 占쏙옙占� 占쏙옙占쏙옙트占쏙옙
-	// 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트 占쏙옙환
+	// 이미 현재 실행중인 태스크를 다시 스케줄하는 경우 이 단계를 건너뛴다.
 	if(pstRunningTask != pstNextTask)
 	{
 		if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
@@ -854,75 +851,73 @@ void kSchedule( void )
 			kSwitchContext( &( pstRunningTask->stContext ), &( pstNextTask->stContext ) );
 		}
 	}
-	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 }
 
+/**
+ *  인터럽트가 발생했을 때, 다른 태스크를 찾아 전환
+ *      반드시 인터럽트나 예외가 발생했을 때 호출해야 함
+ */
 /*
+// 멀티레벨 큐 전용 kScheduleInInterrupt
 BOOL kScheduleInInterrupt( void )
 {
     TCB* pstRunningTask, * pstNextTask;
     char* pcContextAddress;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 전환할 태스크가 없으면 종료
     pstNextTask = kGetNextTaskToRun();
     if( pstNextTask == NULL )
     {
-    		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-    	kUnlockForSystemData(bPreviousFlag);
+        // 임계 영역 끝
+        kUnlockForSystemData( bPreviousFlag );
         return FALSE;
     }
 
     //==========================================================================
-    //  占승쏙옙크 占쏙옙환 처占쏙옙
-    //      占쏙옙占싶뤄옙트 占쌘들러占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쌔쏙옙트占쏙옙 占쌕몌옙 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏘쓰占쏙옙 占쏙옙占쏙옙占쏙옙占� 처占쏙옙
+    //  태스크 전환 처리
+    //      인터럽트 핸들러에서 저장한 콘텍스트를 다른 콘텍스트로 덮어쓰는 방법으로 처리
     //==========================================================================
     pcContextAddress = ( char* ) IST_STARTADDRESS + IST_SIZE - sizeof( CONTEXT );
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
-	pstRunningTask = gs_stScheduler.pstRunningTask;
-	gs_stScheduler.pstRunningTask = pstNextTask;
+    // 현재 수행중인 태스크의 정보를 수정한 뒤 콘텍스트 전환
+    pstRunningTask = gs_stScheduler.pstRunningTask;
+    gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
-	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
-	{
-		gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME;
-	}
+    // 유휴 태스크에서 전환되었다면 사용한 Tick Count를 증가시킴
+    if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
+    {
+        gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME;
+    }
 
-	// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占�, 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占십곤옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙
-	if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
-	{
-		kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
-	}
-	// 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙占쏙옙 IST占쏙옙 占쌍댐옙 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占싹곤옙, 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙
-	// 占신깍옙
-	else
-	{
-		kMemCpy( &( pstRunningTask->stContext ), pcContextAddress, sizeof( CONTEXT ) );
-		kAddTaskToReadyList( pstRunningTask );
-	}
+    // 태스크 종료 플래그가 설정된 경우, 콘텍스트를 저장하지 않고 대기 리스트에만 삽입
+    if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
+    {
+        kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
+    }
+    // 태스크가 종료되지 않으면 IST에 있는 콘텍스트를 복사하고, 현재 태스크를 준비 리스트로
+    // 옮김
+    else
+    {
+        kMemCpy( &( pstRunningTask->stContext ), pcContextAddress, sizeof( CONTEXT ) );
+        kAddTaskToReadyList( pstRunningTask );
+    }
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
 
-	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-	kUnlockForSystemData(bPreviousFlag);
+    // 전환해서 실행할 태스크를 Running Task로 설정하고 콘텍스트를 IST에 복사해서
+    // 자동으로 태스크 전환이 일어나도록 함
+    kMemCpy( pcContextAddress, &( pstNextTask->stContext ), sizeof( CONTEXT ) );
 
-    // 占쏙옙환占쌔쇽옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 Running Task占쏙옙 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트占쏙옙 IST占쏙옙 占쏙옙占쏙옙占쌔쇽옙
-    // 占쌘듸옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙환占쏙옙 占싹어나占쏙옙占쏙옙 占쏙옙
-	kMemCpy( pcContextAddress, &( pstNextTask->stContext ), sizeof( CONTEXT ) );
-
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
+    // 프로세서 사용 시간을 업데이트
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
     return TRUE;
 }
 */
-
-/**
- *  占쏙옙占싶뤄옙트占쏙옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙, 占쌕몌옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙환
- *      占쌥듸옙占� 占쏙옙占싶뤄옙트占쏙옙 占쏙옙占쌤곤옙 占쌩삼옙占쏙옙占쏙옙 占쏙옙 호占쏙옙占쌔억옙 占쏙옙
- */
 
 // 추첨 스케줄링 및 보폭 스케줄링 전용 kScheduleInInterrupt
 BOOL kScheduleInInterrupt( void )
@@ -931,43 +926,32 @@ BOOL kScheduleInInterrupt( void )
     char* pcContextAddress;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙환占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     pstNextTask = kGetNextTaskToRun();
     if( pstNextTask == NULL )
     {
-    		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     	kUnlockForSystemData(bPreviousFlag);
         return FALSE;
     }
 
-    //==========================================================================
-    //  占승쏙옙크 占쏙옙환 처占쏙옙
-    //      占쏙옙占싶뤄옙트 占쌘들러占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쌔쏙옙트占쏙옙 占쌕몌옙 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏘쓰占쏙옙 占쏙옙占쏙옙占쏙옙占� 처占쏙옙
-    //==========================================================================
     pcContextAddress = ( char* ) IST_STARTADDRESS + IST_SIZE - sizeof( CONTEXT );
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙 占쏙옙占쌔쏙옙트 占쏙옙환
 	pstRunningTask = gs_stScheduler.pstRunningTask;
 	gs_stScheduler.pstRunningTask = pstNextTask;
 
-	// 占쏙옙占쏙옙 占승쏙옙크占쏙옙占쏙옙 占쏙옙환占실억옙占쌕몌옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙킴
 	if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
 	{
 		gs_stScheduler.qwSpendProcessorTimeInIdleTask += TASK_PROCESSORTIME;
 	}
 
+	// 현재 실행중인 태스크를 다시 스케줄링 하는 경우 이 단계를 건너뜀
 	if(pstRunningTask != pstNextTask)
 	{
-		// 占승쏙옙크 占쏙옙占쏙옙 占시뤄옙占쌓곤옙 占쏙옙占쏙옙占쏙옙 占쏙옙占�, 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占십곤옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙占쏙옙 占쏙옙占쏙옙
 		if( pstRunningTask->qwFlags & TASK_FLAGS_ENDTASK )
 		{
 			kAddListToTail( &( gs_stScheduler.stWaitList ), pstRunningTask );
 		}
-		// 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙占쏙옙 IST占쏙옙 占쌍댐옙 占쏙옙占쌔쏙옙트占쏙옙 占쏙옙占쏙옙占싹곤옙, 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쌔븝옙 占쏙옙占쏙옙트占쏙옙
-		// 占신깍옙
 		else
 		{
 			kMemCpy( &( pstRunningTask->stContext ), pcContextAddress, sizeof( CONTEXT ) );
@@ -975,24 +959,21 @@ BOOL kScheduleInInterrupt( void )
 		}
 	}
 
-	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
 	kUnlockForSystemData(bPreviousFlag);
 
-    // 占쏙옙환占쌔쇽옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 Running Task占쏙옙 占쏙옙占쏙옙占싹곤옙 占쏙옙占쌔쏙옙트占쏙옙 IST占쏙옙 占쏙옙占쏙옙占쌔쇽옙
-    // 占쌘듸옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙환占쏙옙 占싹어나占쏙옙占쏙옙 占쏙옙
+	// 현재 실행중인 태스크를 다시 스케줄링 하는 경우 이 단계를 건너뜀
 	if(pstRunningTask != pstNextTask)
 	{
 		kMemCpy( pcContextAddress, &( pstNextTask->stContext ), sizeof( CONTEXT ) );
 	}
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙占� 占시곤옙占쏙옙 占쏙옙占쏙옙占쏙옙트
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
     return TRUE;
 }
 
 
 /**
- *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占시곤옙占쏙옙 占싹놂옙 占쏙옙占쏙옙
+ *  프로세서를 사용할 수 있는 시간을 하나 줄임
  */
 void kDecreaseProcessorTime( void )
 {
@@ -1003,7 +984,7 @@ void kDecreaseProcessorTime( void )
 }
 
 /**
- *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占� 占쏙옙 占쌍댐옙 占시곤옙占쏙옙 占쏙옙 占실억옙占쏙옙占쏙옙 占쏙옙占싸몌옙 占쏙옙환
+ *  프로세서를 사용할 수 있는 시간이 다 되었는지 여부를 반환
  */
 BOOL kIsProcessorTimeExpired( void )
 {
@@ -1015,7 +996,7 @@ BOOL kIsProcessorTimeExpired( void )
 }
 
 /**
- *  占승쏙옙크占쏙옙 占쏙옙占쏙옙
+ *  태스크를 종료
  */
 BOOL kEndTask( QWORD qwTaskID )
 {
@@ -1023,41 +1004,41 @@ BOOL kEndTask( QWORD qwTaskID )
     BYTE bPriority;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占승쏙옙크占싱몌옙 EndTask 占쏙옙트占쏙옙 占쏙옙占쏙옙占싹곤옙 占승쏙옙크占쏙옙 占쏙옙환
+    // 현재 실행중인 태스크이면 EndTask 비트를 설정하고 태스크를 전환
     pstTarget = gs_stScheduler.pstRunningTask;
     if( pstTarget->stLink.qwID == qwTaskID )
     {
         pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
         SETPRIORITY( pstTarget->qwFlags, TASK_FLAGS_WAIT );
 
-        	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-        kUnlockForSystemData(bPreviousFlag);
+        // 임계 영역 끝
+        kUnlockForSystemData( bPreviousFlag );
 
         kSchedule();
 
-        // 占승쏙옙크占쏙옙 占쏙옙환 占실억옙占쏙옙占실뤄옙 占싣뤄옙 占쌘듸옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占� 占쏙옙占쏙옙
+        // 태스크가 전환 되었으므로 아래 코드는 절대 실행되지 않음
         while( 1 ) ;
     }
-    // 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占싣니몌옙 占쌔븝옙 큐占쏙옙占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占� 占쏙옙占쏙옙트占쏙옙 占쏙옙占쏙옙
+    // 실행 중인 태스크가 아니면 준비 큐에서 직접 찾아서 대기 리스트에 연결
     else
     {
-        // 占쌔븝옙 占쏙옙占쏙옙트占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占쏙옙 占쏙옙占싹몌옙 占쏙옙占쏙옙 占승쏙옙크占쏙옙 찾占싣쇽옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙트占쏙옙
-        // 占쏙옙占쏙옙
+        // 준비 리스트에서 태스크를 찾지 못하면 직접 태스크를 찾아서 태스크 종료 비트를
+        // 설정
         pstTarget = kRemoveTaskFromReadyList( qwTaskID );
         if( pstTarget == NULL )
         {
-            // 占승쏙옙크 ID占쏙옙 占쏙옙占쏙옙 찾占싣쇽옙 占쏙옙占쏙옙
+            // 태스크 ID로 직접 찾아서 설정
             pstTarget = kGetTCBInTCBPool( GETTCBOFFSET( qwTaskID ) );
             if( pstTarget != NULL )
             {
                 pstTarget->qwFlags |= TASK_FLAGS_ENDTASK;
                 SETPRIORITY( pstTarget->qwFlags, TASK_FLAGS_WAIT );
             }
-            	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-            kUnlockForSystemData(bPreviousFlag);
+            // 임계 영역 끝
+            kUnlockForSystemData( bPreviousFlag );
             return TRUE;
         }
 
@@ -1065,11 +1046,13 @@ BOOL kEndTask( QWORD qwTaskID )
         SETPRIORITY( pstTarget->qwFlags, TASK_FLAGS_WAIT );
         kAddListToTail( &( gs_stScheduler.stWaitList ), pstTarget );
     }
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
     return TRUE;
 }
 
 /**
- *  占승쏙옙크占쏙옙 占쌘쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙
+ *  태스크가 자신을 종료함
  */
 void kExitTask( void )
 {
@@ -1077,27 +1060,27 @@ void kExitTask( void )
 }
 
 /**
- *  占쌔븝옙 큐占쏙옙 占쌍댐옙 占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
+ *  준비 큐에 있는 모든 태스크의 수를 반환
  */
-
 /*
+// 멀티레벨 큐 전용 kGetReadyTaskCount
 int kGetReadyTaskCount( void )
 {
     int iTotalCount = 0;
     int i;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙占� 占쌔븝옙 큐占쏙옙 확占쏙옙占싹울옙 占승쏙옙크 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 모든 준비 큐를 확인하여 태스크 개수를 구함
     for( i = 0 ; i < TASK_MAXREADYLISTCOUNT ; i++ )
     {
         iTotalCount += kGetListCount( &( gs_stScheduler.vstReadyList[ i ] ) );
     }
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-    kUnlockForSystemData(bPreviousFlag);
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
     return iTotalCount ;
 }
 */
@@ -1110,41 +1093,38 @@ int kGetReadyTaskCount( void )
     int i;
     BOOL bPreviousFlag;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
     bPreviousFlag = kLockForSystemData();
 
-    // 占쏙옙占� 占쌔븝옙 큐占쏙옙 확占쏙옙占싹울옙 占승쏙옙크 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
     iTotalCount += kGetListCount( &( gs_stScheduler.vstReadyList ) );
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
     kUnlockForSystemData(bPreviousFlag);
     return iTotalCount;
 }
 
 
 /**
- *  占쏙옙체 占승쏙옙크占쏙옙 占쏙옙占쏙옙 占쏙옙환
+ *  전체 태스크의 수를 반환
  */
 int kGetTaskCount( void )
 {
     int iTotalCount;
     BOOL bPreviousFlag;
 
-    // 占쌔븝옙 큐占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙, 占쏙옙占� 큐占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 준비 큐의 태스크 수를 구한 후, 대기 큐의 태스크 수와 현재 수행 중인 태스크 수를 더함
     iTotalCount = kGetReadyTaskCount();
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 임계 영역 시작
     bPreviousFlag = kLockForSystemData();
 
     iTotalCount += kGetListCount( &( gs_stScheduler.stWaitList ) ) + 1;
 
-    // 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-    kUnlockForSystemData(bPreviousFlag);
+    // 임계 영역 끝
+    kUnlockForSystemData( bPreviousFlag );
     return iTotalCount;
 }
 
 /**
- *  TCB 풀占쏙옙占쏙옙 占쌔댐옙 占쏙옙占쏙옙占쏙옙占쏙옙 TCB占쏙옙 占쏙옙환
+ *  TCB 풀에서 해당 오프셋의 TCB를 반환
  */
 TCB* kGetTCBInTCBPool( int iOffset )
 {
@@ -1157,15 +1137,15 @@ TCB* kGetTCBInTCBPool( int iOffset )
 }
 
 /**
- *  占승쏙옙크占쏙옙 占쏙옙占쏙옙占싹댐옙占쏙옙 占쏙옙占싸몌옙 占쏙옙환
+ *  태스크가 존재하는지 여부를 반환
  */
 BOOL kIsTaskExist( QWORD qwID )
 {
     TCB* pstTCB;
 
-    // ID占쏙옙 TCB占쏙옙 占쏙옙환
+    // ID로 TCB를 반환
     pstTCB = kGetTCBInTCBPool( GETTCBOFFSET( qwID ) );
-    // TCB占쏙옙 占쏙옙占신놂옙 ID占쏙옙 占쏙옙치占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占쏙옙 占십댐옙 占쏙옙占쏙옙
+    // TCB가 없거나 ID가 일치하지 않으면 존재하지 않는 것임
     if( ( pstTCB == NULL ) || ( pstTCB->stLink.qwID != qwID ) )
     {
         return FALSE;
@@ -1174,7 +1154,7 @@ BOOL kIsTaskExist( QWORD qwID )
 }
 
 /**
- *  占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙환
+ *  프로세서의 사용률을 반환
  */
 QWORD kGetProcessorLoad( void )
 {
@@ -1182,11 +1162,11 @@ QWORD kGetProcessorLoad( void )
 }
 
 //==============================================================================
-//  占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
+//  유휴 태스크 관련
 //==============================================================================
 /**
- *  占쏙옙占쏙옙 占승쏙옙크
- *      占쏙옙占� 큐占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙
+ *  유휴 태스크
+ *      대기 큐에 삭제 대기중인 태스크를 정리
  */
 void kIdleTask( void )
 {
@@ -1196,19 +1176,19 @@ void kIdleTask( void )
     BOOL bPreviousFlag;
     QWORD qwTaskID;
 
-    // 占쏙옙占싸쇽옙占쏙옙 占쏙옙酉� 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占쏙옙占쏙옙
+    // 프로세서 사용량 계산을 위해 기준 정보를 저장
     qwLastSpendTickInIdleTask = gs_stScheduler.qwSpendProcessorTimeInIdleTask;
     qwLastMeasureTickCount = kGetTickCount();
 
     while( 1 )
     {
-        // 占쏙옙占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙
+        // 현재 상태를 저장
         qwCurrentMeasureTickCount = kGetTickCount();
         qwCurrentSpendTickInIdleTask = gs_stScheduler.qwSpendProcessorTimeInIdleTask;
 
-        // 占쏙옙占싸쇽옙占쏙옙 占쏙옙酉�占쏙옙 占쏙옙占�
-        // 100 - ( 占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙 ) * 100 / ( 占시쏙옙占쏙옙 占쏙옙체占쏙옙占쏙옙
-        // 占쏙옙占쏙옙占� 占쏙옙占싸쇽옙占쏙옙 占시곤옙 )
+        // 프로세서 사용량을 계산
+        // 100 - ( 유휴 태스크가 사용한 프로세서 시간 ) * 100 / ( 시스템 전체에서
+        // 사용한 프로세서 시간 )
         if( qwCurrentMeasureTickCount - qwLastMeasureTickCount == 0 )
         {
             gs_stScheduler.qwProcessorLoad = 0;
@@ -1220,33 +1200,34 @@ void kIdleTask( void )
                 100 /( qwCurrentMeasureTickCount - qwLastMeasureTickCount );
         }
 
-        // 占쏙옙占쏙옙 占쏙옙占승몌옙 占쏙옙占쏙옙 占쏙옙占승울옙 占쏙옙占쏙옙
+        // 현재 상태를 이전 상태에 보관
         qwLastMeasureTickCount = qwCurrentMeasureTickCount;
         qwLastSpendTickInIdleTask = qwCurrentSpendTickInIdleTask;
 
-        // 占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占싹울옙 占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙
+        // 프로세서의 부하에 따라 쉬게 함
         kHaltProcessorByLoad();
 
-        // 占쏙옙占� 큐占쏙옙 占쏙옙占쏙옙占쏙옙占� 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크占쏙옙 占쏙옙占쏙옙占쏙옙
+        // 대기 큐에 대기중인 태스크가 있으면 태스크를 종료함
         if( kGetListCount( &( gs_stScheduler.stWaitList ) ) >= 0 )
         {
             while( 1 )
             {
-            		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙占쏙옙
-            	bPreviousFlag = kLockForSystemData();
+                // 임계 영역 시작
+                bPreviousFlag = kLockForSystemData();
                 pstTask = kRemoveListFromHeader( &( gs_stScheduler.stWaitList ) );
                 if( pstTask == NULL )
                 {
-                		// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-                	kUnlockForSystemData(bPreviousFlag);
-                	break;
+                    // 임계 영역 끝
+                    kUnlockForSystemData( bPreviousFlag );
+                    break;
                 }
                 qwTaskID = pstTask->stLink.qwID;
                 kFreeTCB( qwTaskID );
-                	// 占쌈곤옙 占쏙옙占쏙옙 占쏙옙
-                kUnlockForSystemData(bPreviousFlag);
+                // 임계 영역 끝
+                kUnlockForSystemData( bPreviousFlag );
+
                 kPrintf( "IDLE: Task ID[0x%q] is completely ended.\n",
-                                        qwTaskID );
+                        qwTaskID );
             }
         }
 
@@ -1255,7 +1236,7 @@ void kIdleTask( void )
 }
 
 /**
- *  占쏙옙占쏙옙占쏙옙 占쏙옙占싸쇽옙占쏙옙 占쏙옙占싹울옙 占쏙옙占쏙옙 占쏙옙占싸쇽옙占쏙옙占쏙옙 占쏙옙占쏙옙 占쏙옙
+ *  측정된 프로세서 부하에 따라 프로세서를 쉬게 함
  */
 void kHaltProcessorByLoad( void )
 {
@@ -1276,11 +1257,14 @@ void kHaltProcessorByLoad( void )
     }
 }
 
+// 티켓 값을 받아 증가해야 할 pass값을 반환해주는 함수
 int kGetPass(int stride)
 {
 	return TASK_STRIDE_NUM / stride;
 }
 
+// 보폭 스케줄링 전용 함수
+// 모든 태스크의 pass값이 최대일 때 모든 pass값을 0으로 초기화한다.
 void kSetAllPassToZero()
 {
 	TCB * pstTarget;
@@ -1296,7 +1280,6 @@ void kSetAllPassToZero()
 		return NULL;
 	}
 
-	// 占쏙옙첨 占쏙옙占쏙옙占� 占쏙옙占쏙옙 占쏙옙占쏙옙占쏙옙 占승쏙옙크 占쏙옙占쏙옙
 	for( i = 0 ; i < iTaskCount ; i++ )
 	{
 		pstTarget->iPass = 0;
