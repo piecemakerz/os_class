@@ -6,43 +6,43 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ï¿½ï¿½Å©ï¿½ï¿½
+// ¸ÅÅ©·Î
 //
 ////////////////////////////////////////////////////////////////////////////////
 #define CONSOLESHELL_MAXCOMMANDBUFFERCOUNT  300
 #define CONSOLESHELL_PROMPTMESSAGE          "MINT64>"
 
-// ï¿½ï¿½ï¿½Ú¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½Ä¶ï¿½ï¿½ï¿½Í·ï¿½ ï¿½Þ´ï¿½ ï¿½Ô¼ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å¸ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+// ¹®ÀÚ¿­ Æ÷ÀÎÅÍ¸¦ ÆÄ¶ó¹ÌÅÍ·Î ¹Þ´Â ÇÔ¼ö Æ÷ÀÎÅÍ Å¸ÀÔ Á¤ÀÇ
 typedef void ( * CommandFunction ) ( const char* pcParameter );
 
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ï¿½ï¿½ï¿½ï¿½Ã¼
+// ±¸Á¶Ã¼
 //
 ////////////////////////////////////////////////////////////////////////////////
-// 1ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+// 1¹ÙÀÌÆ®·Î Á¤·Ä
 #pragma pack( push, 1 )
 
-// ï¿½ï¿½ï¿½ï¿½ Ä¿ï¿½Çµå¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ú·á±¸ï¿½ï¿½
+// ¼ÐÀÇ Ä¿¸Çµå¸¦ ÀúÀåÇÏ´Â ÀÚ·á±¸Á¶
 typedef struct kShellCommandEntryStruct
 {
-    // Ä¿ï¿½Çµï¿½ ï¿½ï¿½ï¿½Ú¿ï¿½
+    // Ä¿¸Çµå ¹®ÀÚ¿­
     char* pcCommand;
-    // Ä¿ï¿½Çµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    // Ä¿¸ÇµåÀÇ µµ¿ò¸»
     char* pcHelp;
-    // Ä¿ï¿½Çµå¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    // Ä¿¸Çµå¸¦ ¼öÇàÇÏ´Â ÇÔ¼öÀÇ Æ÷ÀÎÅÍ
     CommandFunction pfFunction;
 } SHELLCOMMANDENTRY;
 
-// ï¿½Ä¶ï¿½ï¿½ï¿½Í¸ï¿½ Ã³ï¿½ï¿½ï¿½Ï±ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ú·á±¸ï¿½ï¿½
+// ÆÄ¶ó¹ÌÅÍ¸¦ Ã³¸®ÇÏ±âÀ§ÇØ Á¤º¸¸¦ ÀúÀåÇÏ´Â ÀÚ·á±¸Á¶
 typedef struct kParameterListStruct
 {
-    // ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½å·¹ï¿½ï¿½
+    // ÆÄ¶ó¹ÌÅÍ ¹öÆÛÀÇ ¾îµå·¹½º
     const char* pcBuffer;
-    // ï¿½Ä¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    // ÆÄ¶ó¹ÌÅÍÀÇ ±æÀÌ
     int iLength;
-    // ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½Ä¶ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½Ä¡
+    // ÇöÀç Ã³¸®ÇÒ ÆÄ¶ó¹ÌÅÍ°¡ ½ÃÀÛÇÏ´Â À§Ä¡
     int iCurrentPosition;
 } PARAMETERLIST;
 
@@ -67,16 +67,16 @@ extern int trace_task_sequence;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ï¿½Ô¼ï¿½
+// ÇÔ¼ö
 //
 ////////////////////////////////////////////////////////////////////////////////
-// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Úµï¿½
+// ½ÇÁ¦ ¼Ð ÄÚµå
 void kStartConsoleShell( void );
 void kExecuteCommand( const char* pcCommandBuffer );
 void kInitializeParameter( PARAMETERLIST* pstList, const char* pcParameter );
 int kGetNextParameter( PARAMETERLIST* pstList, char* pcParameter );
 
-// Ä¿ï¿½Çµå¸¦ Ã³ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½
+// Ä¿¸Çµå¸¦ Ã³¸®ÇÏ´Â ÇÔ¼ö
 static void kHelp( const char* pcParameterBuffer );
 static void kCls( const char* pcParameterBuffer );
 static void kShowTotalRAMSize( const char* pcParameterBuffer );
@@ -104,4 +104,7 @@ static void kKillTask( const char* pcParameterBuffer );
 static void kCPULoad( const char* pcParameterBuffer );
 static void kTestMutex(const char* pcParameterBuffer);
 void kTraceScheduler(const char* pcParameterBuffer);
+static void kCreateThreadTask(void);
+static void kShowMatrix(const char* pcParameterBuffer);
+static void kTestThread(const char* pcParameterBuffer);
 #endif /*__CONSOLESHELL_H__*/

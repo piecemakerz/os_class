@@ -30,4 +30,5 @@ DWORD rand(WORD max_rand);
 void srand(WORD seed);
 //unsigned long time(void);
 WORD time(void);
+void kSleep(QWORD qwMillisecond);
 #endif /*__UTILITY_H__*/
