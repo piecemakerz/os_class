@@ -45,6 +45,7 @@ void kInitializePageTables( void )
 	dwMappingAddress = 0;
 	for( i = 0 ; i < PAGE_MAXENTRYCOUNT * 64 ; i++ )
 	{
+		/*
 		// 더블 맵핑 구현
 		// 0xAB8000을 0xB800에 맵핑하기 위해  0xA00000 ~ 0xC00000 메모리 공간을
 		// 0x000000 ~ 0x200000 페이지에 맵핑시킨다.
@@ -57,6 +58,24 @@ void kInitializePageTables( void )
 		// 0~2MB 메모리 공간은 2MB 페이지 대신 4KB 페이지 크기로 관리한다.
 		// 이를 위해, 0~2MB 메모리 공간은 4KB 페이지를 가리키는 페이지 테이블 1개로 관리한다.
 		else if(dwUpperAddress == 0 && dwMappingAddress == 0)
+		{
+			kSetPageEntryData(&(pstPDEntry[i]), dwUpperAddress, pstPTEntry, PAGE_FLAGS_DEFAULT, 0);
+		}
+		else
+		{
+			// 32비트로는 상위 어드레스를 표현할 수 없으므로, Mbyte 단위로 계산한 다음
+			// 최종 결과를 다시 4Kbyte로 나누어 32비트 이상의 어드레스를 계산함
+			kSetPageEntryData( &( pstPDEntry[ i ] ), dwUpperAddress, dwMappingAddress,
+					PAGE_FLAGS_DEFAULT | PAGE_FLAGS_PS, 0 );
+		}
+		dwMappingAddress += PAGE_DEFAULTSIZE;
+		*/
+
+		DWORD dwUpperAddress = (( i * ( PAGE_DEFAULTSIZE >> 20 ) ) >> 12);
+
+		// 0~2MB 메모리 공간은 2MB 페이지 대신 4KB 페이지 크기로 관리한다.
+		// 이를 위해, 0~2MB 메모리 공간은 4KB 페이지를 가리키는 페이지 테이블 1개로 관리한다.
+		if(dwUpperAddress == 0 && dwMappingAddress == 0)
 		{
 			kSetPageEntryData(&(pstPDEntry[i]), dwUpperAddress, pstPTEntry, PAGE_FLAGS_DEFAULT, 0);
 		}
