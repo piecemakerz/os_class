@@ -132,6 +132,9 @@ typedef struct kTaskControlBlockStruct
     void* pvMemoryAddress;
     QWORD qwMemorySize;
 
+    // 수행 시간 정보
+    QWORD qwRunningTime;
+
     //==========================================================================
     // 이하 스레드 정보
     //==========================================================================

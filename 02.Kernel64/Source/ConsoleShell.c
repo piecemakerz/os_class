@@ -35,6 +35,7 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "testthread", "Test Thread And Process Function", kTestThread },
         { "showmatrix", "Show Matrix Screen", kShowMatrix },
 		{ "tracescheduler", "Trace Task Scheduling", kTraceScheduler },
+        { "showfair", "Show Fairness Graph", kShowFairness }
 };                                     
 
 //==============================================================================
@@ -1252,4 +1253,114 @@ void kTraceScheduler(const char* pcParameterBuffer)
 	{
 		kSchedule();
 	}
+}
+#define COLOR(i) i%13+2
+
+static void kFairnessGraph(){
+    // 출력과 관련된 변수
+    CHARACTER* pstScreen = (CHARACTER*) CONSOLE_VIDEOMEMORYADDRESS;
+    int graphCursor = 0;
+    int vmemLabelCursor, vmemLabelPos = CONSOLE_WIDTH;
+    int vmemGraphPos = CONSOLE_WIDTH * 3;
+    // running과 관련된 변수 
+    short tasks[1025];
+    int totalRunningTime = 0;
+    TCB* pstTCB;
+
+    kClearScreen();
+    kPrintf("Fairness Graph\n");
+
+    // 작업시간 초기화
+    for ( int i = 0; i< TASK_MAXCOUNT ; i++ ){
+        tasks[i] = -1;
+        pstTCB = kGetTCBInTCBPool( i );
+        if (( pstTCB->stLink.qwID >> 32) != 0){
+            pstTCB->qwRunningTime = 0;
+            tasks[i] = 0;
+        }
+    }
+    // 출력버퍼초기화
+    short graph[1600]; // 10줄 -> 이만큼 kprintf(\n)
+    short line = 20;  // 10줄 (위와 동일하게 맞춰야하는 변수)
+    for( int i = 0; i < 1600; i++){
+        graph[i] = 0;
+        pstScreen[vmemGraphPos+i].bCharactor='#';
+        pstScreen[vmemGraphPos+i].bAttribute=0;
+    }
+    // 전광판 효과 사용하기
+    int offset = 80;
+    while(1){
+        for ( int i = 0; i< TASK_MAXCOUNT ; i++ ){
+            pstTCB = kGetTCBInTCBPool( i );
+            if (( pstTCB->stLink.qwID >> 32) != 0){
+                // 누적 시간을 구한다
+                tasks[i] += pstTCB->qwRunningTime;
+                totalRunningTime += pstTCB->qwRunningTime;
+                pstTCB->qwRunningTime = 0;
+            }
+        }
+        // 라벨을 출력할 위치를 재지정한다
+        vmemLabelCursor = vmemLabelPos;
+        // 처음 초기화를 하고 완전 비었을 경우를 제외해야 한다
+        if (totalRunningTime != 0){
+            // 모든 태스크의 누적 수행 시간을 스캔한다
+            int j=0;
+            for ( int i = 0; i < TASK_MAXCOUNT && j<line; i++ ){
+                // 스케줄된 태스크는 -1이 아니다
+                if (tasks[i] != -1){
+                    int percentage = ((tasks[i] * line + line/3) / totalRunningTime);
+                    pstScreen[vmemLabelCursor].bCharactor = ' ';
+                    pstScreen[vmemLabelCursor+1].bCharactor = i>=1000 ? i/1000 + '0'      :' ';
+                    pstScreen[vmemLabelCursor+1].bAttribute = COLOR(i);
+                    pstScreen[vmemLabelCursor+2].bCharactor = i>=100  ? (i%1000)/100 + '0':' ';
+                    pstScreen[vmemLabelCursor+2].bAttribute = COLOR(i);
+                    pstScreen[vmemLabelCursor+3].bCharactor = i>=10   ? (i%100)/10 + '0'  :' ';
+                    pstScreen[vmemLabelCursor+3].bAttribute = COLOR(i);
+                    pstScreen[vmemLabelCursor+4].bCharactor = i%10 + '0';
+                    pstScreen[vmemLabelCursor+4].bAttribute = COLOR(i);
+                    pstScreen[vmemLabelCursor+6].bCharactor = percentage/10 + '0';
+                    pstScreen[vmemLabelCursor+6].bAttribute = COLOR(i);
+                    pstScreen[vmemLabelCursor+7].bCharactor = percentage%10 + '0';
+                    pstScreen[vmemLabelCursor+7].bAttribute = COLOR(i);
+                    pstScreen[vmemLabelCursor+9].bCharactor = '%';
+                    pstScreen[vmemLabelCursor+9].bAttribute = COLOR(i);
+                    vmemLabelCursor += 10;
+                    for (int k=0; k<percentage; k++){
+                        graph[graphCursor+(k+j)*80] = COLOR(i);
+                    }
+                    j += percentage;
+                }
+            }
+            for(;j<line;j++){
+                graph[graphCursor+j*80] = 0;
+            }
+        }
+        int cursor;
+        if (offset-- > 0)
+            cursor = 0;
+        else cursor = (graphCursor + 1) % 80;
+        for (int i=0; i<line; i++)
+            for(int j=0; j<80; j++){
+                // pstScreen[vmemGraphPos+(i*80+j)%800].bCharactor='#';
+                pstScreen[vmemGraphPos+(vmemGraphPos+i*80+j)%1600].bAttribute=graph[(cursor+i*80+j)%1600];
+            }
+        // for ( int i = 0; i < 80; i++){
+        //     for (int j=0; j<line; j++){
+        //         pstScreen[vmemGraphPos+i+j*80].bCharactor='#';
+        //         pstScreen[vmemGraphPos+i+j*80].bAttribute=graph[cursor+j];
+        //     }
+        //     cursor = (cursor + 1) % 80;
+        // }
+        graphCursor = (graphCursor+1)%80;
+        kSleep(1000);
+    }
+}
+
+static void kShowFairness( void ){
+    TCB* pstProcess;
+    pstProcess = kCreateTask( TASK_FLAGS_PROCESS | TASK_FLAGS_LOW, ( void* ) 0xE00000, 0xE00000,
+                              ( QWORD ) kFairnessGraph );
+
+
+    
 }
