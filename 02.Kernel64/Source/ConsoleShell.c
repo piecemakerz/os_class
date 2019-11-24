@@ -1321,8 +1321,8 @@ static void kFairnessGraph(){
             int taskID = activetasks[i];
             pstTCB = kGetTCBInTCBPool( taskID );         
             if (( pstTCB->stLink.qwID >> 32) != 0){ // 스케줄링된 프로세스 목록 획득
-                tasks[taskID] += pstTCB->qwRunningTime/10;  // 이번 회차에 스케줄링된 횟수 누적
-                totalRunningTime += pstTCB->qwRunningTime/10;
+                tasks[taskID] += pstTCB->qwRunningTime;  // 이번 회차에 스케줄링된 횟수 누적
+                totalRunningTime += pstTCB->qwRunningTime;
                 pstTCB->qwRunningTime = 0;          // 횟수 초기화
             }
         }
@@ -1386,7 +1386,7 @@ static void kFairnessGraph(){
             for(int j=0; j<80; j++){
                 pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(graphCursor+j)%80];
             }
-        kSleep(100);
+        // kSleep(1);
     }
 }
 
