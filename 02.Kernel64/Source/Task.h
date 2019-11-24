@@ -120,42 +120,42 @@ typedef struct kContextStruct
 
 // 태스크의 상태를 관리하는 자료구조
 // 멀티레벨 큐와 추첨 스케줄링에 사용
-typedef struct kTaskControlBlockStruct
-{
-    // 다음 데이터의 위치와 ID
-    LISTLINK stLink;
+// typedef struct kTaskControlBlockStruct
+// {
+//     // 다음 데이터의 위치와 ID
+//     LISTLINK stLink;
 
-    // 플래그
-    QWORD qwFlags;
+//     // 플래그
+//     QWORD qwFlags;
 
-    // 프로세스 메모리 영역의 시작과 크기
-    void* pvMemoryAddress;
-    QWORD qwMemorySize;
+//     // 프로세스 메모리 영역의 시작과 크기
+//     void* pvMemoryAddress;
+//     QWORD qwMemorySize;
 
-    // 수행 시간 정보
-    QWORD qwRunningTime;
+//     // 수행 시간 정보
+//     QWORD qwRunningTime;
 
-    //==========================================================================
-    // 이하 스레드 정보
-    //==========================================================================
-    // 자식 스레드의 위치와 ID
-    LISTLINK stThreadLink;
+//     //==========================================================================
+//     // 이하 스레드 정보
+//     //==========================================================================
+//     // 자식 스레드의 위치와 ID
+//     LISTLINK stThreadLink;
 
-    // 자식 스레드의 리스트
-    LIST stChildThreadList;
+//     // 자식 스레드의 리스트
+//     LIST stChildThreadList;
 
-    // 부모 프로세스의 ID
-    QWORD qwParentProcessID;
+//     // 부모 프로세스의 ID
+//     QWORD qwParentProcessID;
 
-    // 콘텍스트
-    CONTEXT stContext;
+//     // 콘텍스트
+//     CONTEXT stContext;
 
-    // 스택의 어드레스와 크기
-    void* pvStackAddress;
-    QWORD qwStackSize;
-} TCB;
+//     // 스택의 어드레스와 크기
+//     void* pvStackAddress;
+//     QWORD qwStackSize;
+// } TCB;
 
-/*
+
 // 보폭 스케줄링을 위한 TCB
 typedef struct kTaskControlBlockStruct
 {
@@ -167,6 +167,8 @@ typedef struct kTaskControlBlockStruct
     void* pvMemoryAddress;
     QWORD qwMemorySize;
 
+    // 수행시간 정보
+    QWORD qwRunningTime;
     //==========================================================================
     // 이하 스레드 정보
     //==========================================================================
@@ -187,7 +189,7 @@ typedef struct kTaskControlBlockStruct
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
-*/
+
 
 // TCB 풀의 상태를 관리하는 자료구조
 typedef struct kTCBPoolManagerStruct
@@ -204,29 +206,29 @@ typedef struct kTCBPoolManagerStruct
 
 // 스케줄러의 상태를 관리하는 자료구조
 // 멀티레벨 큐 전용 SCHEDULER
-typedef struct kSchedulerStruct
-{
-    // 현재 수행 중인 태스크
-    TCB* pstRunningTask;
+// typedef struct kSchedulerStruct
+// {
+//     // 현재 수행 중인 태스크
+//     TCB* pstRunningTask;
 
-    // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
-    int iProcessorTime;
+//     // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
+//     int iProcessorTime;
 
-    // 실행할 태스크가 준비중인 리스트, 태스크의 우선 순위에 따라 구분
-    LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
+//     // 실행할 태스크가 준비중인 리스트, 태스크의 우선 순위에 따라 구분
+//     LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
 
-    // 종료할 태스크가 대기중인 리스트
-    LIST stWaitList;
+//     // 종료할 태스크가 대기중인 리스트
+//     LIST stWaitList;
 
-    // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
-    int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
+//     // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
+//     int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
 
-    // 프로세서 부하를 계산하기 위한 자료구조
-    QWORD qwProcessorLoad;
+//     // 프로세서 부하를 계산하기 위한 자료구조
+//     QWORD qwProcessorLoad;
 
-    // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
-    QWORD qwSpendProcessorTimeInIdleTask;
-} SCHEDULER;
+//     // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
+//     QWORD qwSpendProcessorTimeInIdleTask;
+// } SCHEDULER;
 
 /*
 // 추첨 스케줄링을 위한 SCHEDULER
@@ -249,7 +251,7 @@ typedef struct kSchedulerStruct
 } SCHEDULER;
 */
 
-/*
+
 // 보폭 스케줄링을 위한 SCHEDULER
 typedef struct kSchedulerStruct
 {
@@ -265,7 +267,7 @@ typedef struct kSchedulerStruct
 
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
-*/
+
 
 #pragma pack( pop )
 
