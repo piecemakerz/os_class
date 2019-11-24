@@ -469,6 +469,7 @@ static TCB* kGetNextTaskToRun( void )
         targetID = pstTarget->stLink.qwID;
         task_count[targetID]++;
         trace_task_sequence--;
+        CHARACTER* pstScreen = (CHARACTER*) CONSOLE_VIDEOMEMORYADDRESS;
         if(trace_task_sequence == 0)
         {
             for(i = 0; i < TASK_MAXCOUNT; i++)
@@ -476,16 +477,14 @@ static TCB* kGetNextTaskToRun( void )
                 total = total + task_count[i];
             }
             kPrintf("Fairness Graph:\n");
-            kPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-
+            int x, y;
+            kGetCursor(&x, &y);
+            int memPos = (y-20)*CONSOLE_WIDTH;
+            
             for(i = 0; i < TASK_MAXCOUNT; i++)
             {
                 if(task_count[i] != 0)
                 {
-                    int x, y;
-                    kGetCursor(&x, &y);
-                    int memPos = x + (y-20)*CONSOLE_WIDTH;
-                    CHARACTER* pstScreen = (CHARACTER*) CONSOLE_VIDEOMEMORYADDRESS;
                     task_count[i] = task_count[i] * 20 / total;
                     for(j = 0; j < task_count[i]; j++)
                     {
@@ -493,6 +492,7 @@ static TCB* kGetNextTaskToRun( void )
                             pstScreen[memPos+k].bCharactor = i+'0';
                             pstScreen[memPos+k].bAttribute = i % 0x0f;
                         }
+                        kPrintf("%d", memPos);
                         memPos+=CONSOLE_WIDTH;
                         //kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
                     }
