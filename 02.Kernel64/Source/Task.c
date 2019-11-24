@@ -476,14 +476,25 @@ static TCB* kGetNextTaskToRun( void )
                 total = total + task_count[i];
             }
             kPrintf("Fairness Graph:\n");
+            kPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+
             for(i = 0; i < TASK_MAXCOUNT; i++)
             {
                 if(task_count[i] != 0)
                 {
+                    int x, y;
+                    kGetCursor(&x, &y);
+                    int memPos = x + (y-20)*CONSOLE_WIDTH;
+                    CHARACTER* pstScreen = (CHARACTER*) CONSOLE_VIDEOMEMORYADDRESS;
                     task_count[i] = task_count[i] * 20 / total;
                     for(j = 0; j < task_count[i]; j++)
                     {
-                        kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
+                        for (int k=0; k<6; k++){
+                            pstScreen[memPos+k].bCharactor = i+'0';
+                            pstScreen[memPos+k].bAttribute = i % 0x0f;
+                        }
+                        memPos+=CONSOLE_WIDTH;
+                        //kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
                     }
                 }
             }
