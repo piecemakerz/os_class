@@ -314,55 +314,22 @@ static TCB* kGetNextTaskToRun( void )
 		pstTarget = (TCB*)kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
 	}
 
-	// tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
-	//if(trace_task_sequence != 0)
-	//{
-	//	curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
-    //
-	//	kPrintf("curTask: %d, readyList: ", gs_stScheduler.pstRunningTask->stLink.qwID);
-    //
-	//	for( i = 0 ; i < iTaskCount ; i++ )
-	//	{
-	//		kPrintf("%d/%d, ", curTask->stLink.qwID, curTask->iPass);
-	//		curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
-	//	}
-    //
-	//	kPrintf("Select: %d\n", pstTarget->stLink.qwID);
-	//	trace_task_sequence--;
-	//}
-    if(trace_task_sequence != 0)
+	//tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
+	if(trace_task_sequence != 0)
 	{
-        int targetID;
-        int i, j;
-        int total = 0;
-        targetID = pstTarget->stLink.qwID;
-        task_count[targetID]++;
-        trace_task_sequence--;
-        if(trace_task_sequence == 0)
-        {
-            for(i = 0; i < TASK_MAXCOUNT; i++)
-            {
-                total = total + task_count[i];
-            }
-            kPrintf("Fairness Graph:\n");
-            for(i = 0; i < TASK_MAXCOUNT; i++)
-            {
-                if(task_count[i] != 0)
-                {
-                    task_count[i] = task_count[i] * 20 / total;
-                    for(j = 0; j < task_count[i]; j++)
-                    {
-                        kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
-                    }
-                }
-            }
-            for(i = 0; i < TASK_MAXCOUNT; i++)
-            {
-                task_count[i] = 0;
-            }
-        }
-	}
+		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
 
+		kPrintf("curTask: %d, readyList: ", gs_stScheduler.pstRunningTask->stLink.qwID);
+
+		for( i = 0 ; i < iTaskCount ; i++ )
+		{
+			kPrintf("%d/%d, ", curTask->stLink.qwID, curTask->iPass);
+			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
+		}
+
+		kPrintf("Select: %d\n", pstTarget->stLink.qwID);
+		trace_task_sequence--;
+	}
 
 	pstTarget = kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
 
@@ -525,7 +492,7 @@ void kSchedule( void )
  *      반드시 인터럽트나 예외가 발생했을 때 호출해야 함
  */
 // 추첨 스케줄링 및 보폭 스케줄링 전용 kScheduleInInterrupt
-BOOL kScheduleInInterrupt( void )
+ BOOL kScheduleInInterrupt( void )
 {
     TCB* pstRunningTask, * pstNextTask;
     char* pcContextAddress;
@@ -564,7 +531,7 @@ BOOL kScheduleInInterrupt( void )
 		}
 	}
 
-    pstNextTask->qwRunningTime += 1;
+ pstNextTask->qwRunningTime;
 	kUnlockForSystemData(bPreviousFlag);
 
 	// 현재 실행중인 태스크를 다시 스케줄링 하는 경우 이 단계를 건너뜀
