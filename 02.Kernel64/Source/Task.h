@@ -62,14 +62,13 @@ extern int trace_task_sequence;
 
 // 멀티레벨 큐의 우선순위 플래그
 
-/*
 #define TASK_FLAGS_HIGHEST            0
 #define TASK_FLAGS_HIGH               1
 #define TASK_FLAGS_MEDIUM             2
 #define TASK_FLAGS_LOW                3
 #define TASK_FLAGS_LOWEST             4
-*/
 
+/*
 // 추첨 스케줄링과 보폭 스케줄링의 우선순위 플래그
 // 각 우선순위의 태스크가 가지는 티켓의 수를 나타낸다.
 #define TASK_FLAGS_HIGHEST            50
@@ -77,7 +76,7 @@ extern int trace_task_sequence;
 #define TASK_FLAGS_MEDIUM             30
 #define TASK_FLAGS_LOW                20
 #define TASK_FLAGS_LOWEST             10
-
+*/
 
 #define TASK_FLAGS_WAIT               0xFF
 
@@ -312,7 +311,7 @@ BOOL kIsTaskExist( QWORD qwID );
 QWORD kGetProcessorLoad( void );
 static TCB* kGetProcessByThread( TCB* pstThread );
 int kGetPass(int stride);
-void kSetAllPassToZero();
+//void kSetAllPassToZero();
 //==============================================================================
 //  유휴 태스크 관련
 //==============================================================================
