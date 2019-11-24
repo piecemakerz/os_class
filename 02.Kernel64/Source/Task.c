@@ -145,6 +145,8 @@ TCB* kCreateTask( QWORD qwFlags, void* pvMemoryAddress, QWORD qwMemorySize,
     // 스레드의 ID를 태스크 ID와 동일하게 설정
     pstTask->stThreadLink.qwID = pstTask->stLink.qwID;
 
+    // 프롯세스 수행시간 초기화
+
     // 임계 영역 끝
     kUnlockForSystemData(bPreviousFlag);
 
@@ -972,6 +974,9 @@ void kSchedule( void )
     pstRunningTask = gs_stScheduler.pstRunningTask;
     gs_stScheduler.pstRunningTask = pstNextTask;
 
+    // 태스크 종류에 상관없이 수행 시간을 저장
+    pstRunningTask->qwRunningTime += 1;
+
     // 유휴 태스크에서 전환되었다면 사용한 프로세서 시간을 증가시킴
     if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
     {
@@ -1082,6 +1087,9 @@ BOOL kScheduleInInterrupt( void )
     // 현재 수행중인 태스크의 정보를 수정한 뒤 콘텍스트 전환
     pstRunningTask = gs_stScheduler.pstRunningTask;
     gs_stScheduler.pstRunningTask = pstNextTask;
+
+    // 태스크 종류에 상관없이 수행 시간을 저장
+    pstRunningTask->qwRunningTime += 1;
 
     // 유휴 태스크에서 전환되었다면 사용한 Tick Count를 증가시킴
     if( ( pstRunningTask->qwFlags & TASK_FLAGS_IDLE ) == TASK_FLAGS_IDLE )
