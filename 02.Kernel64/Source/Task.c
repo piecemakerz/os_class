@@ -460,48 +460,10 @@ static TCB* kGetNextTaskToRun( void )
     }
 
 	// tracescheduler가 요청되었다면 trace_task_sequence 개의 태스크 출력
-    if(trace_task_sequence != 0)
+	if(trace_task_sequence != 0)
 	{
-        int targetID;
-        int i, j;
-        int total = 0;
-        targetID = pstTarget->stLink.qwID;
-        task_count[targetID]++;
-        trace_task_sequence--;
-        CHARACTER* pstScreen = (CHARACTER*) CONSOLE_VIDEOMEMORYADDRESS;
-        if(trace_task_sequence == 0)
-        {
-            for(i = 0; i < TASK_MAXCOUNT; i++)
-            {
-                total = total + task_count[i];
-            }
-            kPrintf("Fairness Graph:\n");
-            int x, y;
-            kGetCursor(&x, &y);
-            int memPos = (y-20)*CONSOLE_WIDTH;
-
-            for(i = 0; i < TASK_MAXCOUNT; i++)
-            {
-                if(task_count[i] != 0)
-                {
-                    task_count[i] = task_count[i] * 20 / total;
-                    for(j = 0; j < task_count[i]; j++)
-                    {
-                        for (int k=0; k<6; k++){
-                            pstScreen[memPos+k].bCharactor = i+'0';
-                            pstScreen[memPos+k].bAttribute = i % 0x0f;
-                        }
-                        kPrintf("%d", memPos);
-                        memPos+=CONSOLE_WIDTH;
-                        //kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
-                    }
-                }
-            }
-            for(i = 0; i < TASK_MAXCOUNT; i++)
-            {
-                task_count[i] = 0;
-            }
-        }
+		kPrintf("nextTask: %d\n", pstTarget->stLink.qwID);
+		trace_task_sequence--;
 	}
 
     return pstTarget;
@@ -533,18 +495,18 @@ static TCB* kGetNextTaskToRun( void )
 //     }
 
 // 	// tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
-//     //if(trace_task_sequence != 0)
-// 	//{
-// 	//	curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
-// 	//	kPrintf("curTask: %d, Lottery: %d, readyList: ",
-// 	//			gs_stScheduler.pstRunningTask->stLink.qwID, randomSelection);
-//     //
-// 	//	for( i = 0 ; i < iTaskCount ; i++ )
-// 	//	{
-// 	//		kPrintf("%d/%d, ", curTask->stLink.qwID, GETPRIORITY(curTask->qwFlags));
-// 	//		curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
-// 	//	}
-// 	//}
+//  if(trace_task_sequence != 0)
+// 	{
+// 		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
+// 		kPrintf("curTask: %d, Lottery: %d, readyList: ",
+// 				gs_stScheduler.pstRunningTask->stLink.qwID, randomSelection);
+//
+// 		for( i = 0 ; i < iTaskCount ; i++ )
+// 		{
+// 			kPrintf("%d/%d, ", curTask->stLink.qwID, GETPRIORITY(curTask->qwFlags));
+// 			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
+// 		}
+// 	}
 
 // 	for( i = 0 ; i < iTaskCount ; i++ )
 // 	{
@@ -565,42 +527,10 @@ static TCB* kGetNextTaskToRun( void )
 // 		kRemoveTaskFromReadyList( gs_stScheduler.pstRunningTask->stLink.qwID );
 // 	}
 
-// 	//if(trace_task_sequence != 0)
-// 	//{
-// 	//	kPrintf("Select: %d\n", pstTarget->stLink.qwID);
-// 	//	trace_task_sequence--;
-// 	//}
-//     if(trace_task_sequence != 0)
+// 	if(trace_task_sequence != 0)
 // 	{
-//         int targetID;
-//         int i, j;
-//         int total = 0;
-//         targetID = pstTarget->stLink.qwID;
-//         task_count[targetID]++;
-//         trace_task_sequence--;
-//         if(trace_task_sequence == 0)
-//         {
-//             for(i = 0; i < TASK_MAXCOUNT; i++)
-//             {
-//                 total = total + task_count[i];
-//             }
-//             kPrintf("Fairness Graph:\n");
-//             for(i = 0; i < TASK_MAXCOUNT; i++)
-//             {
-//                 if(task_count[i] != 0)
-//                 {
-//                     task_count[i] = task_count[i] * 20 / total;
-//                     for(j = 0; j < task_count[i]; j++)
-//                     {
-//                         kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
-//                     }
-//                 }
-//             }
-//             for(i = 0; i < TASK_MAXCOUNT; i++)
-//             {
-//                 task_count[i] = 0;
-//             }
-//         }
+// 		kPrintf("Select: %d\n", pstTarget->stLink.qwID);
+// 		trace_task_sequence--;
 // 	}
 
 //     return pstTarget;
@@ -645,55 +575,22 @@ static TCB* kGetNextTaskToRun( void )
 // 		pstTarget = (TCB*)kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
 // 	}
 
-// 	// tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
-// 	//if(trace_task_sequence != 0)
-// 	//{
-// 	//	curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
-//     //
-// 	//	kPrintf("curTask: %d, readyList: ", gs_stScheduler.pstRunningTask->stLink.qwID);
-//     //
-// 	//	for( i = 0 ; i < iTaskCount ; i++ )
-// 	//	{
-// 	//		kPrintf("%d/%d, ", curTask->stLink.qwID, curTask->iPass);
-// 	//		curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
-// 	//	}
-//     //
-// 	//	kPrintf("Select: %d\n", pstTarget->stLink.qwID);
-// 	//	trace_task_sequence--;
-// 	//}
-//     if(trace_task_sequence != 0)
+// 	tracescheduler가 요청되었다면 trace_task_sequence개의 태스크 출력
+// 	if(trace_task_sequence != 0)
 // 	{
-//         int targetID;
-//         int i, j;
-//         int total = 0;
-//         targetID = pstTarget->stLink.qwID;
-//         task_count[targetID]++;
-//         trace_task_sequence--;
-//         if(trace_task_sequence == 0)
-//         {
-//             for(i = 0; i < TASK_MAXCOUNT; i++)
-//             {
-//                 total = total + task_count[i];
-//             }
-//             kPrintf("Fairness Graph:\n");
-//             for(i = 0; i < TASK_MAXCOUNT; i++)
-//             {
-//                 if(task_count[i] != 0)
-//                 {
-//                     task_count[i] = task_count[i] * 20 / total;
-//                     for(j = 0; j < task_count[i]; j++)
-//                     {
-//                         kPrintf("%d%d%d%d%d%d\n", i, i, i, i, i, i);
-//                     }
-//                 }
-//             }
-//             for(i = 0; i < TASK_MAXCOUNT; i++)
-//             {
-//                 task_count[i] = 0;
-//             }
-//         }
+// 		curTask = (TCB*) kGetHeaderFromList( &(gs_stScheduler.vstReadyList) );
+//
+// 		kPrintf("curTask: %d, readyList: ", gs_stScheduler.pstRunningTask->stLink.qwID);
+//
+// 		for( i = 0 ; i < iTaskCount ; i++ )
+// 		{
+// 			kPrintf("%d/%d, ", curTask->stLink.qwID, curTask->iPass);
+// 			curTask = (TCB*)kGetNextFromList( &(gs_stScheduler.vstReadyList), curTask );
+// 		}
+//
+// 		kPrintf("Select: %d\n", pstTarget->stLink.qwID);
+// 		trace_task_sequence--;
 // 	}
-
 
 // 	pstTarget = kRemoveTaskFromReadyList( pstTarget->stLink.qwID );
 
