@@ -1375,18 +1375,21 @@ static void kFairnessGraph(){
             // 모자란 비율은 빈칸으로 채움taskID
             for(;j<line;j++){
                 graph[graphCursor+j*80] = 0;
-            }
-        }           
+            } 
         
-        // 그래프 출력하기
-        // 이번 회차의 그래프 버퍼의 가장 오래된 값을 가리키는 커서
-        // int cursor= (graphCursor + 1) % 80;
-        graphCursor = (graphCursor+1)%80;
-        for (int i=0; i<line; i++)
-            for(int j=0; j<80; j++){
-                pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(graphCursor+j)%80];
-            }
-        // kSleep(1);
+            // 그래프 출력하기
+            // 이번 회차의 그래프 버퍼의 가장 오래된 값을 가리키는 커서
+            // int cursor= (graphCursor + 1) % 80;
+            graphCursor = (graphCursor+1)%80;
+            for (int i=0; i<line; i++)
+                for(int j=0; j<80; j++){
+                    pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(graphCursor+j)%80];
+                }
+            kSchedule();
+
+        }          
+        if (graphCursor == 79)
+            return;
     }
 }
 
