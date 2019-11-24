@@ -1282,7 +1282,8 @@ static void kFairnessGraph(){
     // 출력버퍼초기화
     short graph[1600]; // 10줄 -> 이만큼 kprintf(\n)
     short line = 20;  // 10줄 (위와 동일하게 맞춰야하는 변수)
-    for( int i = 0; i < 1600; i++){
+    short cells = line*80;
+    for( int i = 0; i < cells; i++){
         graph[i] = 0;
         pstScreen[vmemGraphPos+i].bCharactor='#';
         pstScreen[vmemGraphPos+i].bAttribute=0;
@@ -1290,13 +1291,14 @@ static void kFairnessGraph(){
     // 전광판 효과 사용하기
     int offset = 80;
     while(1){
+        //totalRunningTime = 0;
         for ( int i = 0; i< TASK_MAXCOUNT ; i++ ){
             pstTCB = kGetTCBInTCBPool( i );
             if (( pstTCB->stLink.qwID >> 32) != 0){
                 // 누적 시간을 구한다
                 tasks[i] += pstTCB->qwRunningTime;
                 totalRunningTime += pstTCB->qwRunningTime;
-                pstTCB->qwRunningTime = 0;
+                // pstTCB->qwRunningTime = 0;
             }
         }
         // 라벨을 출력할 위치를 재지정한다
@@ -1308,7 +1310,7 @@ static void kFairnessGraph(){
             for ( int i = 0; i < TASK_MAXCOUNT && j<line; i++ ){
                 // 스케줄된 태스크는 -1이 아니다
                 if (tasks[i] != -1){
-                    int percentage = ((tasks[i] * line + line/3) / totalRunningTime);
+                    int percentage = ((tasks[i] * line + line/2) / totalRunningTime);
                     pstScreen[vmemLabelCursor].bCharactor = ' ';
                     pstScreen[vmemLabelCursor+1].bCharactor = i>=1000 ? i/1000 + '0'      :' ';
                     pstScreen[vmemLabelCursor+1].bAttribute = COLOR(i);
@@ -1342,7 +1344,7 @@ static void kFairnessGraph(){
         for (int i=0; i<line; i++)
             for(int j=0; j<80; j++){
                 // pstScreen[vmemGraphPos+(i*80+j)%800].bCharactor='#';
-                pstScreen[vmemGraphPos+(vmemGraphPos+i*80+j)%1600].bAttribute=graph[(cursor+i*80+j)%1600];
+                pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(cursor+j)%cells];
             }
         // for ( int i = 0; i < 80; i++){
         //     for (int j=0; j<line; j++){
@@ -1352,7 +1354,7 @@ static void kFairnessGraph(){
         //     cursor = (cursor + 1) % 80;
         // }
         graphCursor = (graphCursor+1)%80;
-        kSleep(1000);
+        kSleep(100);
     }
 }
 
