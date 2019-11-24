@@ -1012,12 +1012,12 @@ BOOL kScheduleInInterrupt( void )
         kAddTaskToReadyList( pstRunningTask );
     }
     // 임계 영역 끝
+    pstNextTask->qwRunningTime;
     kUnlockForSystemData( bPreviousFlag );
 
     // 전환해서 실행할 태스크를 Running Task로 설정하고 콘텍스트를 IST에 복사해서
     // 자동으로 태스크 전환이 일어나도록 함
     kMemCpy( pcContextAddress, &( pstNextTask->stContext ), sizeof( CONTEXT ) );
-
     // 프로세서 사용 시간을 업데이트
     gs_stScheduler.iProcessorTime = TASK_PROCESSORTIME;
     return TRUE;
@@ -1064,6 +1064,7 @@ BOOL kScheduleInInterrupt( void )
 // 		}
 // 	}
 
+//  pstNextTask->qwRunningTime;
 // 	kUnlockForSystemData(bPreviousFlag);
 
 // 	// 현재 실행중인 태스크를 다시 스케줄링 하는 경우 이 단계를 건너뜀
