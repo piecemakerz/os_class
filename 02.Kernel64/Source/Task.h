@@ -207,49 +207,49 @@ typedef struct kTCBPoolManagerStruct
 
 // 스케줄러의 상태를 관리하는 자료구조
 // 멀티레벨 큐 전용 SCHEDULER
-// typedef struct kSchedulerStruct
-// {
-//     // 현재 수행 중인 태스크
-//     TCB* pstRunningTask;
+typedef struct kSchedulerStruct
+{
+    // 현재 수행 중인 태스크
+    TCB* pstRunningTask;
 
-//     // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
-//     int iProcessorTime;
+    // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
+    int iProcessorTime;
 
-//     // 실행할 태스크가 준비중인 리스트, 태스크의 우선 순위에 따라 구분
-//     LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
+    // 실행할 태스크가 준비중인 리스트, 태스크의 우선 순위에 따라 구분
+    LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
 
-//     // 종료할 태스크가 대기중인 리스트
-//     LIST stWaitList;
+    // 종료할 태스크가 대기중인 리스트
+    LIST stWaitList;
 
-//     // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
-//     int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
+    // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
+    int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
 
-//     // 프로세서 부하를 계산하기 위한 자료구조
-//     QWORD qwProcessorLoad;
+    // 프로세서 부하를 계산하기 위한 자료구조
+    QWORD qwProcessorLoad;
 
-//     // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
-//     QWORD qwSpendProcessorTimeInIdleTask;
-// } SCHEDULER;
+    // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
+    QWORD qwSpendProcessorTimeInIdleTask;
+} SCHEDULER;
 
 
 // 추첨 스케줄링을 위한 SCHEDULER
-typedef struct kSchedulerStruct
-{
-    TCB* pstRunningTask;
+// typedef struct kSchedulerStruct
+// {
+//     TCB* pstRunningTask;
 
-    int iProcessorTime;
+//     int iProcessorTime;
 
-	// ReadyList의 모든 ticket의 수를 나타낸다.
-    unsigned int curTicketTotal;
+// 	// ReadyList의 모든 ticket의 수를 나타낸다.
+//     unsigned int curTicketTotal;
 
-    LIST vstReadyList;
+//     LIST vstReadyList;
 
-    LIST stWaitList;
+//     LIST stWaitList;
 
-    QWORD qwProcessorLoad;
+//     QWORD qwProcessorLoad;
 
-    QWORD qwSpendProcessorTimeInIdleTask;
-} SCHEDULER;
+//     QWORD qwSpendProcessorTimeInIdleTask;
+// } SCHEDULER;
 
 
 
