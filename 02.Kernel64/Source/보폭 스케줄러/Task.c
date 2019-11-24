@@ -564,6 +564,7 @@ BOOL kScheduleInInterrupt( void )
 		}
 	}
 
+    pstNextTask->qwRunningTime += 1;
 	kUnlockForSystemData(bPreviousFlag);
 
 	// 현재 실행중인 태스크를 다시 스케줄링 하는 경우 이 단계를 건너뜀
