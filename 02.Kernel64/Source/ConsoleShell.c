@@ -1260,24 +1260,19 @@ static void kFairnessGraph(){
     // 출력에 사용되는 변수
     CHARACTER* pstScreen = (CHARACTER*) CONSOLE_VIDEOMEMORYADDRESS;
     int vmemLabelPos = CONSOLE_WIDTH*2;
-    int vmemGraphPos = CONSOLE_WIDTH * 4;
+    int vmemGraphPos = CONSOLE_WIDTH * 3;
     
     // 그래프 출력 버퍼와 관련된 변수
     int graphCursor = 0; // 루프 전체에서 유지해야 하는 값으로 현재 column의미
-    short graph[1600];   // 10줄
+    short graph[1680];   // 10줄
     short line = 20;     // 10줄 (위와 동일하게 맞춰야하는 변수)
-    short cells = line*80;//모든 셀을 검은색 #으로 초기화
+    short cells = (line+1)*80;//모든 셀을 검은색 #으로 초기화
     for( int i = 0; i < cells; i++){
         graph[i] = 0;
         pstScreen[vmemGraphPos+i].bCharactor='#';
         pstScreen[vmemGraphPos+i].bAttribute=0; // 검은색
     }
-
-    // runningTime 계산과 관련된 변수 
-    short tasks[1025]; // 여유분 1
-    int totalRunningTime = 0; // 총 누적 실행시간
-    TCB* pstTCB;    // TCB 포인터
-
+    
     // 프로그램 설명
     {
         char fairnessgraph[] = "fairness graph";
@@ -1285,11 +1280,19 @@ static void kFairnessGraph(){
             pstScreen[80+i].bCharactor = fairnessgraph[i];
         }
         
-        char pressanykeytostop[] = "press any key to stop";
-        for (int i=0; i<22; i++){
-            pstScreen[80*24+30+i].bCharactor = pressanykeytostop[i];
+        char pressanykeytostop[] = "press any key to stop...";
+        for (int i=0; i<25; i++){
+            pstScreen[80*24+i].bCharactor = pressanykeytostop[i];
         }
     }
+
+    // runningTime 계산과 관련된 변수 
+    short tasks[1025]; // 여유분 1
+    short activetasks[1025];
+    short activeCount = 0;
+    int totalRunningTime = 0; // 총 누적 실행시간
+    TCB* pstTCB;    // TCB 포인터
+
     // 작업시간 초기화
     for ( int i = 0; i< TASK_MAXCOUNT ; i++ ){ 
         tasks[i] = -1; // 스케줄링된 프로세스 목록을 얻기 위해 필터 설정
@@ -1298,6 +1301,7 @@ static void kFairnessGraph(){
         if (( pstTCB->stLink.qwID >> 32) != 0){ // 스케줄링된 프로세스 목록 획득
             pstTCB->qwRunningTime = 0;          // 시간 초기화
             tasks[i] = 0;
+            activetasks[activeCount++] = i;     // active목록 저장
         }
     }
     // 출력버퍼초기화
@@ -1308,8 +1312,9 @@ static void kFairnessGraph(){
         // 스케줄러가 시작되면 더 이상 새로 시작되는 태스크는 없음으로 스캔 필요 없음
         
         // 수행 횟수 가져오기
-        for ( int i = 0; i< TASK_MAXCOUNT ; i++ ){
-            pstTCB = kGetTCBInTCBPool( i );         
+        for ( int i = 0; i< activeCount ; i++ ){
+            int taskID = activetasks[i];
+            pstTCB = kGetTCBInTCBPool( taskID );         
             if (( pstTCB->stLink.qwID >> 32) != 0){ // 스케줄링된 프로세스 목록 획득
                 tasks[i] += pstTCB->qwRunningTime;  // 이번 회차에 스케줄링된 횟수 누적
                 totalRunningTime += pstTCB->qwRunningTime;
@@ -1321,41 +1326,42 @@ static void kFairnessGraph(){
         if (totalRunningTime != 0){         // 
             // 모든 태스크의 누적 수행 시간을 스캔한다
             int j=0;
-            for ( int i = 0; i < TASK_MAXCOUNT && j<line; i++ ){
-                if (tasks[i] != -1){// 스케줄된 태스크는 -1이 아니다
-                    int percentage = ((tasks[i] * 100) / totalRunningTime); // 100% 비율로 출력
-                    if (vmemLabelCursor < 309){ 
+            for ( int i = 0; i < activeCount && j<line; i++ ){
+                int taskID = activetasks[i];
+                if (tasks[taskID] != -1){// 스케줄된 태스크는 -1이 아니다
+                    int percentage = ((tasks[taskID] * 100) / totalRunningTime); // 100% 비율로 출력
+                    if (vmemLabelCursor < 230){ 
                         pstScreen[vmemLabelCursor].bCharactor = ' ';
-                        pstScreen[vmemLabelCursor+1].bCharactor = i>=1000 ? i/1000 + '0'      :' ';
-                        pstScreen[vmemLabelCursor+1].bAttribute = COLOR(i);
-                        pstScreen[vmemLabelCursor+2].bCharactor = i>=100  ? (i%1000)/100 + '0':' ';
-                        pstScreen[vmemLabelCursor+2].bAttribute = COLOR(i);
-                        pstScreen[vmemLabelCursor+3].bCharactor = i>=10   ? (i%100)/10 + '0'  :' ';
-                        pstScreen[vmemLabelCursor+3].bAttribute = COLOR(i);
-                        pstScreen[vmemLabelCursor+4].bCharactor = i%10 + '0';
-                        pstScreen[vmemLabelCursor+4].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+1].bCharactor = taskID>=1000 ? taskID/1000 + '0'      :' ';
+                        pstScreen[vmemLabelCursor+1].bAttribute = COLOR(taskID);
+                        pstScreen[vmemLabelCursor+2].bCharactor = taskID>=100  ? (taskID%1000)/100 + '0':' ';
+                        pstScreen[vmemLabelCursor+2].bAttribute = COLOR(taskID);
+                        pstScreen[vmemLabelCursor+3].bCharactor = taskID>=10   ? (taskID%100)/10 + '0'  :' ';
+                        pstScreen[vmemLabelCursor+3].bAttribute = COLOR(taskID);
+                        pstScreen[vmemLabelCursor+4].bCharactor = taskID%10 + '0';
+                        pstScreen[vmemLabelCursor+4].bAttribute = COLOR(taskID);
                         pstScreen[vmemLabelCursor+6].bCharactor = percentage/10 + '0';
-                        pstScreen[vmemLabelCursor+6].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+6].bAttribute = COLOR(taskID);
                         pstScreen[vmemLabelCursor+7].bCharactor = percentage%10 + '0';
-                        pstScreen[vmemLabelCursor+7].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+7].bAttribute = COLOR(taskID);
                         pstScreen[vmemLabelCursor+9].bCharactor = '%';
-                        pstScreen[vmemLabelCursor+9].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+9].bAttribute = COLOR(taskID);
                         vmemLabelCursor += 10;
                     }
-                    else{// 라벨은 2줄까지만 출력, 나머지는 생략
+                    else{// 라벨은 1줄까지만 출력, 나머지는 생략
                         pstScreen[vmemLabelCursor+1].bCharactor = '.';
                         pstScreen[vmemLabelCursor+2].bCharactor = '.';
                         pstScreen[vmemLabelCursor+3].bCharactor = '.';
                     }
-                    // 출력 편의를 위해 반올림 적용함
-                    percentage = ((tasks[i] * (line)) / totalRunningTime); // 라인 비율 저장
+                    // 출력 편의를 위해, padding값 적용
+                    percentage = ((tasks[taskID] * (line+1)) / totalRunningTime); // 라인 비율 저장
                     for (int k=0; k<percentage; k++){
-                        graph[graphCursor+(k+j)*80] = COLOR(i);
+                        graph[graphCursor+(k+j)*80] = COLOR(taskID);
                     }
                     j += percentage;
                 }
             }
-            // 모자란 비율은 빈칸으로 채움
+            // 모자란 비율은 빈칸으로 채움taskID
             for(;j<line;j++){
                 graph[graphCursor+j*80] = 0;
             }
@@ -1363,7 +1369,7 @@ static void kFairnessGraph(){
 
         // 그래프 출력하기
         int cursor; // 이번 회차의 그래프 버퍼의 가장 오래된 값을 가리키는 커서
-        if (offset-- > 0)
+        if (--offset > 0)
             cursor = 0;
         else cursor = (graphCursor + 1) % 80;
         for (int i=0; i<line; i++)
@@ -1371,7 +1377,7 @@ static void kFairnessGraph(){
                 pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(cursor+j)%cells];
             }
         graphCursor = (graphCursor+1)%80;
-        kSleep(100);
+        kSleep(1000);
     }
 }
 
