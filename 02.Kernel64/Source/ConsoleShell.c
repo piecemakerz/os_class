@@ -1323,35 +1323,44 @@ static void kFairnessGraph(){
             int j=0;
             for ( int i = 0; i < TASK_MAXCOUNT && j<line; i++ ){
                 if (tasks[i] != -1){// 스케줄된 태스크는 -1이 아니다
-                    int percentage = ((tasks[i] * 100) / totalRunningTime);
-                    pstScreen[vmemLabelCursor].bCharactor = ' ';
-                    pstScreen[vmemLabelCursor+1].bCharactor = i>=1000 ? i/1000 + '0'      :' ';
-                    pstScreen[vmemLabelCursor+1].bAttribute = COLOR(i);
-                    pstScreen[vmemLabelCursor+2].bCharactor = i>=100  ? (i%1000)/100 + '0':' ';
-                    pstScreen[vmemLabelCursor+2].bAttribute = COLOR(i);
-                    pstScreen[vmemLabelCursor+3].bCharactor = i>=10   ? (i%100)/10 + '0'  :' ';
-                    pstScreen[vmemLabelCursor+3].bAttribute = COLOR(i);
-                    pstScreen[vmemLabelCursor+4].bCharactor = i%10 + '0';
-                    pstScreen[vmemLabelCursor+4].bAttribute = COLOR(i);
-                    pstScreen[vmemLabelCursor+6].bCharactor = percentage/10 + '0';
-                    pstScreen[vmemLabelCursor+6].bAttribute = COLOR(i);
-                    pstScreen[vmemLabelCursor+7].bCharactor = percentage%10 + '0';
-                    pstScreen[vmemLabelCursor+7].bAttribute = COLOR(i);
-                    pstScreen[vmemLabelCursor+9].bCharactor = '%';
-                    pstScreen[vmemLabelCursor+9].bAttribute = COLOR(i);
-                    vmemLabelCursor += 10;
-                    percentage = ((tasks[i] * line) / totalRunningTime);
+                    int percentage = ((tasks[i] * 100) / totalRunningTime); // 100% 비율로 출력
+                    if (vmemLabelCursor < 309){ 
+                        pstScreen[vmemLabelCursor].bCharactor = ' ';
+                        pstScreen[vmemLabelCursor+1].bCharactor = i>=1000 ? i/1000 + '0'      :' ';
+                        pstScreen[vmemLabelCursor+1].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+2].bCharactor = i>=100  ? (i%1000)/100 + '0':' ';
+                        pstScreen[vmemLabelCursor+2].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+3].bCharactor = i>=10   ? (i%100)/10 + '0'  :' ';
+                        pstScreen[vmemLabelCursor+3].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+4].bCharactor = i%10 + '0';
+                        pstScreen[vmemLabelCursor+4].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+6].bCharactor = percentage/10 + '0';
+                        pstScreen[vmemLabelCursor+6].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+7].bCharactor = percentage%10 + '0';
+                        pstScreen[vmemLabelCursor+7].bAttribute = COLOR(i);
+                        pstScreen[vmemLabelCursor+9].bCharactor = '%';
+                        pstScreen[vmemLabelCursor+9].bAttribute = COLOR(i);
+                        vmemLabelCursor += 10;
+                    }
+                    else{// 라벨은 2줄까지만 출력, 나머지는 생략
+                        pstScreen[vmemLabelCursor+1].bCharactor = '.';
+                        pstScreen[vmemLabelCursor+2].bCharactor = '.';
+                        pstScreen[vmemLabelCursor+3].bCharactor = '.';
+                    }
+                    // 출력 편의를 위해 반올림 적용함
+                    percentage = ((tasks[i] * (line)) / totalRunningTime); // 라인 비율 저장
                     for (int k=0; k<percentage; k++){
                         graph[graphCursor+(k+j)*80] = COLOR(i);
                     }
                     j += percentage;
                 }
             }
+            // 모자란 비율은 빈칸으로 채움
             for(;j<line;j++){
                 graph[graphCursor+j*80] = 0;
             }
         }
-        
+
         // 그래프 출력하기
         int cursor; // 이번 회차의 그래프 버퍼의 가장 오래된 값을 가리키는 커서
         if (offset-- > 0)
@@ -1359,16 +1368,8 @@ static void kFairnessGraph(){
         else cursor = (graphCursor + 1) % 80;
         for (int i=0; i<line; i++)
             for(int j=0; j<80; j++){
-                // pstScreen[vmemGraphPos+(i*80+j)%800].bCharactor='#';
                 pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(cursor+j)%cells];
             }
-        // for ( int i = 0; i < 80; i++){
-        //     for (int j=0; j<line; j++){
-        //         pstScreen[vmemGraphPos+i+j*80].bCharactor='#';
-        //         pstScreen[vmemGraphPos+i+j*80].bAttribute=graph[cursor+j];
-        //     }
-        //     cursor = (cursor + 1) % 80;
-        // }
         graphCursor = (graphCursor+1)%80;
         kSleep(100);
     }
