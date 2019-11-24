@@ -1314,6 +1314,7 @@ static void kFairnessGraph(){
     // 전광판 효과 사용하기
     int offset = 0;
     while(1){
+    	if(graphCursor == 79) return;
         // 스케줄러가 시작되면 더 이상 새로 시작되는 태스크는 없음으로 스캔 필요 없음
         
         // 수행 횟수 가져오기
@@ -1386,7 +1387,7 @@ static void kFairnessGraph(){
             for(int j=0; j<80; j++){
                 pstScreen[vmemGraphPos+i*80+j].bAttribute=graph[i*80+(graphCursor+j)%80];
             }
-        // kSleep(1);
+        kSchedule();
     }
 }
 
