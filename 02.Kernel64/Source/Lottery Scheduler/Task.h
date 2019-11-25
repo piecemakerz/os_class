@@ -8,14 +8,14 @@
 extern int trace_task_sequence;
 ////////////////////////////////////////////////////////////////////////////////
 //
-// 매크로
+// ��ũ��
 //
 ////////////////////////////////////////////////////////////////////////////////
-// SS, RSP, RFLAGS, CS, RIP + ISR에서 저장하는 19개의 레지스터
+// SS, RSP, RFLAGS, CS, RIP + ISR���� �����ϴ� 19���� ��������
 #define TASK_REGISTERCOUNT     ( 5 + 19 )
 #define TASK_REGISTERSIZE       8
 
-// Context 자료구조의 레지스터 오프셋
+// Context �ڷᱸ���� �������� ������
 #define TASK_GSOFFSET           0
 #define TASK_FSOFFSET           1
 #define TASK_ESOFFSET           2
@@ -41,244 +41,137 @@ extern int trace_task_sequence;
 #define TASK_RSPOFFSET          22
 #define TASK_SSOFFSET           23
 
-// 태스크 풀의 어드레스
+// �½�ũ Ǯ�� ��巹��
 #define TASK_TCBPOOLADDRESS     0x800000
 #define TASK_MAXCOUNT           1024
 
-// 스택 풀과 스택의 크기
+// ���� Ǯ�� ������ ũ��
 #define TASK_STACKPOOLADDRESS   ( TASK_TCBPOOLADDRESS + sizeof( TCB ) * TASK_MAXCOUNT )
 #define TASK_STACKSIZE          8192
 
-// 유효하지 않은 태스크 ID
+// ��ȿ���� ���� �½�ũ ID
 #define TASK_INVALIDID          0xFFFFFFFFFFFFFFFF
 
-// 태스크가 최대로 쓸 수 있는 프로세서 시간(5 ms)
+// �½�ũ�� �ִ�� �� �� �ִ� ���μ��� �ð�(5 ms)
 #define TASK_PROCESSORTIME      5
 
-// 준비 리스트의 수
+// �غ� ����Ʈ�� ��
 #define TASK_MAXREADYLISTCOUNT  5
 
-// 태스크의 우선 순위
+// �½�ũ�� �켱 ����
 
-// 멀티레벨 큐의 우선순위 플래그
-
-/*
-#define TASK_FLAGS_HIGHEST            0
-#define TASK_FLAGS_HIGH               1
-#define TASK_FLAGS_MEDIUM             2
-#define TASK_FLAGS_LOW                3
-#define TASK_FLAGS_LOWEST             4
-*/
-
-// 추첨 스케줄링과 보폭 스케줄링의 우선순위 플래그
-// 각 우선순위의 태스크가 가지는 티켓의 수를 나타낸다.
+// ��÷ �����ٸ��� ���� �����ٸ��� �켱���� �÷���
+// �� �켱������ �½�ũ�� ������ Ƽ���� ���� ��Ÿ����.
 #define TASK_FLAGS_HIGHEST            50
 #define TASK_FLAGS_HIGH               40
 #define TASK_FLAGS_MEDIUM             30
 #define TASK_FLAGS_LOW                20
 #define TASK_FLAGS_LOWEST             10
 
-
 #define TASK_FLAGS_WAIT               0xFF
 
-// 태스크의 티켓 수를 600으로 나눠 보폭을 구한다.
-// 각 태스크는 우선순위 별로 12, 15, 20, 30, 60의 보폭 값을 가진다.
-#define TASK_STRIDE_NUM				  600
-// 모든 태스크의 pass가 60에 도달하면 모두 pass값을 0으로 초기화시킨다.
-#define TASK_PASS_MAX				  60
-
-// 태스크의 플래그
+// �½�ũ�� �÷���
 #define TASK_FLAGS_ENDTASK            0x8000000000000000
 #define TASK_FLAGS_SYSTEM             0x4000000000000000
 #define TASK_FLAGS_PROCESS            0x2000000000000000
 #define TASK_FLAGS_THREAD             0x1000000000000000
 #define TASK_FLAGS_IDLE               0x0800000000000000
 
-// 함수 매크로
+// �Լ� ��ũ��
 #define GETPRIORITY( x )        ( ( x ) & 0xFF )
 #define SETPRIORITY( x, priority )  ( ( x ) = ( ( x ) & 0xFFFFFFFFFFFFFF00 ) | \
         ( priority ) )
 #define GETTCBOFFSET( x )       ( ( x ) & 0xFFFFFFFF )
 
-// 자식 스레드 링크에 연결된 stThreadLink 정보에서 태스크 자료구조(TCB) 위치를
-// 계산하여 반환하는 매크로
+// �ڽ� ������ ��ũ�� ����� stThreadLink �������� �½�ũ �ڷᱸ��(TCB) ��ġ��
+// ����Ͽ� ��ȯ�ϴ� ��ũ��
 #define GETTCBFROMTHREADLINK( x )   ( TCB* ) ( ( QWORD ) ( x ) - offsetof( TCB, \
                                       stThreadLink ) )
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// 구조체
+// ����ü
 //
 ////////////////////////////////////////////////////////////////////////////////
-// 1바이트로 정렬
+// 1����Ʈ�� ����
 #pragma pack( push, 1 )
 
-// 콘텍스트에 관련된 자료구조
+// ���ؽ�Ʈ�� ���õ� �ڷᱸ��
 typedef struct kContextStruct
 {
     QWORD vqRegister[ TASK_REGISTERCOUNT ];
 } CONTEXT;
 
-// 태스크의 상태를 관리하는 자료구조
-// 멀티레벨 큐와 추첨 스케줄링에 사용
-// typedef struct kTaskControlBlockStruct
-// {
-//     // 다음 데이터의 위치와 ID
-//     LISTLINK stLink;
-
-//     // 플래그
-//     QWORD qwFlags;
-
-//     // 프로세스 메모리 영역의 시작과 크기
-//     void* pvMemoryAddress;
-//     QWORD qwMemorySize;
-
-//     // 수행 시간 정보
-//     QWORD qwRunningTime;
-
-//     //==========================================================================
-//     // 이하 스레드 정보
-//     //==========================================================================
-//     // 자식 스레드의 위치와 ID
-//     LISTLINK stThreadLink;
-
-//     // 자식 스레드의 리스트
-//     LIST stChildThreadList;
-
-//     // 부모 프로세스의 ID
-//     QWORD qwParentProcessID;
-
-//     // 콘텍스트
-//     CONTEXT stContext;
-
-//     // 스택의 어드레스와 크기
-//     void* pvStackAddress;
-//     QWORD qwStackSize;
-// } TCB;
-
-
-// 보폭 스케줄링을 위한 TCB
+// �½�ũ�� ���¸� �����ϴ� �ڷᱸ��
+// ��Ƽ���� ť�� ��÷ �����ٸ��� ���
 typedef struct kTaskControlBlockStruct
 {
+    // ���� �������� ��ġ�� ID
     LISTLINK stLink;
 
+    // �÷���
     QWORD qwFlags;
 
-    // 프로세스 메모리 영역의 시작과 크기
+    // ���μ��� �޸� ������ ���۰� ũ��
     void* pvMemoryAddress;
     QWORD qwMemorySize;
-
-    // 수행시간 정보
     QWORD qwRunningTime;
     //==========================================================================
-    // 이하 스레드 정보
+    // ���� ������ ����
     //==========================================================================
-    // 자식 스레드의 위치와 ID
+    // �ڽ� �������� ��ġ�� ID
     LISTLINK stThreadLink;
 
-    // 자식 스레드의 리스트
+    // �ڽ� �������� ����Ʈ
     LIST stChildThreadList;
 
-    // 부모 프로세스의 ID
+    // �θ� ���μ����� ID
     QWORD qwParentProcessID;
 
+    // ���ؽ�Ʈ
     CONTEXT stContext;
 
-    // 해당 태스크의 pass값
-    int iPass;
-
+    // ������ ��巹���� ũ��
     void* pvStackAddress;
     QWORD qwStackSize;
 } TCB;
 
-
-// TCB 풀의 상태를 관리하는 자료구조
+// TCB Ǯ�� ���¸� �����ϴ� �ڷᱸ��
 typedef struct kTCBPoolManagerStruct
 {
-    // 태스크 풀에 대한 정보
+    // �½�ũ Ǯ�� ���� ����
     TCB* pstStartAddress;
     int iMaxCount;
     int iUseCount;
 
-    // TCB가 할당된 횟수
+    // TCB�� �Ҵ�� Ƚ��
     int iAllocatedCount;
 } TCBPOOLMANAGER;
 
 
-// 스케줄러의 상태를 관리하는 자료구조
-// 멀티레벨 큐 전용 SCHEDULER
-// typedef struct kSchedulerStruct
-// {
-//     // 현재 수행 중인 태스크
-//     TCB* pstRunningTask;
-
-//     // 현재 수행 중인 태스크가 사용할 수 있는 프로세서 시간
-//     int iProcessorTime;
-
-//     // 실행할 태스크가 준비중인 리스트, 태스크의 우선 순위에 따라 구분
-//     LIST vstReadyList[ TASK_MAXREADYLISTCOUNT ];
-
-//     // 종료할 태스크가 대기중인 리스트
-//     LIST stWaitList;
-
-//     // 각 우선 순위별로 태스크를 실행한 횟수를 저장하는 자료구조
-//     int viExecuteCount[ TASK_MAXREADYLISTCOUNT ];
-
-//     // 프로세서 부하를 계산하기 위한 자료구조
-//     QWORD qwProcessorLoad;
-
-//     // 유휴 태스크(Idle Task)에서 사용한 프로세서 시간
-//     QWORD qwSpendProcessorTimeInIdleTask;
-// } SCHEDULER;
-
-/*
-// 추첨 스케줄링을 위한 SCHEDULER
+// �����ٷ��� ���¸� �����ϴ� �ڷᱸ��
+// ��÷ �����ٸ��� ���� SCHEDULER
 typedef struct kSchedulerStruct
 {
     TCB* pstRunningTask;
-
     int iProcessorTime;
-
-	// ReadyList의 모든 ticket의 수를 나타낸다.
+	// ReadyList�� ��� ticket�� ���� ��Ÿ����.
     unsigned int curTicketTotal;
-
     LIST vstReadyList;
-
     LIST stWaitList;
-
     QWORD qwProcessorLoad;
-
     QWORD qwSpendProcessorTimeInIdleTask;
 } SCHEDULER;
-*/
-
-
-// 보폭 스케줄링을 위한 SCHEDULER
-typedef struct kSchedulerStruct
-{
-    TCB* pstRunningTask;
-
-    int iProcessorTime;
-
-    LIST vstReadyList;
-
-    LIST stWaitList;
-
-    QWORD qwProcessorLoad;
-
-    QWORD qwSpendProcessorTimeInIdleTask;
-} SCHEDULER;
-
 
 #pragma pack( pop )
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// 함수
+// �Լ�
 //
 ////////////////////////////////////////////////////////////////////////////////
 //==============================================================================
-//  태스크 풀과 태스크 관련
+//  �½�ũ Ǯ�� �½�ũ ����
 //==============================================================================
 static void kInitializeTCBPool( void );
 static TCB* kAllocateTCB( void );
@@ -289,7 +182,7 @@ static void kSetUpTask( TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress,
         void* pvStackAddress, QWORD qwStackSize );
 
 //==============================================================================
-//  스케줄러 관련
+//  �����ٷ� ����
 //==============================================================================
 void kInitializeScheduler( void );
 void kSetRunningTask( TCB* pstTask );
@@ -311,10 +204,8 @@ TCB* kGetTCBInTCBPool( int iOffset );
 BOOL kIsTaskExist( QWORD qwID );
 QWORD kGetProcessorLoad( void );
 static TCB* kGetProcessByThread( TCB* pstThread );
-int kGetPass(int stride);
-void kSetAllPassToZero();
 //==============================================================================
-//  유휴 태스크 관련
+//  ���� �½�ũ ����
 //==============================================================================
 void kIdleTask( void );
 void kHaltProcessorByLoad( void );
