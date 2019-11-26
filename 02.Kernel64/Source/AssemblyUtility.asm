@@ -7,6 +7,7 @@ global kInPortByte, kOutPortByte, kLoadGDTR, kLoadTR, kLoadIDTR
 global kEnableInterrupt, kDisableInterrupt, kReadRFLAGS
 global kReadTSC
 global kSwitchContext, kHlt, kTestAndSet
+global kInitializeFPU, kSaveFPUContext, kLoadFPUContext, kSetTS, kClearTS
 
 ; 포트로부터 1바이트를 읽음
 ;   PARAM: 포트 번호
@@ -239,3 +240,43 @@ kTestAndSet:
 .SUCCESS:               ; Destination과 Compare가 같은 경우
     mov rax, 0x01
     ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;   FPU 관련 어셈블리어 함수
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
+; FPU를 초기화
+;   PAPAM: 없음
+kInitializeFPU:
+    finit               ; FPU 초기화를 수행
+    ret
+    
+; FPU 관련 레지스터를 콘텍스트 버퍼에 저장
+;   PARAM: Buffer Address
+kSaveFPUContext:
+    fxsave  [ rdi ]     ; 첫 번째 파라미터로 전달된 버퍼에 FPU 레지스터를 저장
+    ret
+    
+; FPU 관련 레지스터를 콘텍스트 버퍼에서 복원
+;   PARAM: Buffer Address
+kLoadFPUContext:
+    fxrstor [ rdi ]     ; 첫 번째 파라미터로 전달된 버퍼에서 FPU 레지스터를 복원
+    ret
+
+; CR0 컨트롤 레지스터의 TS 비트를 1로 설정
+;   PARAM: 없음
+kSetTS:
+    push rax            ; 스택에 RAX 레지스터의 값을 저장
+
+    mov rax, cr0        ; CR0 컨트롤 레지스터의 값을 RAX 레지스터로 저장
+    or rax, 0x08        ; TS 비트(비트 7)를 1로 설정
+    mov cr0, rax        ; TS 비트가 1로 설정된 값을 CR0 컨트롤 레지스터로 저장
+
+    pop rax             ; 스택에서 RAX 레지스터의 값을 복원
+    ret
+    
+; CR0 컨트롤 레지스터의 TS 비트를 0으로 설정
+;   PARAM: 없음
+kClearTS:
+    clts                ; CR0 컨트롤 레지스터에서 TS 비트를 0으로 설정
+    ret    

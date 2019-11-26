@@ -18,7 +18,8 @@ InterruptHandler.o: ../Source/InterruptHandler.c \
  ../Source/Keyboard.h ../Source/Console.h \
  ../Source/../../01.Kernel32/Source/Page.h \
  ../Source/../../01.Kernel32/Source/Types.h ../Source/Utility.h \
- ../Source/Task.h ../Source/List.h ../Source/Descriptor.h
+ ../Source/Task.h ../Source/List.h ../Source/Descriptor.h \
+ ../Source/AssemblyUtility.h
 Descriptor.o: ../Source/Descriptor.c ../Source/Descriptor.h \
  ../Source/Types.h ../Source/Utility.h ../Source/ISR.h
 Console.o: ../Source/Console.c ../Source/Console.h ../Source/Types.h \
@@ -34,5 +35,4 @@ Keyboard.o: ../Source/Keyboard.c ../Source/Types.h \
 RTC.o: ../Source/RTC.c ../Source/RTC.h ../Source/Types.h
 List.o: ../Source/List.c ../Source/List.h ../Source/Types.h
 Task.o: ../Source/Task.c ../Source/Task.h ../Source/Types.h \
- ../Source/List.h ../Source/Console.h ../Source/Descriptor.h \
- ../Source/Utility.h
+ ../Source/List.h ../Source/Console.h ../Source/Descriptor.h

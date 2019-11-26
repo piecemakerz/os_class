@@ -35,7 +35,8 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "testthread", "Test Thread And Process Function", kTestThread },
         { "showmatrix", "Show Matrix Screen", kShowMatrix },
 		{ "tracescheduler", "Trace Task Scheduling", kTraceScheduler },
-        { "showfair", "Show Fairness Graph", kShowFairness }
+        { "showfair", "Show Fairness Graph", kShowFairness },
+        { "testpie", "Test PIE Calculation", kTestPIE },  
 };                                     
 
 //==============================================================================
@@ -1405,3 +1406,83 @@ static void kShowFairness( void ){
     kEndTask(pstProcess->stLink.qwID);
     return;
 }
+
+
+/**
+ *  FPU를 테스트하는 태스크
+ */
+static void kFPUTestTask( void )
+{
+    double dValue1;
+    double dValue2;
+    TCB* pstRunningTask;
+    QWORD qwCount = 0;
+    QWORD qwRandomValue;
+    int i;
+    int iOffset;
+    char vcData[ 4 ] = { '-', '\\', '|', '/' };
+    CHARACTER* pstScreen = ( CHARACTER* ) CONSOLE_VIDEOMEMORYADDRESS;
+
+    pstRunningTask = kGetRunningTask();
+
+    // 자신의 ID를 얻어서 화면 오프셋으로 사용
+    iOffset = ( pstRunningTask->stLink.qwID & 0xFFFFFFFF ) * 2;
+    iOffset = CONSOLE_WIDTH * CONSOLE_HEIGHT - 
+        ( iOffset % ( CONSOLE_WIDTH * CONSOLE_HEIGHT ) );
+
+    // 루프를 무한히 반복하면서 동일한 계산을 수행
+    while( 1 )
+    {
+        dValue1 = 1;
+        dValue2 = 1;
+        
+        // 테스트를 위해 동일한 계산을 2번 반복해서 실행
+        for( i = 0 ; i < 10 ; i++ )
+        {
+            qwRandomValue = kRandom();
+            dValue1 *= ( double ) qwRandomValue;
+            dValue2 *= ( double ) qwRandomValue;
+
+            kSleep( 1 );
+            
+            qwRandomValue = kRandom();
+            dValue1 /= ( double ) qwRandomValue;
+            dValue2 /= ( double ) qwRandomValue;
+        }
+        
+        if( dValue1 != dValue2 )
+        {
+            kPrintf( "Value Is Not Same~!!! [%f] != [%f]\n", dValue1, dValue2 );
+            break;
+        }
+        qwCount++;
+
+        // 회전하는 바람개비를 표시
+        pstScreen[ iOffset ].bCharactor = vcData[ qwCount % 4 ];
+
+        // 색깔 지정
+        pstScreen[ iOffset ].bAttribute = ( iOffset % 15 ) + 1;
+    }
+}
+
+/**
+ *  원주율(PIE)를 계산
+ */
+static void kTestPIE( const char* pcParameterBuffer )
+{
+    double dResult;
+    int i;
+    
+    kPrintf( "PIE Cacluation Test\n" );
+    kPrintf( "Result: 355 / 113 = " );
+    dResult = ( double ) 355 / 113;
+    kPrintf( "%d.%d%d\n", ( QWORD ) dResult, ( ( QWORD ) ( dResult * 10 ) % 10 ),
+             ( ( QWORD ) ( dResult * 100 ) % 10 ) );
+    
+    // 실수를 계산하는 태스크를 생성
+    for( i = 0 ; i < 100 ; i++ )
+    {
+        kCreateTask( TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, ( QWORD ) kFPUTestTask );
+    }
+}
+

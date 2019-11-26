@@ -13,4 +13,6 @@ void kCommonInterruptHandler( int iVectorNumber );
 void kKeyboardHandler( int iVectorNumber );
 void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode );
 void kTimerHandler(int iVertorNumber);
+// FPU ??
+void kDeviceNotAvailableHandler( int iVectorNumber );
 #endif /*__INTERRUPTHANDLER_H__*/
