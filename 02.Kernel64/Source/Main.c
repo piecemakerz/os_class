@@ -6,6 +6,9 @@
 #include "ConsoleShell.h"
 #include "Task.h"
 #include "PIT.h"
+#include "DynamicMemory.h"
+#include "HardDisk.h"
+#include "FileSystem.h"
 
 /**
  *  아래 함수는 C 언어 커널의 시작 부분임
@@ -47,6 +50,11 @@ void Main( void )
     kCheckTotalRAMSize();
     kSetCursor( 45, iCursorY++ );
     kPrintf( "Pass], Size = %d MB\n", kGetTotalRAMSize() );
+    
+    // 동적 메모리 초기화
+    kPrintf( "Dynamic Memory Initialize...................[Pass]\n" );
+    iCursorY++;
+    kInitializeDynamicMemory();
 
     kPrintf( "TCB Pool And Scheduler Initialize...........[Pass]\n" );
     iCursorY++;
@@ -76,7 +84,33 @@ void Main( void )
     kEnableInterrupt();
     kSetCursor( 45, iCursorY++ );
     kPrintf( "Pass\n" );
-
+    
+    // 하드 디스크를 초기화
+    kPrintf( "HDD Initialize..............................[    ]" );
+    if( kInitializeHDD() == TRUE )
+    {
+        kSetCursor( 45, iCursorY++ );
+        kPrintf( "Pass\n" );
+    }
+    else
+    {
+        kSetCursor( 45, iCursorY++ );
+        kPrintf( "Fail\n" );
+    }
+    
+    // 파일 시스템을 초기화
+    kPrintf( "File System Initialize......................[    ]" );
+    if( kInitializeFileSystem() == TRUE )
+    {
+        kSetCursor( 45, iCursorY++ );
+        kPrintf( "Pass\n" );
+    }
+    else
+    {
+        kSetCursor( 45, iCursorY++ );
+        kPrintf( "Fail\n" );
+    }
+    
     // 유휴 태스크를 시스템 스레드로 생성하고 셸을 시작
     kCreateTask( TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD | TASK_FLAGS_SYSTEM | TASK_FLAGS_IDLE, 0, 0,
             ( QWORD ) kIdleTask );

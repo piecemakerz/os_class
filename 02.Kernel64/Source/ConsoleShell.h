@@ -110,4 +110,19 @@ static void kTestThread(const char* pcParameterBuffer);
 static void kShowFairness(void);
 // FPU 관련
 static void kTestPIE( const char* pcParameterBuffer );
+// 동적 메모리 할당 관련
+static void kShowDyanmicMemoryInformation( const char* pcParameterBuffer );
+static void kTestSequentialAllocation( const char* pcParameterBuffer );
+static void kTestRandomAllocation( const char* pcParameterBuffer );
+// 하드 디스크 드라이버 관련
+static void kShowHDDInformation( const char* pcParameterBuffer );
+static void kReadSector( const char* pcParameterBuffer );
+static void kWriteSector( const char* pcParameterBuffer );
+// 파일 시스템 관련
+static void kMountHDD( const char* pcParameterBuffer );
+static void kFormatHDD( const char* pcParameterBuffer );
+static void kShowFileSystemInformation( const char* pcParameterBuffer );
+static void kCreateFileInRootDirectory( const char* pcParameterBuffer );
+static void kDeleteFileInRootDirectory( const char* pcParameterBuffer );
+static void kShowRootDirectory( const char* pcParameterBuffer );
 #endif /*__CONSOLESHELL_H__*/

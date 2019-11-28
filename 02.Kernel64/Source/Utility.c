@@ -99,7 +99,7 @@ int kStrLen( const char* pcBuffer )
 }
 
 // 램의 총 크기(Mbyte 단위)
-static gs_qwTotalRAMMBSize = 0;
+static QWORD gs_qwTotalRAMMBSize = 0;
 
 /**
  *  64Mbyte 이상의 위치부터 램 크기를 체크
