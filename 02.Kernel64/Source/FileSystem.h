@@ -7,26 +7,40 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// ë§¤í¬ë¡œì™€ í•¨ìˆ˜ í¬ì¸í„°
+// ¸ÅÅ©·Î¿Í ÇÔ¼ö Æ÷ÀÎÅÍ
 //
 ////////////////////////////////////////////////////////////////////////////////
-// MINT íŒŒì¼ ì‹œìŠ¤í…œ ì‹œê·¸ë„ˆì²˜(Signature)
+// MINT ÆÄÀÏ ½Ã½ºÅÛ ½Ã±×³ÊÃ³(Signature)
 #define FILESYSTEM_SIGNATURE                0x7E38CF10
-// í´ëŸ¬ìŠ¤í„°ì˜ í¬ê¸°(ì„¹í„° ìˆ˜), 4Kbyte
+// Å¬·¯½ºÅÍÀÇ Å©±â(¼½ÅÍ ¼ö), 4Kbyte
 #define FILESYSTEM_SECTORSPERCLUSTER        8
-// íŒŒì¼ í´ëŸ¬ìŠ¤í„°ì˜ ë§ˆì§€ë§‰ í‘œì‹œ
+// ÆÄÀÏ Å¬·¯½ºÅÍÀÇ ¸¶Áö¸· Ç¥½Ã
 #define FILESYSTEM_LASTCLUSTER              0xFFFFFFFF
-// ë¹ˆ í´ëŸ¬ìŠ¤í„° í‘œì‹œ
+// ºó Å¬·¯½ºÅÍ Ç¥½Ã
 #define FILESYSTEM_FREECLUSTER              0x00
-// ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì— ìˆëŠ” ìµœëŒ€ ë””ë ‰í„°ë¦¬ ì—”íŠ¸ë¦¬ì˜ ìˆ˜
+// ·çÆ® µğ·ºÅÍ¸®¿¡ ÀÖ´Â ÃÖ´ë µğ·ºÅÍ¸® ¿£Æ®¸®ÀÇ ¼ö
 #define FILESYSTEM_MAXDIRECTORYENTRYCOUNT   ( ( FILESYSTEM_SECTORSPERCLUSTER * 512 ) / \
         sizeof( DIRECTORYENTRY ) )
-// í´ëŸ¬ìŠ¤í„°ì˜ í¬ê¸°(ë°”ì´íŠ¸ ìˆ˜)
+// Å¬·¯½ºÅÍÀÇ Å©±â(¹ÙÀÌÆ® ¼ö)
 #define FILESYSTEM_CLUSTERSIZE              ( FILESYSTEM_SECTORSPERCLUSTER * 512 )
 
-// íŒŒì¼ ì´ë¦„ì˜ ìµœëŒ€ ê¸¸ì´
+// ÇÚµéÀÇ ÃÖ´ë °³¼ö, ÃÖ´ë ÅÂ½ºÅ© ¼öÀÇ 3¹è·Î »ı¼º
+#define FILESYSTEM_HANDLE_MAXCOUNT          ( TASK_MAXCOUNT * 3 )
+
+// ÆÄÀÏ ÀÌ¸§ÀÇ ÃÖ´ë ±æÀÌ
 #define FILESYSTEM_MAXFILENAMELENGTH        24
-// í•˜ë“œ ë””ìŠ¤í¬ ì œì–´ì— ê´€ë ¨ëœ í•¨ìˆ˜ í¬ì¸í„° íƒ€ì… ì •ì˜
+
+// ÇÚµéÀÇ Å¸ÀÔÀ» Á¤ÀÇ
+#define FILESYSTEM_TYPE_FREE                0
+#define FILESYSTEM_TYPE_FILE                1
+#define FILESYSTEM_TYPE_DIRECTORY           2
+
+// SEEK ¿É¼Ç Á¤ÀÇ
+#define FILESYSTEM_SEEK_SET                 0
+#define FILESYSTEM_SEEK_CUR                 1
+#define FILESYSTEM_SEEK_END                 2
+
+// ÇÏµå µğ½ºÅ© Á¦¾î¿¡ °ü·ÃµÈ ÇÔ¼ö Æ÷ÀÎÅÍ Å¸ÀÔ Á¤ÀÇ
 typedef BOOL (* fReadHDDInformation ) ( BOOL bPrimary, BOOL bMaster, 
         HDDINFORMATION* pstHDDInformation );
 typedef int (* fReadHDDSector ) ( BOOL bPrimary, BOOL bMaster, DWORD dwLBA, 
@@ -34,94 +48,161 @@ typedef int (* fReadHDDSector ) ( BOOL bPrimary, BOOL bMaster, DWORD dwLBA,
 typedef int (* fWriteHDDSector ) ( BOOL bPrimary, BOOL bMaster, DWORD dwLBA, 
         int iSectorCount, char* pcBuffer );
 
+// MINT ÆÄÀÏ ½Ã½ºÅÛ ÇÔ¼ö¸¦ Ç¥ÁØ ÀÔÃâ·Â ÇÔ¼ö ÀÌ¸§À¸·Î ÀçÁ¤ÀÇ
+#define fopen       kOpenFile
+#define fread       kReadFile
+#define fwrite      kWriteFile
+#define fseek       kSeekFile
+#define fclose      kCloseFile
+#define remove      kRemoveFile
+#define opendir     kOpenDirectory
+#define readdir     kReadDirectory
+#define rewinddir   kRewindDirectory
+#define closedir    kCloseDirectory
+
+// MINT ÆÄÀÏ ½Ã½ºÅÛ ¸ÅÅ©·Î¸¦ Ç¥ÁØ ÀÔÃâ·ÂÀÇ ¸ÅÅ©·Î¸¦ ÀçÁ¤ÀÇ
+#define SEEK_SET    FILESYSTEM_SEEK_SET
+#define SEEK_CUR    FILESYSTEM_SEEK_CUR
+#define SEEK_END    FILESYSTEM_SEEK_END
+
+// MINT ÆÄÀÏ ½Ã½ºÅÛ Å¸ÀÔ°ú ÇÊµå¸¦ Ç¥ÁØ ÀÔÃâ·ÂÀÇ Å¸ÀÔÀ¸·Î ÀçÁ¤ÀÇ
+#define size_t      DWORD
+#define dirent      kDirectoryEntryStruct
+#define d_name      vcFileName
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// êµ¬ì¡°ì²´
+// ±¸Á¶Ã¼
 //
 ////////////////////////////////////////////////////////////////////////////////
-// 1ë°”ì´íŠ¸ë¡œ ì •ë ¬
+// 1¹ÙÀÌÆ®·Î Á¤·Ä
 #pragma pack( push, 1 )
 
-// íŒŒí‹°ì…˜ ìë£Œêµ¬ì¡°
+// ÆÄÆ¼¼Ç ÀÚ·á±¸Á¶
 typedef struct kPartitionStruct
 {
-    // ë¶€íŒ… ê°€ëŠ¥ í”Œë˜ê·¸. 0x80ì´ë©´ ë¶€íŒ… ê°€ëŠ¥ì„ ë‚˜íƒ€ë‚´ë©° 0x00ì€ ë¶€íŒ… ë¶ˆê°€
+    // ºÎÆÃ °¡´É ÇÃ·¡±×. 0x80ÀÌ¸é ºÎÆÃ °¡´ÉÀ» ³ªÅ¸³»¸ç 0x00Àº ºÎÆÃ ºÒ°¡
     BYTE bBootableFlag;
-    // íŒŒí‹°ì…˜ì˜ ì‹œì‘ ì–´ë“œë ˆìŠ¤. í˜„ì¬ëŠ” ê±°ì˜ ì‚¬ìš©í•˜ì§€ ì•Šìœ¼ë©° ì•„ë˜ì˜ LBA ì–´ë“œë ˆìŠ¤ë¥¼ ëŒ€ì‹  ì‚¬ìš©
+    // ÆÄÆ¼¼ÇÀÇ ½ÃÀÛ ¾îµå·¹½º. ÇöÀç´Â °ÅÀÇ »ç¿ëÇÏÁö ¾ÊÀ¸¸ç ¾Æ·¡ÀÇ LBA ¾îµå·¹½º¸¦ ´ë½Å »ç¿ë
     BYTE vbStartingCHSAddress[ 3 ];
-    // íŒŒí‹°ì…˜ íƒ€ì…
+    // ÆÄÆ¼¼Ç Å¸ÀÔ
     BYTE bPartitionType;
-    // íŒŒí‹°ì…˜ì˜ ë§ˆì§€ë§‰ ì–´ë“œë ˆìŠ¤. í˜„ì¬ëŠ” ê±°ì˜ ì‚¬ìš© ì•ˆ í•¨
+    // ÆÄÆ¼¼ÇÀÇ ¸¶Áö¸· ¾îµå·¹½º. ÇöÀç´Â °ÅÀÇ »ç¿ë ¾È ÇÔ
     BYTE vbEndingCHSAddress[ 3 ];
-    // íŒŒí‹°ì…˜ì˜ ì‹œì‘ ì–´ë“œë ˆìŠ¤. LBA ì–´ë“œë ˆìŠ¤ë¡œ ë‚˜íƒ€ë‚¸ ê°’
+    // ÆÄÆ¼¼ÇÀÇ ½ÃÀÛ ¾îµå·¹½º. LBA ¾îµå·¹½º·Î ³ªÅ¸³½ °ª
     DWORD dwStartingLBAAddress;
-    // íŒŒí‹°ì…˜ì— í¬í•¨ëœ ì„¹í„° ìˆ˜
+    // ÆÄÆ¼¼Ç¿¡ Æ÷ÇÔµÈ ¼½ÅÍ ¼ö
     DWORD dwSizeInSector;
 } PARTITION;
 
 
-// MBR ìë£Œêµ¬ì¡°
+// MBR ÀÚ·á±¸Á¶
 typedef struct kMBRStruct
 {
-    // ë¶€íŠ¸ ë¡œë” ì½”ë“œê°€ ìœ„ì¹˜í•˜ëŠ” ì˜ì—­
+    // ºÎÆ® ·Î´õ ÄÚµå°¡ À§Ä¡ÇÏ´Â ¿µ¿ª
     BYTE vbBootCode[ 430 ];
 
-    // íŒŒì¼ ì‹œìŠ¤í…œ ì‹œê·¸ë„ˆì²˜, 0x7E38CF10
+    // ÆÄÀÏ ½Ã½ºÅÛ ½Ã±×³ÊÃ³, 0x7E38CF10
     DWORD dwSignature;
-    // ì˜ˆì•½ëœ ì˜ì—­ì˜ ì„¹í„° ìˆ˜
+    // ¿¹¾àµÈ ¿µ¿ªÀÇ ¼½ÅÍ ¼ö
     DWORD dwReservedSectorCount;
-    // í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸” ì˜ì—­ì˜ ì„¹í„° ìˆ˜
+    // Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí ¿µ¿ªÀÇ ¼½ÅÍ ¼ö
     DWORD dwClusterLinkSectorCount;
-    // í´ëŸ¬ìŠ¤í„°ì˜ ì „ì²´ ê°œìˆ˜
+    // Å¬·¯½ºÅÍÀÇ ÀüÃ¼ °³¼ö
     DWORD dwTotalClusterCount;
     
-    // íŒŒí‹°ì…˜ í…Œì´ë¸”
+    // ÆÄÆ¼¼Ç Å×ÀÌºí
     PARTITION vstPartition[ 4 ];
     
-    // ë¶€íŠ¸ ë¡œë” ì‹œê·¸ë„ˆì²˜, 0x55, 0xAA
+    // ºÎÆ® ·Î´õ ½Ã±×³ÊÃ³, 0x55, 0xAA
     BYTE vbBootLoaderSignature[ 2 ];
 } MBR;
 
 
-// ë””ë ‰í„°ë¦¬ ì—”íŠ¸ë¦¬ ìë£Œêµ¬ì¡°
+// µğ·ºÅÍ¸® ¿£Æ®¸® ÀÚ·á±¸Á¶
 typedef struct kDirectoryEntryStruct
 {
-    // íŒŒì¼ ì´ë¦„
+    // ÆÄÀÏ ÀÌ¸§
     char vcFileName[ FILESYSTEM_MAXFILENAMELENGTH ];
-    // íŒŒì¼ì˜ ì‹¤ì œ í¬ê¸°
+    // ÆÄÀÏÀÇ ½ÇÁ¦ Å©±â
     DWORD dwFileSize;
-    // íŒŒì¼ì´ ì‹œì‘í•˜ëŠ” í´ëŸ¬ìŠ¤í„° ì¸ë±ìŠ¤
+    // ÆÄÀÏÀÌ ½ÃÀÛÇÏ´Â Å¬·¯½ºÅÍ ÀÎµ¦½º
     DWORD dwStartClusterIndex;
 } DIRECTORYENTRY;
 
 #pragma pack( pop )
 
-// íŒŒì¼ ì‹œìŠ¤í…œì„ ê´€ë¦¬í•˜ëŠ” êµ¬ì¡°ì²´
+// ÆÄÀÏÀ» °ü¸®ÇÏ´Â ÆÄÀÏ ÇÚµé ÀÚ·á±¸Á¶
+typedef struct kFileHandleStruct
+{
+    // ÆÄÀÏÀÌ Á¸ÀçÇÏ´Â µğ·ºÅÍ¸® ¿£Æ®¸®ÀÇ ¿ÀÇÁ¼Â
+    int iDirectoryEntryOffset;
+    // ÆÄÀÏ Å©±â
+    DWORD dwFileSize;
+    // ÆÄÀÏÀÇ ½ÃÀÛ Å¬·¯½ºÅÍ ÀÎµ¦½º
+    DWORD dwStartClusterIndex;
+    // ÇöÀç I/O°¡ ¼öÇàÁßÀÎ Å¬·¯½ºÅÍÀÇ ÀÎµ¦½º
+    DWORD dwCurrentClusterIndex;
+    // ÇöÀç Å¬·¯½ºÅÍÀÇ ¹Ù·Î ÀÌÀü Å¬·¯½ºÅÍÀÇ ÀÎµ¦½º
+    DWORD dwPreviousClusterIndex;
+    // ÆÄÀÏ Æ÷ÀÎÅÍÀÇ ÇöÀç À§Ä¡
+    DWORD dwCurrentOffset;
+} FILEHANDLE;
+
+// µğ·ºÅÍ¸®¸¦ °ü¸®ÇÏ´Â µğ·ºÅÍ¸® ÇÚµé ÀÚ·á±¸Á¶
+typedef struct kDirectoryHandleStruct
+{
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀúÀåÇØµĞ ¹öÆÛ
+    DIRECTORYENTRY* pstDirectoryBuffer;
+
+    // µğ·ºÅÍ¸® Æ÷ÀÎÅÍÀÇ ÇöÀç À§Ä¡
+    int iCurrentOffset;
+} DIRECTORYHANDLE;
+
+// ÆÄÀÏ°ú µğ·ºÅÍ¸®¿¡ ´ëÇÑ Á¤º¸°¡ µé¾îÀÖ´Â ÀÚ·á±¸Á¶
+typedef struct kFileDirectoryHandleStruct
+{
+    // ÀÚ·á±¸Á¶ÀÇ Å¸ÀÔ ¼³Á¤. ÆÄÀÏ ÇÚµéÀÌ³ª µğ·ºÅÍ¸® ÇÚµé, ¶Ç´Â ºó ÇÚµé Å¸ÀÔ ÁöÁ¤ °¡´É
+    BYTE bType;
+
+    // bTypeÀÇ °ª¿¡ µû¶ó ÆÄÀÏ ¶Ç´Â µğ·ºÅÍ¸®·Î »ç¿ë
+    union
+    {
+        // ÆÄÀÏ ÇÚµé
+        FILEHANDLE stFileHandle;
+        // µğ·ºÅÍ¸® ÇÚµé
+        DIRECTORYHANDLE stDirectoryHandle;
+    };
+} FILE, DIR;
+
+// ÆÄÀÏ ½Ã½ºÅÛÀ» °ü¸®ÇÏ´Â ±¸Á¶Ã¼
 typedef struct kFileSystemManagerStruct
 {
-    // íŒŒì¼ ì‹œìŠ¤í…œì´ ì •ìƒì ìœ¼ë¡œ ì¸ì‹ë˜ì—ˆëŠ”ì§€ ì—¬ë¶€
+    // ÆÄÀÏ ½Ã½ºÅÛÀÌ Á¤»óÀûÀ¸·Î ÀÎ½ÄµÇ¾ú´ÂÁö ¿©ºÎ
     BOOL bMounted;
     
-    // ê° ì˜ì—­ì˜ ì„¹í„° ìˆ˜ì™€ ì‹œì‘ LBA ì–´ë“œë ˆìŠ¤
+    // °¢ ¿µ¿ªÀÇ ¼½ÅÍ ¼ö¿Í ½ÃÀÛ LBA ¾îµå·¹½º
     DWORD dwReservedSectorCount;
     DWORD dwClusterLinkAreaStartAddress;
     DWORD dwClusterLinkAreaSize;
     DWORD dwDataAreaStartAddress;   
-    // ë°ì´í„° ì˜ì—­ì˜ í´ëŸ¬ìŠ¤í„°ì˜ ì´ ê°œìˆ˜
+    // µ¥ÀÌÅÍ ¿µ¿ªÀÇ Å¬·¯½ºÅÍÀÇ ÃÑ °³¼ö
     DWORD dwTotalClusterCount;
     
-    // ë§ˆì§€ë§‰ìœ¼ë¡œ í´ëŸ¬ìŠ¤í„°ë¥¼ í• ë‹¹í•œ í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ì„¹í„° ì˜¤í”„ì…‹ì„ ì €ì¥
+    // ¸¶Áö¸·À¸·Î Å¬·¯½ºÅÍ¸¦ ÇÒ´çÇÑ Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ ¼½ÅÍ ¿ÀÇÁ¼ÂÀ» ÀúÀå
     DWORD dwLastAllocatedClusterLinkSectorOffset;
     
-    // íŒŒì¼ ì‹œìŠ¤í…œ ë™ê¸°í™” ê°ì²´
+    // ÆÄÀÏ ½Ã½ºÅÛ µ¿±âÈ­ °´Ã¼
     MUTEX stMutex;    
+
+    // ÇÚµé Ç®(Handle Pool)ÀÇ ¾îµå·¹½º
+    FILE* pstHandlePool;
 } FILESYSTEMMANAGER;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// í•¨ìˆ˜
+// ÇÔ¼ö
 //
 ////////////////////////////////////////////////////////////////////////////////
 BOOL kInitializeFileSystem( void );
@@ -129,17 +210,39 @@ BOOL kFormat( void );
 BOOL kMount( void );
 BOOL kGetHDDInformation( HDDINFORMATION* pstInformation);
 
-BOOL kReadClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer );
-BOOL kWriteClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer );
-BOOL kReadCluster( DWORD dwOffset, BYTE* pbBuffer );
-BOOL kWriteCluster( DWORD dwOffset, BYTE* pbBuffer );
-DWORD kFindFreeCluster( void );
-BOOL kSetClusterLinkData( DWORD dwClusterIndex, DWORD dwData );
-BOOL kGetClusterLinkData( DWORD dwClusterIndex, DWORD* pdwData );
-int kFindFreeDirectoryEntry( void );
-BOOL kSetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry );
-BOOL kGetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry );
-int kFindDirectoryEntry( const char* pcFileName, DIRECTORYENTRY* pstEntry );
+//  Àú¼öÁØ ÇÔ¼ö(Low Level Function)
+static BOOL kReadClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer );
+static BOOL kWriteClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer );
+static BOOL kReadCluster( DWORD dwOffset, BYTE* pbBuffer );
+static BOOL kWriteCluster( DWORD dwOffset, BYTE* pbBuffer );
+static DWORD kFindFreeCluster( void );
+static BOOL kSetClusterLinkData( DWORD dwClusterIndex, DWORD dwData );
+static BOOL kGetClusterLinkData( DWORD dwClusterIndex, DWORD* pdwData );
+static int kFindFreeDirectoryEntry( void );
+static BOOL kSetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry );
+static BOOL kGetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry );
+static int kFindDirectoryEntry( const char* pcFileName, DIRECTORYENTRY* pstEntry );
 void kGetFileSystemInformation( FILESYSTEMMANAGER* pstManager );
+
+//  °í¼öÁØ ÇÔ¼ö(High Level Function)
+FILE* kOpenFile( const char* pcFileName, const char* pcMode );
+DWORD kReadFile( void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile );
+DWORD kWriteFile( const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile );
+int kSeekFile( FILE* pstFile, int iOffset, int iOrigin );
+int kCloseFile( FILE* pstFile );
+int kRemoveFile( const char* pcFileName );
+DIR* kOpenDirectory( const char* pcDirectoryName );
+struct kDirectoryEntryStruct* kReadDirectory( DIR* pstDirectory );
+void kRewindDirectory( DIR* pstDirectory );
+int kCloseDirectory( DIR* pstDirectory );
+BOOL kWriteZero( FILE* pstFile, DWORD dwCount );
+BOOL kIsFileOpened( const DIRECTORYENTRY* pstEntry );
+
+static void* kAllocateFileDirectoryHandle( void );
+static void kFreeFileDirectoryHandle( FILE* pstFile );
+static BOOL kCreateFile( const char* pcFileName, DIRECTORYENTRY* pstEntry,
+        int* piDirectoryEntryIndex );
+static BOOL kFreeClusterUntilEnd( DWORD dwClusterIndex );
+static BOOL kUpdateDirectoryEntry( FILEHANDLE* pstFileHandle );
 
 #endif /*__FILESYSTEM_H__*/

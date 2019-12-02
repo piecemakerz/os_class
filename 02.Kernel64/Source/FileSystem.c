@@ -1,30 +1,32 @@
 #include "FileSystem.h"
 #include "HardDisk.h"
 #include "DynamicMemory.h"
+#include "Task.h"
+#include "Utility.h"
 
-// íŒŒì¼ ì‹œìŠ¤í…œ ìë£Œêµ¬ì¡°
+// ÆÄÀÏ ½Ã½ºÅÛ ÀÚ·á±¸Á¶
 static FILESYSTEMMANAGER   gs_stFileSystemManager;
-// íŒŒì¼ ì‹œìŠ¤í…œ ì„ì‹œ ë²„í¼
+// ÆÄÀÏ ½Ã½ºÅÛ ÀÓ½Ã ¹öÆÛ
 static BYTE gs_vbTempBuffer[ FILESYSTEM_SECTORSPERCLUSTER * 512 ];
 
-// í•˜ë“œ ë””ìŠ¤í¬ ì œì–´ì— ê´€ë ¨ëœ í•¨ìˆ˜ í¬ì¸í„° ì„ ì–¸
+// ÇÏµå µğ½ºÅ© Á¦¾î¿¡ °ü·ÃµÈ ÇÔ¼ö Æ÷ÀÎÅÍ ¼±¾ğ
 fReadHDDInformation gs_pfReadHDDInformation = NULL;
 fReadHDDSector gs_pfReadHDDSector = NULL;
 fWriteHDDSector gs_pfWriteHDDSector = NULL;
 
 /**
- *  íŒŒì¼ ì‹œìŠ¤í…œì„ ì´ˆê¸°í™”
+ *  ÆÄÀÏ ½Ã½ºÅÛÀ» ÃÊ±âÈ­
  */
 BOOL kInitializeFileSystem( void )
 {
-    // ìë£Œêµ¬ì¡° ì´ˆê¸°í™”ì™€ ë™ê¸°í™” ê°ì²´ ì´ˆê¸°í™”
+    // ÀÚ·á±¸Á¶ ÃÊ±âÈ­¿Í µ¿±âÈ­ °´Ã¼ ÃÊ±âÈ­
     kMemSet( &gs_stFileSystemManager, 0, sizeof( gs_stFileSystemManager ) );
     kInitializeMutex( &( gs_stFileSystemManager.stMutex ) );
     
-    // í•˜ë“œ ë””ìŠ¤í¬ë¥¼ ì´ˆê¸°í™”
+    // ÇÏµå µğ½ºÅ©¸¦ ÃÊ±âÈ­
     if( kInitializeHDD() == TRUE )
     {
-        // ì´ˆê¸°í™”ê°€ ì„±ê³µí•˜ë©´ í•¨ìˆ˜ í¬ì¸í„°ë¥¼ í•˜ë“œ ë””ìŠ¤í¬ìš© í•¨ìˆ˜ë¡œ ì„¤ì •
+        // ÃÊ±âÈ­°¡ ¼º°øÇÏ¸é ÇÔ¼ö Æ÷ÀÎÅÍ¸¦ ÇÏµå µğ½ºÅ©¿ë ÇÔ¼ö·Î ¼³Á¤
         gs_pfReadHDDInformation = kReadHDDInformation;
         gs_pfReadHDDSector = kReadHDDSector;
         gs_pfWriteHDDSector = kWriteHDDSector;
@@ -34,51 +36,66 @@ BOOL kInitializeFileSystem( void )
         return FALSE;
     }
     
-    // íŒŒì¼ ì‹œìŠ¤í…œ ì—°ê²°
+    // ÆÄÀÏ ½Ã½ºÅÛ ¿¬°á
     if( kMount() == FALSE )
     {
         return FALSE;
     }
     
+    // ÇÚµéÀ» À§ÇÑ °ø°£À» ÇÒ´ç
+    gs_stFileSystemManager.pstHandlePool = ( FILE* ) kAllocateMemory(
+        FILESYSTEM_HANDLE_MAXCOUNT * sizeof( FILE ) );
+
+    // ¸Ş¸ğ¸® ÇÒ´çÀÌ ½ÇÆĞÇÏ¸é ÇÏµå µğ½ºÅ©°¡ ÀÎ½ÄµÇÁö ¾ÊÀº °ÍÀ¸·Î ¼³Á¤
+    if( gs_stFileSystemManager.pstHandlePool == NULL )
+    {
+        gs_stFileSystemManager.bMounted = FALSE;
+        return FALSE;
+    }
+
+    // ÇÚµé Ç®À» ¸ğµÎ 0À¸·Î ¼³Á¤ÇÏ¿© ÃÊ±âÈ­
+    kMemSet( gs_stFileSystemManager.pstHandlePool, 0,
+            FILESYSTEM_HANDLE_MAXCOUNT * sizeof( FILE ) );
+
     return TRUE;
 }
 
 //==============================================================================
-//  ì €ìˆ˜ì¤€ í•¨ìˆ˜(Low Level Function)
+//  Àú¼öÁØ ÇÔ¼ö(Low Level Function)
 //==============================================================================
 /**
- *  í•˜ë“œ ë””ìŠ¤í¬ì˜ MBRì„ ì½ì–´ì„œ MINT íŒŒì¼ ì‹œìŠ¤í…œì¸ì§€ í™•ì¸
- *      MINT íŒŒì¼ ì‹œìŠ¤í…œì´ë¼ë©´ íŒŒì¼ ì‹œìŠ¤í…œì— ê´€ë ¨ëœ ê°ì¢… ì •ë³´ë¥¼ ì½ì–´ì„œ
- *      ìë£Œêµ¬ì¡°ì— ì‚½ì…
+ *  ÇÏµå µğ½ºÅ©ÀÇ MBRÀ» ÀĞ¾î¼­ MINT ÆÄÀÏ ½Ã½ºÅÛÀÎÁö È®ÀÎ
+ *      MINT ÆÄÀÏ ½Ã½ºÅÛÀÌ¶ó¸é ÆÄÀÏ ½Ã½ºÅÛ¿¡ °ü·ÃµÈ °¢Á¾ Á¤º¸¸¦ ÀĞ¾î¼­
+ *      ÀÚ·á±¸Á¶¿¡ »ğÀÔ
  */
 BOOL kMount( void )
 {
     MBR* pstMBR;
     
-    // ë™ê¸°í™” ì²˜ë¦¬
+    // µ¿±âÈ­ Ã³¸®
     kLock( &( gs_stFileSystemManager.stMutex ) );
 
-    // MBRì„ ì½ìŒ
+    // MBRÀ» ÀĞÀ½
     if( gs_pfReadHDDSector( TRUE, TRUE, 0, 1, gs_vbTempBuffer ) == FALSE )
     {
-        // ë™ê¸°í™” ì²˜ë¦¬
+        // µ¿±âÈ­ Ã³¸®
         kUnlock( &( gs_stFileSystemManager.stMutex ) );
         return FALSE;
     }
     
-    // ì‹œê·¸ë„ˆì²˜ë¥¼ í™•ì¸í•˜ì—¬ ê°™ë‹¤ë©´ ìë£Œêµ¬ì¡°ì— ê° ì˜ì—­ì— ëŒ€í•œ ì •ë³´ ì‚½ì…
+    // ½Ã±×³ÊÃ³¸¦ È®ÀÎÇÏ¿© °°´Ù¸é ÀÚ·á±¸Á¶¿¡ °¢ ¿µ¿ª¿¡ ´ëÇÑ Á¤º¸ »ğÀÔ
     pstMBR = ( MBR* ) gs_vbTempBuffer;
     if( pstMBR->dwSignature != FILESYSTEM_SIGNATURE )
     {
-        // ë™ê¸°í™” ì²˜ë¦¬
+        // µ¿±âÈ­ Ã³¸®
         kUnlock( &( gs_stFileSystemManager.stMutex ) );
         return FALSE;
     }
     
-    // íŒŒì¼ ì‹œìŠ¤í…œ ì¸ì‹ ì„±ê³µ
+    // ÆÄÀÏ ½Ã½ºÅÛ ÀÎ½Ä ¼º°ø
     gs_stFileSystemManager.bMounted = TRUE;
     
-    // ê° ì˜ì—­ì˜ ì‹œì‘ LBA ì–´ë“œë ˆìŠ¤ì™€ ì„¹í„° ìˆ˜ë¥¼ ê³„ì‚°
+    // °¢ ¿µ¿ªÀÇ ½ÃÀÛ LBA ¾îµå·¹½º¿Í ¼½ÅÍ ¼ö¸¦ °è»ê
     gs_stFileSystemManager.dwReservedSectorCount = pstMBR->dwReservedSectorCount;
     gs_stFileSystemManager.dwClusterLinkAreaStartAddress =
         pstMBR->dwReservedSectorCount + 1;
@@ -87,13 +104,13 @@ BOOL kMount( void )
         pstMBR->dwReservedSectorCount + pstMBR->dwClusterLinkSectorCount + 1;
     gs_stFileSystemManager.dwTotalClusterCount = pstMBR->dwTotalClusterCount;
 
-    // ë™ê¸°í™” ì²˜ë¦¬
+    // µ¿±âÈ­ Ã³¸®
     kUnlock( &( gs_stFileSystemManager.stMutex ) );
     return TRUE;
 }
 
 /**
- *  í•˜ë“œ ë””ìŠ¤í¬ì— íŒŒì¼ ì‹œìŠ¤í…œì„ ìƒì„±
+ *  ÇÏµå µğ½ºÅ©¿¡ ÆÄÀÏ ½Ã½ºÅÛÀ» »ı¼º
  */
 BOOL kFormat( void )
 {
@@ -104,52 +121,52 @@ BOOL kFormat( void )
     DWORD dwClusterLinkSectorCount;
     DWORD i;
     
-    // ë™ê¸°í™” ì²˜ë¦¬
+    // µ¿±âÈ­ Ã³¸®
     kLock( &( gs_stFileSystemManager.stMutex ) );
 
     //==========================================================================
-    //  í•˜ë“œ ë””ìŠ¤í¬ ì •ë³´ë¥¼ ì½ì–´ì„œ ë©”íƒ€ ì˜ì—­ì˜ í¬ê¸°ì™€ í´ëŸ¬ìŠ¤í„°ì˜ ê°œìˆ˜ë¥¼ ê³„ì‚°
+    //  ÇÏµå µğ½ºÅ© Á¤º¸¸¦ ÀĞ¾î¼­ ¸ŞÅ¸ ¿µ¿ªÀÇ Å©±â¿Í Å¬·¯½ºÅÍÀÇ °³¼ö¸¦ °è»ê
     //==========================================================================
-    // í•˜ë“œ ë””ìŠ¤í¬ì˜ ì •ë³´ë¥¼ ì–»ì–´ì„œ í•˜ë“œ ë””ìŠ¤í¬ì˜ ì´ ì„¹í„° ìˆ˜ë¥¼ êµ¬í•¨
+    // ÇÏµå µğ½ºÅ©ÀÇ Á¤º¸¸¦ ¾ò¾î¼­ ÇÏµå µğ½ºÅ©ÀÇ ÃÑ ¼½ÅÍ ¼ö¸¦ ±¸ÇÔ
     pstHDD = ( HDDINFORMATION* ) gs_vbTempBuffer;
     if( gs_pfReadHDDInformation( TRUE, TRUE, pstHDD ) == FALSE )
     {
-        // ë™ê¸°í™” ì²˜ë¦¬
+        // µ¿±âÈ­ Ã³¸®
         kUnlock( &( gs_stFileSystemManager.stMutex ) );
         return FALSE;
     }    
     dwTotalSectorCount = pstHDD->dwTotalSectors;
     
-    // ì „ì²´ ì„¹í„° ìˆ˜ë¥¼ 4Kbyte, ì¦‰ í´ëŸ¬ìŠ¤í„° í¬ê¸°ë¡œ ë‚˜ëˆ„ì–´ ìµœëŒ€ í´ëŸ¬ìŠ¤í„° ìˆ˜ë¥¼ ê³„ì‚°
+    // ÀüÃ¼ ¼½ÅÍ ¼ö¸¦ 4Kbyte, Áï Å¬·¯½ºÅÍ Å©±â·Î ³ª´©¾î ÃÖ´ë Å¬·¯½ºÅÍ ¼ö¸¦ °è»ê
     dwMaxClusterCount = dwTotalSectorCount / FILESYSTEM_SECTORSPERCLUSTER;
     
-    // ìµœëŒ€ í´ëŸ¬ìŠ¤í„°ì˜ ìˆ˜ì— ë§ì¶”ì–´ í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ì„¹í„° ìˆ˜ë¥¼ ê³„ì‚°
-    // ë§í¬ ë°ì´í„°ëŠ” 4ë°”ì´íŠ¸ì´ë¯€ë¡œ, í•œ ì„¹í„°ì—ëŠ” 128ê°œê°€ ë“¤ì–´ê°. ë”°ë¼ì„œ ì´ ê°œìˆ˜ë¥¼
-    // 128ë¡œ ë‚˜ëˆˆ í›„ ì˜¬ë¦¼í•˜ì—¬ í´ëŸ¬ìŠ¤í„° ë§í¬ì˜ ì„¹í„° ìˆ˜ë¥¼ êµ¬í•¨
+    // ÃÖ´ë Å¬·¯½ºÅÍÀÇ ¼ö¿¡ ¸ÂÃß¾î Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ ¼½ÅÍ ¼ö¸¦ °è»ê
+    // ¸µÅ© µ¥ÀÌÅÍ´Â 4¹ÙÀÌÆ®ÀÌ¹Ç·Î, ÇÑ ¼½ÅÍ¿¡´Â 128°³°¡ µé¾î°¨. µû¶ó¼­ ÃÑ °³¼ö¸¦
+    // 128·Î ³ª´« ÈÄ ¿Ã¸²ÇÏ¿© Å¬·¯½ºÅÍ ¸µÅ©ÀÇ ¼½ÅÍ ¼ö¸¦ ±¸ÇÔ
     dwClusterLinkSectorCount = ( dwMaxClusterCount + 127 ) / 128;
     
-    // ì˜ˆì•½ëœ ì˜ì—­ì€ í˜„ì¬ ì‚¬ìš©í•˜ì§€ ì•Šìœ¼ë¯€ë¡œ, ë””ìŠ¤í¬ ì „ì²´ ì˜ì—­ì—ì„œ MBR ì˜ì—­ê³¼ í´ëŸ¬ìŠ¤í„°
-    // ë§í¬ í…Œì´ë¸” ì˜ì—­ì˜ í¬ê¸°ë¥¼ ëº€ ë‚˜ë¨¸ì§€ê°€ ì‹¤ì œ ë°ì´í„° ì˜ì—­ì´ ë¨
-    // í•´ë‹¹ ì˜ì—­ì„ í´ëŸ¬ìŠ¤í„° í¬ê¸°ë¡œ ë‚˜ëˆ„ì–´ ì‹¤ì œ í´ëŸ¬ìŠ¤í„°ì˜ ê°œìˆ˜ë¥¼ êµ¬í•¨
+    // ¿¹¾àµÈ ¿µ¿ªÀº ÇöÀç »ç¿ëÇÏÁö ¾ÊÀ¸¹Ç·Î, µğ½ºÅ© ÀüÃ¼ ¿µ¿ª¿¡¼­ MBR ¿µ¿ª°ú Å¬·¯½ºÅÍ
+    // ¸µÅ© Å×ÀÌºí ¿µ¿ªÀÇ Å©±â¸¦ »« ³ª¸ÓÁö°¡ ½ÇÁ¦ µ¥ÀÌÅÍ ¿µ¿ªÀÌ µÊ
+    // ÇØ´ç ¿µ¿ªÀ» Å¬·¯½ºÅÍ Å©±â·Î ³ª´©¾î ½ÇÁ¦ Å¬·¯½ºÅÍÀÇ °³¼ö¸¦ ±¸ÇÔ
     dwRemainSectorCount = dwTotalSectorCount - dwClusterLinkSectorCount - 1;
     dwClsuterCount = dwRemainSectorCount / FILESYSTEM_SECTORSPERCLUSTER;
     
-    // ì‹¤ì œ ì‚¬ìš© ê°€ëŠ¥í•œ í´ëŸ¬ìŠ¤í„° ìˆ˜ì— ë§ì¶”ì–´ ë‹¤ì‹œ í•œë²ˆ ê³„ì‚°
+    // ½ÇÁ¦ »ç¿ë °¡´ÉÇÑ Å¬·¯½ºÅÍ ¼ö¿¡ ¸ÂÃß¾î ´Ù½Ã ÇÑ¹ø °è»ê
     dwClusterLinkSectorCount = ( dwClsuterCount + 127 ) / 128;
 
     //==========================================================================
-    // ê³„ì‚°ëœ ì •ë³´ë¥¼ MBRì— ë®ì–´ ì“°ê³ , ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ ì˜ì—­ê¹Œì§€ ëª¨ë‘ 0ìœ¼ë¡œ ì´ˆê¸°í™”í•˜ì—¬
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ìƒì„±
+    // °è»êµÈ Á¤º¸¸¦ MBR¿¡ µ¤¾î ¾²°í, ·çÆ® µğ·ºÅÍ¸® ¿µ¿ª±îÁö ¸ğµÎ 0À¸·Î ÃÊ±âÈ­ÇÏ¿©
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» »ı¼º
     //==========================================================================
-    // MBR ì˜ì—­ ì½ê¸°
+    // MBR ¿µ¿ª ÀĞ±â
     if( gs_pfReadHDDSector( TRUE, TRUE, 0, 1, gs_vbTempBuffer ) == FALSE )
     {
-        // ë™ê¸°í™” ì²˜ë¦¬
+        // µ¿±âÈ­ Ã³¸®
         kUnlock( &( gs_stFileSystemManager.stMutex ) );
         return FALSE;
     }        
     
-    // íŒŒí‹°ì…˜ ì •ë³´ì™€ íŒŒì¼ ì‹œìŠ¤í…œ ì •ë³´ ì„¤ì •    
+    // ÆÄÆ¼¼Ç Á¤º¸¿Í ÆÄÀÏ ½Ã½ºÅÛ Á¤º¸ ¼³Á¤
     pstMBR = ( MBR* ) gs_vbTempBuffer;
     kMemSet( pstMBR->vstPartition, 0, sizeof( pstMBR->vstPartition ) );
     pstMBR->dwSignature = FILESYSTEM_SIGNATURE;
@@ -157,21 +174,21 @@ BOOL kFormat( void )
     pstMBR->dwClusterLinkSectorCount = dwClusterLinkSectorCount;
     pstMBR->dwTotalClusterCount = dwClsuterCount;
     
-    // MBR ì˜ì—­ì— 1 ì„¹í„°ë¥¼ ì”€
+    // MBR ¿µ¿ª¿¡ 1 ¼½ÅÍ¸¦ ¾¸
     if( gs_pfWriteHDDSector( TRUE, TRUE, 0, 1, gs_vbTempBuffer ) == FALSE )
     {
-        // ë™ê¸°í™” ì²˜ë¦¬
+        // µ¿±âÈ­ Ã³¸®
         kUnlock( &( gs_stFileSystemManager.stMutex ) );
         return FALSE;
     }
     
-    // MBR ì´í›„ë¶€í„° ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ê¹Œì§€ ëª¨ë‘ 0ìœ¼ë¡œ ì´ˆê¸°í™”
+    // MBR ÀÌÈÄºÎÅÍ ·çÆ® µğ·ºÅÍ¸®±îÁö ¸ğµÎ 0À¸·Î ÃÊ±âÈ­
     kMemSet( gs_vbTempBuffer, 0, 512 );
     for( i = 0 ; i < ( dwClusterLinkSectorCount + FILESYSTEM_SECTORSPERCLUSTER );
          i++ )
     {
-        // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬(í´ëŸ¬ìŠ¤í„° 0)ëŠ” ì´ë¯¸ íŒŒì¼ ì‹œìŠ¤í…œì´ ì‚¬ìš©í•˜ê³  ìˆìœ¼ë¯€ë¡œ,
-        // í• ë‹¹ëœ ê²ƒìœ¼ë¡œ í‘œì‹œ
+        // ·çÆ® µğ·ºÅÍ¸®(Å¬·¯½ºÅÍ 0)´Â ÀÌ¹Ì ÆÄÀÏ ½Ã½ºÅÛÀÌ »ç¿ëÇÏ°í ÀÖÀ¸¹Ç·Î,
+        // ÇÒ´çµÈ °ÍÀ¸·Î Ç¥½Ã
         if( i == 0 )
         {
             ( ( DWORD* ) ( gs_vbTempBuffer ) )[ 0 ] = FILESYSTEM_LASTCLUSTER;
@@ -181,103 +198,103 @@ BOOL kFormat( void )
             ( ( DWORD* ) ( gs_vbTempBuffer ) )[ 0 ] = FILESYSTEM_FREECLUSTER;
         }
         
-        // 1 ì„¹í„°ì”© ì”€
+        // 1 ¼½ÅÍ¾¿ ¾¸
         if( gs_pfWriteHDDSector( TRUE, TRUE, i + 1, 1, gs_vbTempBuffer ) == FALSE )
         {
-            // ë™ê¸°í™” ì²˜ë¦¬
+            // µ¿±âÈ­ Ã³¸®
             kUnlock( &( gs_stFileSystemManager.stMutex ) );
             return FALSE;
         }
     }    
     
-    // ë™ê¸°í™” ì²˜ë¦¬
+    // µ¿±âÈ­ Ã³¸®
     kUnlock( &( gs_stFileSystemManager.stMutex ) );
     return TRUE;
 }
 
 /**
- *  íŒŒì¼ ì‹œìŠ¤í…œì— ì—°ê²°ëœ í•˜ë“œ ë””ìŠ¤í¬ì˜ ì •ë³´ë¥¼ ë°˜í™˜
+ *  ÆÄÀÏ ½Ã½ºÅÛ¿¡ ¿¬°áµÈ ÇÏµå µğ½ºÅ©ÀÇ Á¤º¸¸¦ ¹İÈ¯
  */
 BOOL kGetHDDInformation( HDDINFORMATION* pstInformation)
 {
     BOOL bResult;
     
-    // ë™ê¸°í™” ì²˜ë¦¬
+    // µ¿±âÈ­ Ã³¸®
     kLock( &( gs_stFileSystemManager.stMutex ) );
     
     bResult = gs_pfReadHDDInformation( TRUE, TRUE, pstInformation );
     
-    // ë™ê¸°í™” ì²˜ë¦¬
+    // µ¿±âÈ­ Ã³¸®
     kUnlock( &( gs_stFileSystemManager.stMutex ) );
     
     return bResult;
 }
 
 /**
- *  í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸” ë‚´ì˜ ì˜¤í”„ì…‹ì—ì„œ í•œ ì„¹í„°ë¥¼ ì½ìŒ
+ *  Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí ³»ÀÇ ¿ÀÇÁ¼Â¿¡¼­ ÇÑ ¼½ÅÍ¸¦ ÀĞÀ½
  */
-BOOL kReadClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer )
+static BOOL kReadClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer )
 {
-    // í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸” ì˜ì—­ì˜ ì‹œì‘ ì–´ë“œë ˆìŠ¤ë¥¼ ë”í•¨
+    // Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí ¿µ¿ªÀÇ ½ÃÀÛ ¾îµå·¹½º¸¦ ´õÇÔ
     return gs_pfReadHDDSector( TRUE, TRUE, dwOffset + 
               gs_stFileSystemManager.dwClusterLinkAreaStartAddress, 1, pbBuffer );
 }
 
 /**
- *  í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸” ë‚´ì˜ ì˜¤í”„ì…‹ì— í•œ ì„¹í„°ë¥¼ ì”€
+ *  Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí ³»ÀÇ ¿ÀÇÁ¼Â¿¡ ÇÑ ¼½ÅÍ¸¦ ¾¸
  */
-BOOL kWriteClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer )
+static BOOL kWriteClusterLinkTable( DWORD dwOffset, BYTE* pbBuffer )
 {
-    // í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸” ì˜ì—­ì˜ ì‹œì‘ ì–´ë“œë ˆìŠ¤ë¥¼ ë”í•¨
+    // Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí ¿µ¿ªÀÇ ½ÃÀÛ ¾îµå·¹½º¸¦ ´õÇÔ
     return gs_pfWriteHDDSector( TRUE, TRUE, dwOffset + 
                gs_stFileSystemManager.dwClusterLinkAreaStartAddress, 1, pbBuffer );
 }
 
 /**
- *  ë°ì´í„° ì˜ì—­ì˜ ì˜¤í”„ì…‹ì—ì„œ í•œ í´ëŸ¬ìŠ¤í„°ë¥¼ ì½ìŒ
+ *  µ¥ÀÌÅÍ ¿µ¿ªÀÇ ¿ÀÇÁ¼Â¿¡¼­ ÇÑ Å¬·¯½ºÅÍ¸¦ ÀĞÀ½
  */
-BOOL kReadCluster( DWORD dwOffset, BYTE* pbBuffer )
+static BOOL kReadCluster( DWORD dwOffset, BYTE* pbBuffer )
 {
-    // ë°ì´í„° ì˜ì—­ì˜ ì‹œì‘ ì–´ë“œë ˆìŠ¤ë¥¼ ë”í•¨
+    // µ¥ÀÌÅÍ ¿µ¿ªÀÇ ½ÃÀÛ ¾îµå·¹½º¸¦ ´õÇÔ
     return gs_pfReadHDDSector( TRUE, TRUE, ( dwOffset * FILESYSTEM_SECTORSPERCLUSTER ) + 
               gs_stFileSystemManager.dwDataAreaStartAddress, 
               FILESYSTEM_SECTORSPERCLUSTER, pbBuffer );
 }
 
 /**
- *  ë°ì´í„° ì˜ì—­ì˜ ì˜¤í”„ì…‹ì— í•œ í´ëŸ¬ìŠ¤í„°ë¥¼ ì”€
+ *  µ¥ÀÌÅÍ ¿µ¿ªÀÇ ¿ÀÇÁ¼Â¿¡ ÇÑ Å¬·¯½ºÅÍ¸¦ ¾¸
  */
-BOOL kWriteCluster( DWORD dwOffset, BYTE* pbBuffer )
+static BOOL kWriteCluster( DWORD dwOffset, BYTE* pbBuffer )
 {
-    // ë°ì´í„° ì˜ì—­ì˜ ì‹œì‘ ì–´ë“œë ˆìŠ¤ë¥¼ ë”í•¨
+    // µ¥ÀÌÅÍ ¿µ¿ªÀÇ ½ÃÀÛ ¾îµå·¹½º¸¦ ´õÇÔ
     return gs_pfWriteHDDSector( TRUE, TRUE, ( dwOffset * FILESYSTEM_SECTORSPERCLUSTER ) + 
               gs_stFileSystemManager.dwDataAreaStartAddress, 
               FILESYSTEM_SECTORSPERCLUSTER, pbBuffer );
 }
 
 /**
- *  í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸” ì˜ì—­ì—ì„œ ë¹ˆ í´ëŸ¬ìŠ¤í„°ë¥¼ ê²€ìƒ‰í•¨
+ *  Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí ¿µ¿ª¿¡¼­ ºó Å¬·¯½ºÅÍ¸¦ °Ë»öÇÔ
  */
-DWORD kFindFreeCluster( void )
+static DWORD kFindFreeCluster( void )
 {
     DWORD dwLinkCountInSector;
     DWORD dwLastSectorOffset, dwCurrentSectorOffset;
     DWORD i, j;
     
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇßÀ¸¸é ½ÇÆĞ
     if( gs_stFileSystemManager.bMounted == FALSE )
     {
         return FILESYSTEM_LASTCLUSTER;
     }
     
-    // ë§ˆì§€ë§‰ìœ¼ë¡œ í´ëŸ¬ìŠ¤í„°ë¥¼ í• ë‹¹í•œ í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ì„¹í„° ì˜¤í”„ì…‹ì„ ê°€ì ¸ì˜´
+    // ¸¶Áö¸·À¸·Î Å¬·¯½ºÅÍ¸¦ ÇÒ´çÇÑ Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ ¼½ÅÍ ¿ÀÇÁ¼ÂÀ» °¡Á®¿È
     dwLastSectorOffset = gs_stFileSystemManager.dwLastAllocatedClusterLinkSectorOffset;
 
-    // ë§ˆì§€ë§‰ìœ¼ë¡œ í• ë‹¹í•œ ìœ„ì¹˜ë¶€í„° ë£¨í”„ë¥¼ ëŒë©´ì„œ ë¹ˆ í´ëŸ¬ìŠ¤í„°ë¥¼ ê²€ìƒ‰
+    // ¸¶Áö¸·À¸·Î ÇÒ´çÇÑ À§Ä¡ºÎÅÍ ·çÇÁ¸¦ µ¹¸é¼­ ºó Å¬·¯½ºÅÍ¸¦ °Ë»ö
     for( i = 0 ; i < gs_stFileSystemManager.dwClusterLinkAreaSize ; i++ )
     {
-        // í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ë§ˆì§€ë§‰ ì„¹í„°ì´ë©´ ì „ì²´ ì„¹í„°ë§Œí¼ ë„ëŠ” ê²ƒì´ ì•„ë‹ˆë¼
-        // ë‚¨ì€ í´ëŸ¬ìŠ¤í„°ì˜ ìˆ˜ë§Œí¼ ë£¨í”„ë¥¼ ëŒì•„ì•¼ í•¨
+        // Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ ¸¶Áö¸· ¼½ÅÍÀÌ¸é ÀüÃ¼ ¼½ÅÍ¸¸Å­ µµ´Â °ÍÀÌ ¾Æ´Ï¶ó
+        // ³²Àº Å¬·¯½ºÅÍÀÇ ¼ö¸¸Å­ ·çÇÁ¸¦ µ¹¾Æ¾ß ÇÔ
         if( ( dwLastSectorOffset + i ) == 
             ( gs_stFileSystemManager.dwClusterLinkAreaSize - 1 ) )
         {
@@ -288,7 +305,7 @@ DWORD kFindFreeCluster( void )
             dwLinkCountInSector = 128;
         }
         
-        // ì´ë²ˆì— ì½ì–´ì•¼ í•  í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ì„¹í„° ì˜¤í”„ì…‹ì„ êµ¬í•´ì„œ ì½ìŒ
+        // ÀÌ¹ø¿¡ ÀĞ¾î¾ß ÇÒ Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ ¼½ÅÍ ¿ÀÇÁ¼ÂÀ» ±¸ÇØ¼­ ÀĞÀ½
         dwCurrentSectorOffset = ( dwLastSectorOffset + i ) % 
             gs_stFileSystemManager.dwClusterLinkAreaSize;
         if( kReadClusterLinkTable( dwCurrentSectorOffset, gs_vbTempBuffer ) == FALSE )
@@ -296,7 +313,7 @@ DWORD kFindFreeCluster( void )
             return FILESYSTEM_LASTCLUSTER;
         }
         
-        // ì„¹í„° ë‚´ì—ì„œ ë£¨í”„ë¥¼ ëŒë©´ì„œ ë¹ˆ í´ëŸ¬ìŠ¤í„°ë¥¼ ê²€ìƒ‰
+        // ¼½ÅÍ ³»¿¡¼­ ·çÇÁ¸¦ µ¹¸é¼­ ºó Å¬·¯½ºÅÍ¸¦ °Ë»ö
         for( j = 0 ; j < dwLinkCountInSector ; j++ )
         {
             if( ( ( DWORD* ) gs_vbTempBuffer )[ j ] == FILESYSTEM_FREECLUSTER )
@@ -305,14 +322,14 @@ DWORD kFindFreeCluster( void )
             }
         }
             
-        // ì°¾ì•˜ë‹¤ë©´ í´ëŸ¬ìŠ¤í„° ì¸ë±ìŠ¤ë¥¼ ë°˜í™˜
+        // Ã£¾Ò´Ù¸é Å¬·¯½ºÅÍ ÀÎµ¦½º¸¦ ¹İÈ¯
         if( j != dwLinkCountInSector )
         {
-            // ë§ˆì§€ë§‰ìœ¼ë¡œ í´ëŸ¬ìŠ¤í„°ë¥¼ í• ë‹¹í•œ í´ëŸ¬ìŠ¤í„° ë§í¬ ë‚´ì˜ ì„¹í„° ì˜¤í”„ì…‹ì„ ì €ì¥
+            // ¸¶Áö¸·À¸·Î Å¬·¯½ºÅÍ¸¦ ÇÒ´çÇÑ Å¬·¯½ºÅÍ ¸µÅ© ³»ÀÇ ¼½ÅÍ ¿ÀÇÁ¼ÂÀ» ÀúÀå
             gs_stFileSystemManager.dwLastAllocatedClusterLinkSectorOffset = 
                 dwCurrentSectorOffset;
             
-            // í˜„ì¬ í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ì˜¤í”„ì…‹ì„ ê°ì•ˆí•˜ì—¬ í´ëŸ¬ìŠ¤í„° ì¸ë±ìŠ¤ë¥¼ ê³„ì‚°
+            // ÇöÀç Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ ¿ÀÇÁ¼ÂÀ» °¨¾ÈÇÏ¿© Å¬·¯½ºÅÍ ÀÎµ¦½º¸¦ °è»ê
             return ( dwCurrentSectorOffset * 128 ) + j;
         }
     }
@@ -321,23 +338,23 @@ DWORD kFindFreeCluster( void )
 }
 
 /**
- *  í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì— ê°’ì„ ì„¤ì •
+ *  Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºí¿¡ °ªÀ» ¼³Á¤
  */
-BOOL kSetClusterLinkData( DWORD dwClusterIndex, DWORD dwData )
+static BOOL kSetClusterLinkData( DWORD dwClusterIndex, DWORD dwData )
 {
     DWORD dwSectorOffset;
     
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇßÀ¸¸é ½ÇÆĞ
     if( gs_stFileSystemManager.bMounted == FALSE )
     {
         return FALSE;
     }
     
-    // í•œ ì„¹í„°ì— 128ê°œì˜ í´ëŸ¬ìŠ¤í„° ë§í¬ê°€ ë“¤ì–´ê°€ë¯€ë¡œ 128ë¡œ ë‚˜ëˆ„ë©´ ì„¹í„° ì˜¤í”„ì…‹ì„ 
-    // êµ¬í•  ìˆ˜ ìˆìŒ
+    // ÇÑ ¼½ÅÍ¿¡ 128°³ÀÇ Å¬·¯½ºÅÍ ¸µÅ©°¡ µé¾î°¡¹Ç·Î 128·Î ³ª´©¸é ¼½ÅÍ ¿ÀÇÁ¼ÂÀ»
+    // ±¸ÇÒ ¼ö ÀÖÀ½
     dwSectorOffset = dwClusterIndex / 128;
 
-    // í•´ë‹¹ ì„¹í„°ë¥¼ ì½ì–´ì„œ ë§í¬ ì •ë³´ë¥¼ ì„¤ì •í•œ í›„, ë‹¤ì‹œ ì €ì¥
+    // ÇØ´ç ¼½ÅÍ¸¦ ÀĞ¾î¼­ ¸µÅ© Á¤º¸¸¦ ¼³Á¤ÇÑ ÈÄ, ´Ù½Ã ÀúÀå
     if( kReadClusterLinkTable( dwSectorOffset, gs_vbTempBuffer ) == FALSE )
     {
         return FALSE;
@@ -354,20 +371,20 @@ BOOL kSetClusterLinkData( DWORD dwClusterIndex, DWORD dwData )
 }
 
 /**
- *  í´ëŸ¬ìŠ¤í„° ë§í¬ í…Œì´ë¸”ì˜ ê°’ì„ ë°˜í™˜
+ *  Å¬·¯½ºÅÍ ¸µÅ© Å×ÀÌºíÀÇ °ªÀ» ¹İÈ¯
  */
-BOOL kGetClusterLinkData( DWORD dwClusterIndex, DWORD* pdwData )
+static BOOL kGetClusterLinkData( DWORD dwClusterIndex, DWORD* pdwData )
 {
     DWORD dwSectorOffset;
     
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇßÀ¸¸é ½ÇÆĞ
     if( gs_stFileSystemManager.bMounted == FALSE )
     {
         return FALSE;
     }
     
-    // í•œ ì„¹í„°ì— 128ê°œì˜ í´ëŸ¬ìŠ¤í„° ë§í¬ê°€ ë“¤ì–´ê°€ë¯€ë¡œ 128ë¡œ ë‚˜ëˆ„ë©´ ì„¹í„° ì˜¤í”„ì…‹ì„ 
-    // êµ¬í•  ìˆ˜ ìˆìŒ
+    // ÇÑ ¼½ÅÍ¿¡ 128°³ÀÇ Å¬·¯½ºÅÍ ¸µÅ©°¡ µé¾î°¡¹Ç·Î 128·Î ³ª´©¸é ¼½ÅÍ ¿ÀÇÁ¼ÂÀ»
+    // ±¸ÇÒ ¼ö ÀÖÀ½
     dwSectorOffset = dwClusterIndex / 128;
     
     if( dwSectorOffset > gs_stFileSystemManager.dwClusterLinkAreaSize )
@@ -376,7 +393,7 @@ BOOL kGetClusterLinkData( DWORD dwClusterIndex, DWORD* pdwData )
     }
     
     
-    // í•´ë‹¹ ì„¹í„°ë¥¼ ì½ì–´ì„œ ë§í¬ ì •ë³´ë¥¼ ë°˜í™˜
+    // ÇØ´ç ¼½ÅÍ¸¦ ÀĞ¾î¼­ ¸µÅ© Á¤º¸¸¦ ¹İÈ¯
     if( kReadClusterLinkTable( dwSectorOffset, gs_vbTempBuffer ) == FALSE )
     {
         return FALSE;
@@ -388,27 +405,27 @@ BOOL kGetClusterLinkData( DWORD dwClusterIndex, DWORD* pdwData )
 
 
 /**
- *  ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì—ì„œ ë¹ˆ ë””ë ‰í„°ë¦¬ ì—”íŠ¸ë¦¬ë¥¼ ë°˜í™˜
+ *  ·çÆ® µğ·ºÅÍ¸®¿¡¼­ ºó µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¹İÈ¯
  */
-int kFindFreeDirectoryEntry( void )
+static int kFindFreeDirectoryEntry( void )
 {
     DIRECTORYENTRY* pstEntry;
     int i;
 
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇßÀ¸¸é ½ÇÆĞ
     if( gs_stFileSystemManager.bMounted == FALSE )
     {
         return -1;
     }
 
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ë¥¼ ì½ìŒ
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀĞÀ½
     if( kReadCluster( 0, gs_vbTempBuffer ) == FALSE )
     {
         return -1;
     }
     
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ ì•ˆì—ì„œ ë£¨í”„ë¥¼ ëŒë©´ì„œ ë¹ˆ ì—”íŠ¸ë¦¬, ì¦‰ ì‹œì‘ í´ëŸ¬ìŠ¤í„° ë²ˆí˜¸ê°€ 0ì¸
-    // ì—”íŠ¸ë¦¬ë¥¼ ê²€ìƒ‰
+    // ·çÆ® µğ·ºÅÍ¸® ¾È¿¡¼­ ·çÇÁ¸¦ µ¹¸é¼­ ºó ¿£Æ®¸®, Áï ½ÃÀÛ Å¬·¯½ºÅÍ ¹øÈ£°¡ 0ÀÎ
+    // ¿£Æ®¸®¸¦ °Ë»ö
     pstEntry = ( DIRECTORYENTRY* ) gs_vbTempBuffer;
     for( i = 0 ; i < FILESYSTEM_MAXDIRECTORYENTRYCOUNT ; i++ )
     {
@@ -421,30 +438,30 @@ int kFindFreeDirectoryEntry( void )
 }
 
 /**
- *  ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì˜ í•´ë‹¹ ì¸ë±ìŠ¤ì— ë””ë ‰í„°ë¦¬ ì—”íŠ¸ë¦¬ë¥¼ ì„¤ì •
+ *  ·çÆ® µğ·ºÅÍ¸®ÀÇ ÇØ´ç ÀÎµ¦½º¿¡ µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¼³Á¤
  */
-BOOL kSetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry )
+static BOOL kSetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry )
 {
     DIRECTORYENTRY* pstRootEntry;
     
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆê±°ë‚˜ ì¸ë±ìŠ¤ê°€ ì˜¬ë°”ë¥´ì§€ ì•Šìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇß°Å³ª ÀÎµ¦½º°¡ ¿Ã¹Ù¸£Áö ¾ÊÀ¸¸é ½ÇÆĞ
     if( ( gs_stFileSystemManager.bMounted == FALSE ) ||
         ( iIndex < 0 ) || ( iIndex >= FILESYSTEM_MAXDIRECTORYENTRYCOUNT ) )
     {
         return FALSE;
     }
 
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ë¥¼ ì½ìŒ
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀĞÀ½
     if( kReadCluster( 0, gs_vbTempBuffer ) == FALSE )
     {
         return FALSE;
     }    
     
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì— ìˆëŠ” í•´ë‹¹ ë°ì´í„°ë¥¼ ê°±ì‹ 
+    // ·çÆ® µğ·ºÅÍ¸®¿¡ ÀÖ´Â ÇØ´ç µ¥ÀÌÅÍ¸¦ °»½Å
     pstRootEntry = ( DIRECTORYENTRY* ) gs_vbTempBuffer;
     kMemCpy( pstRootEntry + iIndex, pstEntry, sizeof( DIRECTORYENTRY ) );
 
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì— ì”€
+    // ·çÆ® µğ·ºÅÍ¸®¿¡ ¾¸
     if( kWriteCluster( 0, gs_vbTempBuffer ) == FALSE )
     {
         return FALSE;
@@ -453,54 +470,54 @@ BOOL kSetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry )
 }
 
 /**
- *  ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì˜ í•´ë‹¹ ì¸ë±ìŠ¤ì— ìœ„ì¹˜í•˜ëŠ” ë””ë ‰í„°ë¦¬ ì—”íŠ¸ë¦¬ë¥¼ ë°˜í™˜
+ *  ·çÆ® µğ·ºÅÍ¸®ÀÇ ÇØ´ç ÀÎµ¦½º¿¡ À§Ä¡ÇÏ´Â µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¹İÈ¯
  */
-BOOL kGetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry )
+static BOOL kGetDirectoryEntryData( int iIndex, DIRECTORYENTRY* pstEntry )
 {
     DIRECTORYENTRY* pstRootEntry;
     
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆê±°ë‚˜ ì¸ë±ìŠ¤ê°€ ì˜¬ë°”ë¥´ì§€ ì•Šìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇß°Å³ª ÀÎµ¦½º°¡ ¿Ã¹Ù¸£Áö ¾ÊÀ¸¸é ½ÇÆĞ
     if( ( gs_stFileSystemManager.bMounted == FALSE ) ||
         ( iIndex < 0 ) || ( iIndex >= FILESYSTEM_MAXDIRECTORYENTRYCOUNT ) )
     {
         return FALSE;
     }
 
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ë¥¼ ì½ìŒ
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀĞÀ½
     if( kReadCluster( 0, gs_vbTempBuffer ) == FALSE )
     {
         return FALSE;
     }    
     
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì— ìˆëŠ” í•´ë‹¹ ë°ì´í„°ë¥¼ ê°±ì‹ 
+    // ·çÆ® µğ·ºÅÍ¸®¿¡ ÀÖ´Â ÇØ´ç µ¥ÀÌÅÍ¸¦ °»½Å
     pstRootEntry = ( DIRECTORYENTRY* ) gs_vbTempBuffer;
     kMemCpy( pstEntry, pstRootEntry + iIndex, sizeof( DIRECTORYENTRY ) );
     return TRUE;
 }
 
 /**
- *  ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ì—ì„œ íŒŒì¼ ì´ë¦„ì´ ì¼ì¹˜í•˜ëŠ” ì—”íŠ¸ë¦¬ë¥¼ ì°¾ì•„ì„œ ì¸ë±ìŠ¤ë¥¼ ë°˜í™˜
+ *  ·çÆ® µğ·ºÅÍ¸®¿¡¼­ ÆÄÀÏ ÀÌ¸§ÀÌ ÀÏÄ¡ÇÏ´Â ¿£Æ®¸®¸¦ Ã£¾Æ¼­ ÀÎµ¦½º¸¦ ¹İÈ¯
  */
-int kFindDirectoryEntry( const char* pcFileName, DIRECTORYENTRY* pstEntry )
+static int kFindDirectoryEntry( const char* pcFileName, DIRECTORYENTRY* pstEntry )
 {
     DIRECTORYENTRY* pstRootEntry;
     int i;
     int iLength;
 
-    // íŒŒì¼ ì‹œìŠ¤í…œì„ ì¸ì‹í•˜ì§€ ëª»í–ˆìœ¼ë©´ ì‹¤íŒ¨
+    // ÆÄÀÏ ½Ã½ºÅÛÀ» ÀÎ½ÄÇÏÁö ¸øÇßÀ¸¸é ½ÇÆĞ
     if( gs_stFileSystemManager.bMounted == FALSE )
     {
         return -1;
     }
 
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ë¥¼ ì½ìŒ
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀĞÀ½
     if( kReadCluster( 0, gs_vbTempBuffer ) == FALSE )
     {
         return -1;
     }
     
     iLength = kStrLen( pcFileName );
-    // ë£¨íŠ¸ ë””ë ‰í„°ë¦¬ ì•ˆì—ì„œ ë£¨í”„ë¥¼ ëŒë©´ì„œ íŒŒì¼ ì´ë¦„ì´ ì¼ì¹˜í•˜ëŠ” ì—”íŠ¸ë¦¬ë¥¼ ë°˜í™˜
+    // ·çÆ® µğ·ºÅÍ¸® ¾È¿¡¼­ ·çÇÁ¸¦ µ¹¸é¼­ ÆÄÀÏ ÀÌ¸§ÀÌ ÀÏÄ¡ÇÏ´Â ¿£Æ®¸®¸¦ ¹İÈ¯
     pstRootEntry = ( DIRECTORYENTRY* ) gs_vbTempBuffer;
     for( i = 0 ; i < FILESYSTEM_MAXDIRECTORYENTRYCOUNT ; i++ )
     {
@@ -514,9 +531,962 @@ int kFindDirectoryEntry( const char* pcFileName, DIRECTORYENTRY* pstEntry )
 }
 
 /**
- *  íŒŒì¼ ì‹œìŠ¤í…œì˜ ì •ë³´ë¥¼ ë°˜í™˜
+ *  ÆÄÀÏ ½Ã½ºÅÛÀÇ Á¤º¸¸¦ ¹İÈ¯
  */
 void kGetFileSystemInformation( FILESYSTEMMANAGER* pstManager )
 {
     kMemCpy( pstManager, &gs_stFileSystemManager, sizeof( gs_stFileSystemManager ) );
+}
+
+//==============================================================================
+//  °í¼öÁØ ÇÔ¼ö(High Level Function)
+//==============================================================================
+/**
+ *  ºñ¾îÀÖ´Â ÇÚµéÀ» ÇÒ´ç
+ */
+static void* kAllocateFileDirectoryHandle( void )
+{
+    int i;
+    FILE* pstFile;
+
+    // ÇÚµé Ç®(Handle Pool)À» ¸ğµÎ °Ë»öÇÏ¿© ºñ¾îÀÖ´Â ÇÚµéÀ» ¹İÈ¯
+    pstFile = gs_stFileSystemManager.pstHandlePool;
+    for( i = 0 ; i < FILESYSTEM_HANDLE_MAXCOUNT ; i++ )
+    {
+        // ºñ¾îÀÖ´Ù¸é ¹İÈ¯
+        if( pstFile->bType == FILESYSTEM_TYPE_FREE )
+        {
+            pstFile->bType = FILESYSTEM_TYPE_FILE;
+            return pstFile;
+        }
+
+        // ´ÙÀ½À¸·Î ÀÌµ¿
+        pstFile++;
+    }
+
+    return NULL;
+}
+
+/**
+ *  »ç¿ëÇÑ ÇÚµéÀ» ¹İÈ¯
+ */
+static void kFreeFileDirectoryHandle( FILE* pstFile )
+{
+    // ÀüÃ¼ ¿µ¿ªÀ» ÃÊ±âÈ­
+    kMemSet( pstFile, 0, sizeof( FILE ) );
+
+    // ºñ¾îÀÖ´Â Å¸ÀÔÀ¸·Î ¼³Á¤
+    pstFile->bType = FILESYSTEM_TYPE_FREE;
+}
+
+/**
+ *  ÆÄÀÏÀ» »ı¼º
+ */
+static BOOL kCreateFile( const char* pcFileName, DIRECTORYENTRY* pstEntry,
+        int* piDirectoryEntryIndex )
+{
+    DWORD dwCluster;
+
+    // ºó Å¬·¯½ºÅÍ¸¦ Ã£¾Æ¼­ ÇÒ´çµÈ °ÍÀ¸·Î ¼³Á¤
+    dwCluster = kFindFreeCluster();
+    if( ( dwCluster == FILESYSTEM_LASTCLUSTER ) ||
+        ( kSetClusterLinkData( dwCluster, FILESYSTEM_LASTCLUSTER ) == FALSE ) )
+    {
+        return FALSE;
+    }
+
+    // ºó µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ °Ë»ö
+    *piDirectoryEntryIndex = kFindFreeDirectoryEntry();
+    if( *piDirectoryEntryIndex == -1 )
+    {
+        // ½ÇÆĞÇÒ °æ¿ì ÇÒ´ç ¹ŞÀº Å¬·¯½ºÅÍ¸¦ ¹İÈ¯ÇØ¾ß ÇÔ
+        kSetClusterLinkData( dwCluster, FILESYSTEM_FREECLUSTER );
+        return FALSE;
+    }
+
+    // µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¼³Á¤
+    kMemCpy( pstEntry->vcFileName, pcFileName, kStrLen( pcFileName ) + 1 );
+    pstEntry->dwStartClusterIndex = dwCluster;
+    pstEntry->dwFileSize = 0;
+
+    // µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ µî·Ï
+    if( kSetDirectoryEntryData( *piDirectoryEntryIndex, pstEntry ) == FALSE )
+    {
+        // ½ÇÆĞÇÒ °æ¿ì ÇÒ´ç ¹ŞÀº Å¬·¯½ºÅÍ¸¦ ¹İÈ¯ÇØ¾ß ÇÔ
+        kSetClusterLinkData( dwCluster, FILESYSTEM_FREECLUSTER );
+        return FALSE;
+    }
+    return TRUE;
+}
+
+/**
+ *  ÆÄ¶ó¹ÌÅÍ·Î ³Ñ¾î¿Â Å¬·¯½ºÅÍºÎÅÍ ÆÄÀÏÀÇ ³¡±îÁö ¿¬°áµÈ Å¬·¯½ºÅÍ¸¦ ¸ğµÎ ¹İÈ¯
+ */
+static BOOL kFreeClusterUntilEnd( DWORD dwClusterIndex )
+{
+    DWORD dwCurrentClusterIndex;
+    DWORD dwNextClusterIndex;
+
+    // Å¬·¯½ºÅÍ ÀÎµ¦½º¸¦ ÃÊ±âÈ­
+    dwCurrentClusterIndex = dwClusterIndex;
+
+    while( dwCurrentClusterIndex != FILESYSTEM_LASTCLUSTER )
+    {
+        // ´ÙÀ½ Å¬·¯½ºÅÍÀÇ ÀÎµ¦½º¸¦ °¡Á®¿È
+        if( kGetClusterLinkData( dwCurrentClusterIndex, &dwNextClusterIndex )
+                == FALSE )
+        {
+            return FALSE;
+        }
+
+        // ÇöÀç Å¬·¯½ºÅÍ¸¦ ºó °ÍÀ¸·Î ¼³Á¤ÇÏ¿© ÇØÁ¦
+        if( kSetClusterLinkData( dwCurrentClusterIndex, FILESYSTEM_FREECLUSTER )
+                == FALSE )
+        {
+            return FALSE;
+        }
+
+        // ÇöÀç Å¬·¯½ºÅÍ ÀÎµ¦½º¸¦ ´ÙÀ½ Å¬·¯½ºÅÍÀÇ ÀÎµ¦½º·Î ¹Ù²Ş
+        dwCurrentClusterIndex = dwNextClusterIndex;
+    }
+
+    return TRUE;
+}
+
+/**
+ *  ÆÄÀÏÀ» ¿­°Å³ª »ı¼º
+ */
+FILE* kOpenFile( const char* pcFileName, const char* pcMode )
+{
+    DIRECTORYENTRY stEntry;
+    int iDirectoryEntryOffset;
+    int iFileNameLength;
+    DWORD dwSecondCluster;
+    FILE* pstFile;
+
+    // ÆÄÀÏ ÀÌ¸§ °Ë»ç
+    iFileNameLength = kStrLen( pcFileName );
+    if( ( iFileNameLength > ( sizeof( stEntry.vcFileName ) - 1 ) ) ||
+        ( iFileNameLength == 0 ) )
+    {
+        return NULL;
+    }
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    //==========================================================================
+    // ÆÄÀÏÀÌ ¸ÕÀú Á¸ÀçÇÏ´Â°¡ È®ÀÎÇÏ°í, ¾ø´Ù¸é ¿É¼ÇÀ» º¸°í ÆÄÀÏÀ» »ı¼º
+    //==========================================================================
+    iDirectoryEntryOffset = kFindDirectoryEntry( pcFileName, &stEntry );
+    if( iDirectoryEntryOffset == -1 )
+    {
+        // ÆÄÀÏÀÌ ¾ø´Ù¸é ÀĞ±â(r, r+) ¿É¼ÇÀº ½ÇÆĞ
+        if( pcMode[ 0 ] == 'r' )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return NULL;
+        }
+
+        // ³ª¸ÓÁö ¿É¼ÇµéÀº ÆÄÀÏÀ» »ı¼º
+        if( kCreateFile( pcFileName, &stEntry, &iDirectoryEntryOffset ) == FALSE )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return NULL;
+        }
+    }
+    //==========================================================================
+    // ÆÄÀÏÀÇ ³»¿ëÀ» ºñ¿ö¾ß ÇÏ´Â ¿É¼ÇÀÌ¸é ÆÄÀÏ¿¡ ¿¬°áµÈ Å¬·¯½ºÅÍ¸¦ ¸ğµÎ Á¦°ÅÇÏ°í
+    // ÆÄÀÏ Å©±â¸¦ 0À¸·Î ¼³Á¤
+    //==========================================================================
+    else if( pcMode[ 0 ] == 'w' )
+    {
+        // ½ÃÀÛ Å¬·¯½ºÅÍÀÇ ´ÙÀ½ Å¬·¯½ºÅÍ¸¦ Ã£À½
+        if( kGetClusterLinkData( stEntry.dwStartClusterIndex, &dwSecondCluster )
+                == FALSE )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return NULL;
+        }
+
+        // ½ÃÀÛ Å¬·¯½ºÅÍ¸¦ ¸¶Áö¸· Å¬·¯½ºÅÍ·Î ¸¸µê
+        if( kSetClusterLinkData( stEntry.dwStartClusterIndex,
+               FILESYSTEM_LASTCLUSTER ) == FALSE )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return NULL;
+        }
+
+        // ´ÙÀ½ Å¬·¯½ºÅÍºÎÅÍ ¸¶Áö¸· Å¬·¯½ºÅÍ±îÁö ¸ğµÎ ÇØÁ¦
+        if( kFreeClusterUntilEnd( dwSecondCluster ) == FALSE )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return NULL;
+        }
+
+        // ÆÄÀÏÀÇ ³»¿ëÀÌ ¸ğµÎ ºñ¿öÁ³À¸¹Ç·Î, Å©±â¸¦ 0À¸·Î ¼³Á¤
+        stEntry.dwFileSize = 0;
+        if( kSetDirectoryEntryData( iDirectoryEntryOffset, &stEntry ) == FALSE )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return NULL;
+        }
+    }
+
+    //==========================================================================
+    // ÆÄÀÏ ÇÚµéÀ» ÇÒ´ç ¹Ş¾Æ µ¥ÀÌÅÍ¸¦ ¼³Á¤ÇÑ ÈÄ ¹İÈ¯
+    //==========================================================================
+    // ÆÄÀÏ ÇÚµéÀ» ÇÒ´ç ¹Ş¾Æ µ¥ÀÌÅÍ ¼³Á¤
+    pstFile = kAllocateFileDirectoryHandle();
+    if( pstFile == NULL )
+    {
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return NULL;
+    }
+
+    // ÆÄÀÏ ÇÚµé¿¡ ÆÄÀÏ Á¤º¸¸¦ ¼³Á¤
+    pstFile->bType = FILESYSTEM_TYPE_FILE;
+    pstFile->stFileHandle.iDirectoryEntryOffset = iDirectoryEntryOffset;
+    pstFile->stFileHandle.dwFileSize = stEntry.dwFileSize;
+    pstFile->stFileHandle.dwStartClusterIndex = stEntry.dwStartClusterIndex;
+    pstFile->stFileHandle.dwCurrentClusterIndex = stEntry.dwStartClusterIndex;
+    pstFile->stFileHandle.dwPreviousClusterIndex = stEntry.dwStartClusterIndex;
+    pstFile->stFileHandle.dwCurrentOffset = 0;
+
+    // ¸¸¾à Ãß°¡ ¿É¼Ç(a)ÀÌ ¼³Á¤µÇ¾î ÀÖÀ¸¸é, ÆÄÀÏÀÇ ³¡À¸·Î ÀÌµ¿
+    if( pcMode[ 0 ] == 'a' )
+    {
+        kSeekFile( pstFile, 0, FILESYSTEM_SEEK_END );
+    }
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+    return pstFile;
+}
+
+/**
+ *  ÆÄÀÏÀ» ÀĞ¾î ¹öÆÛ·Î º¹»ç
+ */
+DWORD kReadFile( void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile )
+{
+    DWORD dwTotalCount;
+    DWORD dwReadCount;
+    DWORD dwOffsetInCluster;
+    DWORD dwCopySize;
+    FILEHANDLE* pstFileHandle;
+    DWORD dwNextClusterIndex;
+
+    // ÇÚµéÀÌ ÆÄÀÏ Å¸ÀÔÀÌ ¾Æ´Ï¸é ½ÇÆĞ
+    if( ( pstFile == NULL ) ||
+        ( pstFile->bType != FILESYSTEM_TYPE_FILE ) )
+    {
+        return 0;
+    }
+    pstFileHandle = &( pstFile->stFileHandle );
+
+    // ÆÄÀÏÀÇ ³¡ÀÌ°Å³ª ¸¶Áö¸· Å¬·¯½ºÅÍÀÌ¸é Á¾·á
+    if( ( pstFileHandle->dwCurrentOffset == pstFileHandle->dwFileSize ) ||
+        ( pstFileHandle->dwCurrentClusterIndex == FILESYSTEM_LASTCLUSTER ) )
+    {
+        return 0;
+    }
+
+    // ÆÄÀÏ ³¡°ú ºñ±³ÇØ¼­ ½ÇÁ¦·Î ÀĞÀ» ¼ö ÀÖ´Â °ªÀ» °è»ê
+    dwTotalCount = MIN( dwSize * dwCount, pstFileHandle->dwFileSize -
+                        pstFileHandle->dwCurrentOffset );
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // °è»êµÈ °ª¸¸Å­ ´Ù ÀĞÀ» ¶§±îÁö ¹İº¹
+    dwReadCount = 0;
+    while( dwReadCount != dwTotalCount )
+    {
+        //======================================================================
+        // Å¬·¯½ºÅÍ¸¦ ÀĞ¾î¼­ ¹öÆÛ¿¡ º¹»ç
+        //======================================================================
+        // ÇöÀç Å¬·¯½ºÅÍ¸¦ ÀĞÀ½
+        if( kReadCluster( pstFileHandle->dwCurrentClusterIndex, gs_vbTempBuffer )
+                == FALSE )
+        {
+            break;
+        }
+
+        // Å¬·¯½ºÅÍ ³»¿¡¼­ ÆÄÀÏ Æ÷ÀÎÅÍ°¡ Á¸ÀçÇÏ´Â ¿ÀÇÁ¼ÂÀ» °è»ê
+        dwOffsetInCluster = pstFileHandle->dwCurrentOffset % FILESYSTEM_CLUSTERSIZE;
+
+        // ¿©·¯ Å¬·¯½ºÅÍ¿¡ °ÉÃÄÁ® ÀÖ´Ù¸é ÇöÀç Å¬·¯½ºÅÍ¿¡¼­ ³²Àº ¸¸Å­ ÀĞ°í ´ÙÀ½
+        // Å¬·¯½ºÅÍ·Î ÀÌµ¿
+        dwCopySize = MIN( FILESYSTEM_CLUSTERSIZE - dwOffsetInCluster,
+                          dwTotalCount - dwReadCount );
+        kMemCpy( ( char* ) pvBuffer + dwReadCount,
+                gs_vbTempBuffer + dwOffsetInCluster, dwCopySize );
+
+        // ÀĞÀº ¹ÙÀÌÆ® ¼ö¿Í ÆÄÀÏ Æ÷ÀÎÅÍÀÇ À§Ä¡¸¦ °»½Å
+        dwReadCount += dwCopySize;
+        pstFileHandle->dwCurrentOffset += dwCopySize;
+
+        //======================================================================
+        // ÇöÀç Å¬·¯½ºÅÍ¸¦ ³¡±îÁö ´Ù ÀĞ¾úÀ¸¸é ´ÙÀ½ Å¬·¯½ºÅÍ·Î ÀÌµ¿
+        //======================================================================
+        if( ( pstFileHandle->dwCurrentOffset % FILESYSTEM_CLUSTERSIZE ) == 0 )
+        {
+            // ÇöÀç Å¬·¯½ºÅÍÀÇ ¸µÅ© µ¥ÀÌÅÍ¸¦ Ã£¾Æ ´ÙÀ½ Å¬·¯½ºÅÍ¸¦ ¾òÀ½
+            if( kGetClusterLinkData( pstFileHandle->dwCurrentClusterIndex,
+                                     &dwNextClusterIndex ) == FALSE )
+            {
+                break;
+            }
+
+            // Å¬·¯½ºÅÍ Á¤º¸¸¦ °»½Å
+            pstFileHandle->dwPreviousClusterIndex =
+                pstFileHandle->dwCurrentClusterIndex;
+            pstFileHandle->dwCurrentClusterIndex = dwNextClusterIndex;
+        }
+    }
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ÀĞÀº ·¹ÄÚµå ¼ö¸¦ ¹İÈ¯
+    return ( dwReadCount / dwSize );
+}
+
+/**
+ *  ·çÆ® µğ·ºÅÍ¸®¿¡¼­ µğ·ºÅÍ¸® ¿£Æ®¸® °ªÀ» °»½Å
+ */
+static BOOL kUpdateDirectoryEntry( FILEHANDLE* pstFileHandle )
+{
+    DIRECTORYENTRY stEntry;
+
+    // µğ·ºÅÍ¸® ¿£Æ®¸® °Ë»ö
+    if( ( pstFileHandle == NULL ) ||
+        ( kGetDirectoryEntryData( pstFileHandle->iDirectoryEntryOffset, &stEntry)
+            == FALSE ) )
+    {
+        return FALSE;
+    }
+
+    // ÆÄÀÏ Å©±â¿Í ½ÃÀÛ Å¬·¯½ºÅÍ¸¦ º¯°æ
+    stEntry.dwFileSize = pstFileHandle->dwFileSize;
+    stEntry.dwStartClusterIndex = pstFileHandle->dwStartClusterIndex;
+
+    // º¯°æµÈ µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¼³Á¤
+    if( kSetDirectoryEntryData( pstFileHandle->iDirectoryEntryOffset, &stEntry )
+            == FALSE )
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+/**
+ *  ¹öÆÛÀÇ µ¥ÀÌÅÍ¸¦ ÆÄÀÏ¿¡ ¾¸
+ */
+DWORD kWriteFile( const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile )
+{
+    DWORD dwWriteCount;
+    DWORD dwTotalCount;
+    DWORD dwOffsetInCluster;
+    DWORD dwCopySize;
+    DWORD dwAllocatedClusterIndex;
+    DWORD dwNextClusterIndex;
+    FILEHANDLE* pstFileHandle;
+
+    // ÇÚµéÀÌ ÆÄÀÏ Å¸ÀÔÀÌ ¾Æ´Ï¸é ½ÇÆĞ
+    if( ( pstFile == NULL ) ||
+        ( pstFile->bType != FILESYSTEM_TYPE_FILE ) )
+    {
+        return 0;
+    }
+    pstFileHandle = &( pstFile->stFileHandle );
+
+    // ÃÑ ¹ÙÀÌÆ® ¼ö
+    dwTotalCount = dwSize * dwCount;
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ´Ù ¾µ ¶§±îÁö ¹İº¹
+    dwWriteCount = 0;
+    while( dwWriteCount != dwTotalCount )
+    {
+        //======================================================================
+        // ÇöÀç Å¬·¯½ºÅÍ°¡ ÆÄÀÏÀÇ ³¡ÀÌ¸é Å¬·¯½ºÅÍ¸¦ ÇÒ´çÇÏ¿© ¿¬°á
+        //======================================================================
+        if( pstFileHandle->dwCurrentClusterIndex == FILESYSTEM_LASTCLUSTER )
+        {
+            // ºó Å¬·¯½ºÅÍ °Ë»ö
+            dwAllocatedClusterIndex = kFindFreeCluster();
+            if( dwAllocatedClusterIndex == FILESYSTEM_LASTCLUSTER )
+            {
+                break;
+            }
+
+            // °Ë»öµÈ Å¬·¯½ºÅÍ¸¦ ¸¶Áö¸· Å¬·¯½ºÅÍ·Î ¼³Á¤
+            if( kSetClusterLinkData( dwAllocatedClusterIndex, FILESYSTEM_LASTCLUSTER )
+                    == FALSE )
+            {
+                break;
+            }
+
+            // ÆÄÀÏÀÇ ¸¶Áö¸· Å¬·¯½ºÅÍ¿¡ ÇÒ´çµÈ Å¬·¯½ºÅÍ¸¦ ¿¬°á
+            if( kSetClusterLinkData( pstFileHandle->dwPreviousClusterIndex,
+                                     dwAllocatedClusterIndex ) == FALSE )
+            {
+                // ½ÇÆĞÇÒ °æ¿ì ÇÒ´çµÈ Å¬·¯½ºÅÍ¸¦ ÇØÁ¦
+                kSetClusterLinkData( dwAllocatedClusterIndex, FILESYSTEM_FREECLUSTER );
+                break;
+            }
+
+            // ÇöÀç Å¬·¯½ºÅÍ¸¦ ÇÒ´çµÈ °ÍÀ¸·Î º¯°æ
+            pstFileHandle->dwCurrentClusterIndex = dwAllocatedClusterIndex;
+
+            // »õ·Î ÇÒ´ç¹Ş¾ÒÀ¸´Ï ÀÓ½Ã Å¬·¯½ºÅÍ ¹öÆÛ¸¦ 0À¸·Î Ã¤¿ò
+            kMemSet( gs_vbTempBuffer, 0, FILESYSTEM_LASTCLUSTER );
+        }
+        //======================================================================
+        // ÇÑ Å¬·¯½ºÅÍ¸¦ Ã¤¿ìÁö ¸øÇÏ¸é Å¬·¯½ºÅÍ¸¦ ÀĞ¾î¼­ ÀÓ½Ã Å¬·¯½ºÅÍ ¹öÆÛ·Î º¹»ç
+        //======================================================================
+        else if( ( ( pstFileHandle->dwCurrentOffset % FILESYSTEM_CLUSTERSIZE ) != 0 ) ||
+                 ( ( dwTotalCount - dwWriteCount ) < FILESYSTEM_CLUSTERSIZE ) )
+        {
+            // ÀüÃ¼ Å¬·¯½ºÅÍ¸¦ µ¤¾î¾²´Â °æ¿ì°¡ ¾Æ´Ï¸é ºÎºĞ¸¸ µ¤¾î½á¾ß ÇÏ¹Ç·Î
+            // ÇöÀç Å¬·¯½ºÅÍ¸¦ ÀĞÀ½
+            if( kReadCluster( pstFileHandle->dwCurrentClusterIndex,
+                              gs_vbTempBuffer ) == FALSE )
+            {
+                break;
+            }
+        }
+
+        // Å¬·¯½ºÅÍ ³»¿¡¼­ ÆÄÀÏ Æ÷ÀÎÅÍ°¡ Á¸ÀçÇÏ´Â ¿ÀÇÁ¼ÂÀ» °è»ê
+        dwOffsetInCluster = pstFileHandle->dwCurrentOffset % FILESYSTEM_CLUSTERSIZE;
+
+        // ¿©·¯ Å¬·¯½ºÅÍ¿¡ °ÉÃÄÁ® ÀÖ´Ù¸é ÇöÀç Å¬·¯½ºÅÍ¿¡¼­ ³²Àº ¸¸Å­ ¾²°í ´ÙÀ½
+        // Å¬·¯½ºÅÍ·Î ÀÌµ¿
+        dwCopySize = MIN( FILESYSTEM_CLUSTERSIZE - dwOffsetInCluster,
+                          dwTotalCount - dwWriteCount );
+        kMemCpy( gs_vbTempBuffer + dwOffsetInCluster, ( char* ) pvBuffer +
+                 dwWriteCount, dwCopySize );
+
+        // ÀÓ½Ã ¹öÆÛ¿¡ »ğÀÔµÈ °ªÀ» µğ½ºÅ©¿¡ ¾¸
+        if( kWriteCluster( pstFileHandle->dwCurrentClusterIndex, gs_vbTempBuffer )
+                == FALSE )
+        {
+            break;
+        }
+
+        // ¾´ ¹ÙÀÌÆ® ¼ö¿Í ÆÄÀÏ Æ÷ÀÎÅÍÀÇ À§Ä¡¸¦ °»½Å
+        dwWriteCount += dwCopySize;
+        pstFileHandle->dwCurrentOffset += dwCopySize;
+
+        //======================================================================
+        // ÇöÀç Å¬·¯½ºÅÍÀÇ ³¡±îÁö ´Ù ½èÀ¸¸é ´ÙÀ½ Å¬·¯½ºÅÍ·Î ÀÌµ¿
+        //======================================================================
+        if( ( pstFileHandle->dwCurrentOffset % FILESYSTEM_CLUSTERSIZE ) == 0 )
+        {
+            // ÇöÀç Å¬·¯½ºÅÍÀÇ ¸µÅ© µ¥ÀÌÅÍ·Î ´ÙÀ½ Å¬·¯½ºÅÍ¸¦ ¾òÀ½
+            if( kGetClusterLinkData( pstFileHandle->dwCurrentClusterIndex,
+                                     &dwNextClusterIndex ) == FALSE )
+            {
+                break;
+            }
+
+            // Å¬·¯½ºÅÍ Á¤º¸¸¦ °»½Å
+            pstFileHandle->dwPreviousClusterIndex =
+                pstFileHandle->dwCurrentClusterIndex;
+            pstFileHandle->dwCurrentClusterIndex = dwNextClusterIndex;
+        }
+    }
+
+    //==========================================================================
+    // ÆÄÀÏ Å©±â°¡ º¯Çß´Ù¸é ·çÆ® µğ·ºÅÍ¸®¿¡ ÀÖ´Â µğ·ºÅÍ¸® ¿£Æ®¸® Á¤º¸¸¦ °»½Å
+    //==========================================================================
+    if( pstFileHandle->dwFileSize < pstFileHandle->dwCurrentOffset )
+    {
+        pstFileHandle->dwFileSize = pstFileHandle->dwCurrentOffset;
+        kUpdateDirectoryEntry( pstFileHandle );
+    }
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ¾´ ·¹ÄÚµå ¼ö¸¦ ¹İÈ¯
+    return ( dwWriteCount / dwSize );
+}
+
+/**
+ *  ÆÄÀÏÀ» Count¸¸Å­ 0À¸·Î Ã¤¿ò
+ */
+BOOL kWriteZero( FILE* pstFile, DWORD dwCount )
+{
+    BYTE* pbBuffer;
+    DWORD dwRemainCount;
+    DWORD dwWriteCount;
+
+    // ÇÚµéÀÌ NULLÀÌ¸é ½ÇÆĞ
+    if( pstFile == NULL )
+    {
+        return FALSE;
+    }
+
+    // ¼Óµµ Çâ»óÀ» À§ÇØ ¸Ş¸ğ¸®¸¦ ÇÒ´ç ¹Ş¾Æ Å¬·¯½ºÅÍ ´ÜÀ§·Î ¾²±â ¼öÇà
+    // ¸Ş¸ğ¸®¸¦ ÇÒ´ç
+    pbBuffer = ( BYTE* ) kAllocateMemory( FILESYSTEM_CLUSTERSIZE );
+    if( pbBuffer == NULL )
+    {
+        return FALSE;
+    }
+
+    // 0À¸·Î Ã¤¿ò
+    kMemSet( pbBuffer, 0, FILESYSTEM_CLUSTERSIZE );
+    dwRemainCount = dwCount;
+
+    // Å¬·¯½ºÅÍ ´ÜÀ§·Î ¹İº¹ÇØ¼­ ¾²±â ¼öÇà
+    while( dwRemainCount != 0 )
+    {
+        dwWriteCount = MIN( dwRemainCount , FILESYSTEM_CLUSTERSIZE );
+        if( kWriteFile( pbBuffer, 1, dwWriteCount, pstFile ) != dwWriteCount )
+        {
+            kFreeMemory( pbBuffer );
+            return FALSE;
+        }
+        dwRemainCount -= dwWriteCount;
+    }
+    kFreeMemory( pbBuffer );
+    return TRUE;
+}
+
+/**
+ *  ÆÄÀÏ Æ÷ÀÎÅÍÀÇ À§Ä¡¸¦ ÀÌµ¿
+ */
+int kSeekFile( FILE* pstFile, int iOffset, int iOrigin )
+{
+    DWORD dwRealOffset;
+    DWORD dwClusterOffsetToMove;
+    DWORD dwCurrentClusterOffset;
+    DWORD dwLastClusterOffset;
+    DWORD dwMoveCount;
+    DWORD i;
+    DWORD dwStartClusterIndex;
+    DWORD dwPreviousClusterIndex;
+    DWORD dwCurrentClusterIndex;
+    FILEHANDLE* pstFileHandle;
+
+    // ÇÚµéÀÌ ÆÄÀÏ Å¸ÀÔÀÌ ¾Æ´Ï¸é ³ª°¨
+    if( ( pstFile == NULL ) ||
+        ( pstFile->bType != FILESYSTEM_TYPE_FILE ) )
+    {
+        return 0;
+    }
+    pstFileHandle = &( pstFile->stFileHandle );
+
+    //==========================================================================
+    // Origin°ú OffsetÀ» Á¶ÇÕÇÏ¿© ÆÄÀÏ ½ÃÀÛÀ» ±âÁØÀ¸·Î ÆÄÀÏ Æ÷ÀÎÅÍ¸¦ ¿Å°Ü¾ß ÇÒ À§Ä¡¸¦
+    // °è»ê
+    //==========================================================================
+    // ¿É¼Ç¿¡ µû¶ó¼­ ½ÇÁ¦ À§Ä¡¸¦ °è»ê
+    // À½¼öÀÌ¸é ÆÄÀÏÀÇ ½ÃÀÛ ¹æÇâÀ¸·Î ÀÌµ¿ÇÏ¸ç ¾ç¼öÀÌ¸é ÆÄÀÏÀÇ ³¡ ¹æÇâÀ¸·Î ÀÌµ¿
+    switch( iOrigin )
+    {
+    // ÆÄÀÏÀÇ ½ÃÀÛÀ» ±âÁØÀ¸·Î ÀÌµ¿
+    case FILESYSTEM_SEEK_SET:
+        // ÆÄÀÏÀÇ Ã³À½ÀÌ¹Ç·Î ÀÌµ¿ÇÒ ¿ÀÇÁ¼ÂÀÌ À½¼öÀÌ¸é 0À¸·Î ¼³Á¤
+        if( iOffset <= 0 )
+        {
+            dwRealOffset = 0;
+        }
+        else
+        {
+            dwRealOffset = iOffset;
+        }
+        break;
+
+    // ÇöÀç À§Ä¡¸¦ ±âÁØÀ¸·Î ÀÌµ¿
+    case FILESYSTEM_SEEK_CUR:
+        // ÀÌµ¿ÇÒ ¿ÀÇÁ¼ÂÀÌ À½¼öÀÌ°í ÇöÀç ÆÄÀÏ Æ÷ÀÎÅÍÀÇ °ªº¸´Ù Å©´Ù¸é
+        // ´õ ÀÌ»ó °¥ ¼ö ¾øÀ¸¹Ç·Î ÆÄÀÏÀÇ Ã³À½À¸·Î ÀÌµ¿
+        if( ( iOffset < 0 ) &&
+            ( pstFileHandle->dwCurrentOffset <= ( DWORD ) -iOffset ) )
+        {
+            dwRealOffset = 0;
+        }
+        else
+        {
+            dwRealOffset = pstFileHandle->dwCurrentOffset + iOffset;
+        }
+        break;
+
+    // ÆÄÀÏÀÇ ³¡ºÎºĞÀ» ±âÁØÀ¸·Î ÀÌµ¿
+    case FILESYSTEM_SEEK_END:
+        // ÀÌµ¿ÇÒ ¿ÀÇÁ¼ÂÀÌ À½¼öÀÌ°í ÇöÀç ÆÄÀÏ Æ÷ÀÎÅÍÀÇ °ªº¸´Ù Å©´Ù¸é
+        // ´õ ÀÌ»ó °¥ ¼ö ¾øÀ¸¹Ç·Î ÆÄÀÏÀÇ Ã³À½À¸·Î ÀÌµ¿
+        if( ( iOffset < 0 ) &&
+            ( pstFileHandle->dwFileSize <= ( DWORD ) -iOffset ) )
+        {
+            dwRealOffset = 0;
+        }
+        else
+        {
+            dwRealOffset = pstFileHandle->dwFileSize + iOffset;
+        }
+        break;
+    }
+
+    //==========================================================================
+    // ÆÄÀÏÀ» ±¸¼ºÇÏ´Â Å¬·¯½ºÅÍÀÇ °³¼ö¿Í ÇöÀç ÆÄÀÏ Æ÷ÀÎÅÍÀÇ À§Ä¡¸¦ °í·ÁÇÏ¿©
+    // ¿Å°ÜÁú ÆÄÀÏ Æ÷ÀÎÅÍ°¡ À§Ä¡ÇÏ´Â Å¬·¯½ºÅÍ±îÁö Å¬·¯½ºÅÍ ¸µÅ©¸¦ Å½»ö
+    //==========================================================================
+    // ÆÄÀÏÀÇ ¸¶Áö¸· Å¬·¯½ºÅÍÀÇ ¿ÀÇÁ¼Â
+    dwLastClusterOffset = pstFileHandle->dwFileSize / FILESYSTEM_CLUSTERSIZE;
+    // ÆÄÀÏ Æ÷ÀÎÅÍ°¡ ¿Å°ÜÁú À§Ä¡ÀÇ Å¬·¯½ºÅÍ ¿ÀÇÁ¼Â
+    dwClusterOffsetToMove = dwRealOffset / FILESYSTEM_CLUSTERSIZE;
+    // ÇöÀç ÆÄÀÏ Æ÷ÀÎÅÍ°¡ ÀÖ´Â Å¬·¯½ºÅÍÀÇ ¿ÀÇÁ¼Â
+    dwCurrentClusterOffset = pstFileHandle->dwCurrentOffset / FILESYSTEM_CLUSTERSIZE;
+
+    // ÀÌµ¿ÇÏ´Â Å¬·¯½ºÅÍÀÇ À§Ä¡°¡ ÆÄÀÏÀÇ ¸¶Áö¸· Å¬·¯½ºÅÍÀÇ ¿ÀÇÁ¼ÂÀ» ³Ñ¾î¼­¸é
+    // ÇöÀç Å¬·¯½ºÅÍ¿¡¼­ ¸¶Áö¸·±îÁö ÀÌµ¿ÇÑ ÈÄ, Write ÇÔ¼ö¸¦ ÀÌ¿ëÇØ¼­ °ø¹éÀ¸·Î ³ª¸ÓÁö¸¦
+    // Ã¤¿ò
+    if( dwLastClusterOffset < dwClusterOffsetToMove )
+    {
+        dwMoveCount = dwLastClusterOffset - dwCurrentClusterOffset;
+        dwStartClusterIndex = pstFileHandle->dwCurrentClusterIndex;
+    }
+    // ÀÌµ¿ÇÏ´Â Å¬·¯½ºÅÍÀÇ À§Ä¡°¡ ÇöÀç Å¬·¯½ºÅÍ¿Í °°°Å³ª ´ÙÀ½¿¡ À§Ä¡ÇØ
+    // ÀÖ´Ù¸é ÇöÀç Å¬·¯½ºÅÍ¸¦ ±âÁØÀ¸·Î Â÷ÀÌ¸¸Å­¸¸ ÀÌµ¿ÇÏ¸é µÈ´Ù.
+    else if( dwCurrentClusterOffset <= dwClusterOffsetToMove )
+    {
+        dwMoveCount = dwClusterOffsetToMove - dwCurrentClusterOffset;
+        dwStartClusterIndex = pstFileHandle->dwCurrentClusterIndex;
+    }
+    // ÀÌµ¿ÇÏ´Â Å¬·¯½ºÅÍÀÇ À§Ä¡°¡ ÇöÀç Å¬·¯½ºÅÍ ÀÌÀü¿¡ ÀÖ´Ù¸é, Ã¹ ¹øÂ° Å¬·¯½ºÅÍºÎÅÍ
+    // ÀÌµ¿ÇÏ¸é¼­ °Ë»ö
+    else
+    {
+        dwMoveCount = dwClusterOffsetToMove;
+        dwStartClusterIndex = pstFileHandle->dwStartClusterIndex;
+    }
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // Å¬·¯½ºÅÍ¸¦ ÀÌµ¿
+    dwCurrentClusterIndex = dwStartClusterIndex;
+    for( i = 0 ; i < dwMoveCount ; i++ )
+    {
+        // °ªÀ» º¸°ü
+        dwPreviousClusterIndex = dwCurrentClusterIndex;
+
+        // ´ÙÀ½ Å¬·¯½ºÅÍÀÇ ÀÎµ¦½º¸¦ ÀĞÀ½
+        if( kGetClusterLinkData( dwPreviousClusterIndex, &dwCurrentClusterIndex ) ==
+            FALSE )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return -1;
+        }
+    }
+
+    // Å¬·¯½ºÅÍ¸¦ ÀÌµ¿ÇßÀ¸¸é Å¬·¯½ºÅÍ Á¤º¸¸¦ °»½Å
+    if( dwMoveCount > 0 )
+    {
+        pstFileHandle->dwPreviousClusterIndex = dwPreviousClusterIndex;
+        pstFileHandle->dwCurrentClusterIndex = dwCurrentClusterIndex;
+    }
+    // Ã¹ ¹øÂ° Å¬·¯½ºÅÍ·Î ÀÌµ¿ÇÏ´Â °æ¿ì´Â ÇÚµéÀÇ Å¬·¯½ºÅÍ °ªÀ» ½ÃÀÛ Å¬·¯½ºÅÍ·Î ¼³Á¤
+    else if( dwStartClusterIndex == pstFileHandle->dwStartClusterIndex )
+    {
+        pstFileHandle->dwPreviousClusterIndex = pstFileHandle->dwStartClusterIndex;
+        pstFileHandle->dwCurrentClusterIndex = pstFileHandle->dwStartClusterIndex;
+    }
+
+    //==========================================================================
+    // ÆÄÀÏ Æ÷ÀÎÅÍ¸¦ °»½ÅÇÏ°í ÆÄÀÏ ¿ÀÇÁ¼ÂÀÌ ÆÄÀÏÀÇ Å©±â¸¦ ³Ñ¾ú´Ù¸é ³ª¸ÓÁö ºÎºĞÀ»
+    // 0À¸·Î Ã¤¿ö¼­ ÆÄÀÏÀÇ Å©±â¸¦ ´Ã¸²
+    //==========================================================================
+    // ½ÇÁ¦ ÆÄÀÏÀÇ Å©±â¸¦ ³Ñ¾î¼­ ÆÄÀÏ Æ÷ÀÎÅÍ°¡ ÀÌµ¿Çß´Ù¸é, ÆÄÀÏ ³¡¿¡¼­ºÎÅÍ
+    // ³²Àº Å©±â¸¸Å­ 0À¸·Î Ã¤¿öÁÜ
+    if( dwLastClusterOffset < dwClusterOffsetToMove )
+    {
+        pstFileHandle->dwCurrentOffset = pstFileHandle->dwFileSize;
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+
+        // ³²Àº Å©±â¸¸Å­ 0À¸·Î Ã¤¿ò
+        if( kWriteZero( pstFile, dwRealOffset - pstFileHandle->dwFileSize )
+                == FALSE )
+        {
+            return 0;
+        }
+    }
+
+    pstFileHandle->dwCurrentOffset = dwRealOffset;
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+
+    return 0;
+}
+
+/**
+ *  ÆÄÀÏÀ» ´İÀ½
+ */
+int kCloseFile( FILE* pstFile )
+{
+    // ÇÚµé Å¸ÀÔÀÌ ÆÄÀÏÀÌ ¾Æ´Ï¸é ½ÇÆĞ
+    if( ( pstFile == NULL ) ||
+        ( pstFile->bType != FILESYSTEM_TYPE_FILE ) )
+    {
+        return -1;
+    }
+
+    // ÇÚµéÀ» ¹İÈ¯
+    kFreeFileDirectoryHandle( pstFile );
+    return 0;
+}
+
+/**
+ *  ÇÚµé Ç®À» °Ë»çÇÏ¿© ÆÄÀÏÀÌ ¿­·ÁÀÖ´ÂÁö¸¦ È®ÀÎ
+ */
+BOOL kIsFileOpened( const DIRECTORYENTRY* pstEntry )
+{
+    int i;
+    FILE* pstFile;
+
+    // ÇÚµé Ç®ÀÇ ½ÃÀÛ ¾îµå·¹½ººÎÅÍ ³¡±îÁö ¿­¸° ÆÄÀÏ¸¸ °Ë»ö
+    pstFile = gs_stFileSystemManager.pstHandlePool;
+    for( i = 0 ; i < FILESYSTEM_HANDLE_MAXCOUNT ; i++ )
+    {
+        // ÆÄÀÏ Å¸ÀÔ Áß¿¡¼­ ½ÃÀÛ Å¬·¯½ºÅÍ°¡ ÀÏÄ¡ÇÏ¸é ¹İÈ¯
+        if( ( pstFile[ i ].bType == FILESYSTEM_TYPE_FILE ) &&
+            ( pstFile[ i ].stFileHandle.dwStartClusterIndex ==
+              pstEntry->dwStartClusterIndex ) )
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+/**
+ *  ÆÄÀÏÀ» »èÁ¦
+ */
+int kRemoveFile( const char* pcFileName )
+{
+    DIRECTORYENTRY stEntry;
+    int iDirectoryEntryOffset;
+    int iFileNameLength;
+
+    // ÆÄÀÏ ÀÌ¸§ °Ë»ç
+    iFileNameLength = kStrLen( pcFileName );
+    if( ( iFileNameLength > ( sizeof( stEntry.vcFileName ) - 1 ) ) ||
+        ( iFileNameLength == 0 ) )
+    {
+        return NULL;
+    }
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ÆÄÀÏÀÌ Á¸ÀçÇÏ´Â°¡ È®ÀÎ
+    iDirectoryEntryOffset = kFindDirectoryEntry( pcFileName, &stEntry );
+    if( iDirectoryEntryOffset == -1 )
+    {
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return -1;
+    }
+
+    // ´Ù¸¥ ÅÂ½ºÅ©¿¡¼­ ÇØ´ç ÆÄÀÏÀ» ¿­°í ÀÖ´ÂÁö ÇÚµé Ç®À» °Ë»öÇÏ¿© È®ÀÎ
+    // ÆÄÀÏÀÌ ¿­·Á ÀÖÀ¸¸é »èÁ¦ÇÒ ¼ö ¾øÀ½
+    if( kIsFileOpened( &stEntry ) == TRUE )
+    {
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return -1;
+    }
+
+    // ÆÄÀÏÀ» ±¸¼ºÇÏ´Â Å¬·¯½ºÅÍ¸¦ ¸ğµÎ ÇØÁ¦
+    if( kFreeClusterUntilEnd( stEntry.dwStartClusterIndex ) == FALSE )
+    {
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return -1;
+    }
+
+    // µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ºó °ÍÀ¸·Î ¼³Á¤
+    kMemSet( &stEntry, 0, sizeof( stEntry ) );
+    if( kSetDirectoryEntryData( iDirectoryEntryOffset, &stEntry ) == FALSE )
+    {
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return -1;
+    }
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+    return 0;
+}
+
+/**
+ *  µğ·ºÅÍ¸®¸¦ ¿®
+ */
+DIR* kOpenDirectory( const char* pcDirectoryName )
+{
+    DIR* pstDirectory;
+    DIRECTORYENTRY* pstDirectoryBuffer;
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ·çÆ® µğ·ºÅÍ¸® ¹Û¿¡ ¾øÀ¸¹Ç·Î µğ·ºÅÍ¸® ÀÌ¸§Àº ¹«½ÃÇÏ°í ÇÚµé¸¸ ÇÒ´ç¹Ş¾Æ¼­ ¹İÈ¯
+    pstDirectory = kAllocateFileDirectoryHandle();
+    if( pstDirectory == NULL )
+    {
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return NULL;
+    }
+
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀúÀåÇÒ ¹öÆÛ¸¦ ÇÒ´ç
+    pstDirectoryBuffer = ( DIRECTORYENTRY* ) kAllocateMemory( FILESYSTEM_CLUSTERSIZE );
+    if( pstDirectory == NULL )
+    {
+        // ½ÇÆĞÇÏ¸é ÇÚµéÀ» ¹İÈ¯ÇØ¾ß ÇÔ
+        kFreeFileDirectoryHandle( pstDirectory );
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return NULL;
+    }
+
+    // ·çÆ® µğ·ºÅÍ¸®¸¦ ÀĞÀ½
+    if( kReadCluster( 0, ( BYTE* ) pstDirectoryBuffer ) == FALSE )
+    {
+        // ½ÇÆĞÇÏ¸é ÇÚµé°ú ¸Ş¸ğ¸®¸¦ ¸ğµÎ ¹İÈ¯ÇØ¾ß ÇÔ
+        kFreeFileDirectoryHandle( pstDirectory );
+        kFreeMemory( pstDirectoryBuffer );
+
+        // µ¿±âÈ­
+        kUnlock( &( gs_stFileSystemManager.stMutex ) );
+        return NULL;
+
+    }
+
+    // µğ·ºÅÍ¸® Å¸ÀÔÀ¸·Î ¼³Á¤ÇÏ°í ÇöÀç µğ·ºÅÍ¸® ¿£Æ®¸®ÀÇ ¿ÀÇÁ¼ÂÀ» ÃÊ±âÈ­
+    pstDirectory->bType = FILESYSTEM_TYPE_DIRECTORY;
+    pstDirectory->stDirectoryHandle.iCurrentOffset = 0;
+    pstDirectory->stDirectoryHandle.pstDirectoryBuffer = pstDirectoryBuffer;
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+    return pstDirectory;
+}
+
+/**
+ *  µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¹İÈ¯ÇÏ°í ´ÙÀ½À¸·Î ÀÌµ¿
+ */
+struct kDirectoryEntryStruct* kReadDirectory( DIR* pstDirectory )
+{
+    DIRECTORYHANDLE* pstDirectoryHandle;
+    DIRECTORYENTRY* pstEntry;
+
+    // ÇÚµé Å¸ÀÔÀÌ µğ·ºÅÍ¸®°¡ ¾Æ´Ï¸é ½ÇÆĞ
+    if( ( pstDirectory == NULL ) ||
+        ( pstDirectory->bType != FILESYSTEM_TYPE_DIRECTORY ) )
+    {
+        return NULL;
+    }
+    pstDirectoryHandle = &( pstDirectory->stDirectoryHandle );
+
+    // ¿ÀÇÁ¼ÂÀÇ ¹üÀ§°¡ Å¬·¯½ºÅÍ¿¡ Á¸ÀçÇÏ´Â ÃÖ´ñ°ªÀ» ³Ñ¾î¼­¸é ½ÇÆĞ
+    if( ( pstDirectoryHandle->iCurrentOffset < 0 ) ||
+        ( pstDirectoryHandle->iCurrentOffset >= FILESYSTEM_MAXDIRECTORYENTRYCOUNT ) )
+    {
+        return NULL;
+    }
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ·çÆ® µğ·ºÅÍ¸®¿¡ ÀÖ´Â ÃÖ´ë µğ·ºÅÍ¸® ¿£Æ®¸®ÀÇ °³¼ö¸¸Å­ °Ë»ö
+    pstEntry = pstDirectoryHandle->pstDirectoryBuffer;
+    while( pstDirectoryHandle->iCurrentOffset < FILESYSTEM_MAXDIRECTORYENTRYCOUNT )
+    {
+        // ÆÄÀÏÀÌ Á¸ÀçÇÏ¸é ÇØ´ç µğ·ºÅÍ¸® ¿£Æ®¸®¸¦ ¹İÈ¯
+        if( pstEntry[ pstDirectoryHandle->iCurrentOffset ].dwStartClusterIndex
+                != 0 )
+        {
+            // µ¿±âÈ­
+            kUnlock( &( gs_stFileSystemManager.stMutex ) );
+            return &( pstEntry[ pstDirectoryHandle->iCurrentOffset++ ] );
+        }
+
+        pstDirectoryHandle->iCurrentOffset++;
+    }
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+    return NULL;
+}
+
+/**
+ *  µğ·ºÅÍ¸® Æ÷ÀÎÅÍ¸¦ µğ·ºÅÍ¸®ÀÇ Ã³À½À¸·Î ÀÌµ¿
+ */
+void kRewindDirectory( DIR* pstDirectory )
+{
+    DIRECTORYHANDLE* pstDirectoryHandle;
+
+    // ÇÚµé Å¸ÀÔÀÌ µğ·ºÅÍ¸®°¡ ¾Æ´Ï¸é ½ÇÆĞ
+    if( ( pstDirectory == NULL ) ||
+        ( pstDirectory->bType != FILESYSTEM_TYPE_DIRECTORY ) )
+    {
+        return ;
+    }
+    pstDirectoryHandle = &( pstDirectory->stDirectoryHandle );
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // µğ·ºÅÍ¸® ¿£Æ®¸®ÀÇ Æ÷ÀÎÅÍ¸¸ 0À¸·Î ¹Ù²ãÁÜ
+    pstDirectoryHandle->iCurrentOffset = 0;
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+}
+
+
+/**
+ *  ¿­¸° µğ·ºÅÍ¸®¸¦ ´İÀ½
+ */
+int kCloseDirectory( DIR* pstDirectory )
+{
+    DIRECTORYHANDLE* pstDirectoryHandle;
+
+    // ÇÚµé Å¸ÀÔÀÌ µğ·ºÅÍ¸®°¡ ¾Æ´Ï¸é ½ÇÆĞ
+    if( ( pstDirectory == NULL ) ||
+        ( pstDirectory->bType != FILESYSTEM_TYPE_DIRECTORY ) )
+    {
+        return -1;
+    }
+    pstDirectoryHandle = &( pstDirectory->stDirectoryHandle );
+
+    // µ¿±âÈ­
+    kLock( &( gs_stFileSystemManager.stMutex ) );
+
+    // ·çÆ® µğ·ºÅÍ¸®ÀÇ ¹öÆÛ¸¦ ÇØÁ¦ÇÏ°í ÇÚµéÀ» ¹İÈ¯
+    kFreeMemory( pstDirectoryHandle->pstDirectoryBuffer );
+    kFreeFileDirectoryHandle( pstDirectory );
+
+    // µ¿±âÈ­
+    kUnlock( &( gs_stFileSystemManager.stMutex ) );
+
+    return 0;
 }

@@ -7,6 +7,7 @@
 #include "Task.h"
 #include "Descriptor.h"
 #include "AssemblyUtility.h"
+#include "HardDisk.h"
 
 static inline void invlpg(void* m)
 {

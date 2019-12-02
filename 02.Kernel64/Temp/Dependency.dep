@@ -1,7 +1,8 @@
 Queue.o: ../Source/Queue.c ../Source/Queue.h ../Source/Types.h
 FileSystem.o: ../Source/FileSystem.c ../Source/FileSystem.h \
  ../Source/Types.h ../Source/Synchronization.h ../Source/HardDisk.h \
- ../Source/DynamicMemory.h
+ ../Source/DynamicMemory.h ../Source/Task.h ../Source/List.h \
+ ../Source/Console.h ../Source/Utility.h
 Main.o: ../Source/Main.c ../Source/Types.h ../Source/Keyboard.h \
  ../Source/Descriptor.h ../Source/PIC.h ../Source/Console.h \
  ../Source/ConsoleShell.h ../Source/Task.h ../Source/List.h \
@@ -27,7 +28,8 @@ InterruptHandler.o: ../Source/InterruptHandler.c \
  ../Source/../../01.Kernel32/Source/Page.h \
  ../Source/../../01.Kernel32/Source/Types.h ../Source/Utility.h \
  ../Source/Task.h ../Source/List.h ../Source/Descriptor.h \
- ../Source/AssemblyUtility.h
+ ../Source/AssemblyUtility.h ../Source/HardDisk.h \
+ ../Source/Synchronization.h
 Descriptor.o: ../Source/Descriptor.c ../Source/Descriptor.h \
  ../Source/Types.h ../Source/Utility.h ../Source/ISR.h
 Console.o: ../Source/Console.c ../Source/Console.h ../Source/Types.h \
