@@ -19,7 +19,6 @@ void initTriggers()
     }
     numScheduledTask = 0;
 
-    //startScheduler(); //for debug
     if( kCreateTask( TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, ( QWORD ) startScheduler ) == NULL )
     {
         kPrintf("Task Scheduelr Fail\n");
@@ -29,9 +28,12 @@ void initTriggers()
 static void startScheduler()
 {
     int i;
-    //triggers[0].taskType = 1; //for debug
-    //triggers[0].parameter[0] = 'H'; //for debug
-    //triggers[0].parameter[1] = '\0'; //for debug
+    //triggers[0].taskType = 2; //for debug
+    //triggers[0].parameter[0] = 'h'; //for debug
+    //triggers[0].parameter[1] = 'e'; //for debug
+    //triggers[0].parameter[2] = 'l'; //for debug
+    //triggers[0].parameter[3] = 'p'; //for debug
+    //triggers[0].parameter[4] = '\0'; //for debug
     while(1)
     {
         for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++){
@@ -48,13 +50,12 @@ static void startScheduler()
                     }
                     else if(triggers[i].taskType == 2)
                     {
-                        //
+                        kExecuteCommand( triggers[i].parameter );
                         checkOnce(i);
                     }
                 }
             }
         }
-        //break; //for debug
         kSchedule();
     }
     kExitTask();
@@ -76,5 +77,26 @@ void checkOnce(int i)
     else
     {
         //triggers[i].date = presentDate;
+    }
+}
+
+void addTrigger(int taskType, int date, BOOL once, char* parameter)
+{
+    int i;
+    if(numScheduledTask == MAX_NUM_SCHEDULED_TASK)
+    {
+        kPrintf("Task list is full.\n");
+    }
+    else{
+        for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++){
+            if(!(triggers[i].taskType))
+            {
+                triggers[i].taskType = taskType;
+                triggers[i].date = date;
+                triggers[i].once = once;
+                //triggers[i].parameter = parameter;
+                numScheduledTask++;
+            }
+        }
     }
 }

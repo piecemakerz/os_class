@@ -2501,5 +2501,5 @@ static void kTestFileIO( const char* pcParameterBuffer )
 
 static void RegistTaskToScheduler( const char* pcParameterBuffer )
 {
-    kPrintf( "Debugging Success\n" );
+    //addTrigger();
 }

@@ -20,7 +20,8 @@ Synchronization.o: ../Source/Synchronization.c \
  ../Source/Task.h ../Source/List.h ../Source/Console.h
 PIT.o: ../Source/PIT.c ../Source/PIT.h ../Source/Types.h
 TaskScheduler.o: ../Source/TaskScheduler.c ../Source/TaskScheduler.h \
- ../Source/Types.h ../Source/Task.h ../Source/List.h ../Source/Console.h
+ ../Source/Types.h ../Source/Task.h ../Source/List.h ../Source/Console.h \
+ ../Source/ConsoleShell.h
 DynamicMemory.o: ../Source/DynamicMemory.c ../Source/DynamicMemory.h \
  ../Source/Types.h ../Source/Utility.h ../Source/Task.h ../Source/List.h \
  ../Source/Console.h
