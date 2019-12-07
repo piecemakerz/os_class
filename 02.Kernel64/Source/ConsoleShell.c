@@ -1901,9 +1901,6 @@ static void kShowFileSystemInformation( const char* pcParameterBuffer )
     kPrintf( "================== File System Information ==================\n" );
     kPrintf( "Mouted:\t\t\t\t\t %d\n", stManager.bMounted );
     kPrintf( "Reserved Sector Count:\t\t\t %d Sector\n", stManager.dwReservedSectorCount );
-    kPrintf( "Cluster Link Table Start Address:\t %d Sector\n", 
-            stManager.dwClusterLinkAreaStartAddress );
-    kPrintf( "Cluster Link Table Size:\t\t %d Sector\n", stManager.dwClusterLinkAreaSize );
     kPrintf( "Data Area Start Address:\t\t %d Sector\n", stManager.dwDataAreaStartAddress );
     kPrintf( "Total Cluster Count:\t\t\t %d Cluster\n", stManager.dwTotalClusterCount );
 }
@@ -2047,10 +2044,6 @@ static void kShowRootDirectory( const char* pcParameterBuffer )
         // 파일 길이 삽입
         kSPrintf( vcTempValue, "%d Byte", pstEntry->dwFileSize );
         kMemCpy( vcBuffer + 30, vcTempValue, kStrLen( vcTempValue ) );
-
-        // 파일의 시작 클러스터 삽입
-        kSPrintf( vcTempValue, "0x%X Cluster", pstEntry->dwStartClusterIndex );
-        kMemCpy( vcBuffer + 55, vcTempValue, kStrLen( vcTempValue ) + 1 );
         kPrintf( "    %s\n", vcBuffer );
 
         if( ( iCount != 0 ) && ( ( iCount % 20 ) == 0 ) )
