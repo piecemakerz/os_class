@@ -11,6 +11,8 @@
 #include "HardDisk.h"
 #include "FileSystem.h"
 
+#include "Vi.h"
+
 static int bTry = 0;
 
 // 커맨드 테이블 정의
@@ -55,6 +57,7 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
 		{ "writefile", "Write Data To File, ex) writefile a.txt", kWriteDataToFile },
 		{ "readfile", "Read Data From File, ex) readfile a.txt", kReadDataFromFile },
 		{ "testfileio", "Test File I/O Function", kTestFileIO },
+        { "vi", "VI ex) vi a.txt", kVi},
 };                                     
 
 //==============================================================================
@@ -93,7 +96,7 @@ void kStartConsoleShell( void )
     head = kMalloc(sizeof(Trie));
     kTrieInitialize(head);
 
-    for(int i=0; i<34; i++)
+    for(int i=0; i<35; i++)
     {
     	kTrieInsert(head, gs_vstCommandTable[i].pcCommand);
     }

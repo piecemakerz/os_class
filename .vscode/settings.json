@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "vi.h": "c",
+        "dynamicmemory.h": "c",
+        "keyboard.h": "c",
+        "consoleshell.h": "c"
+    }
+}

@@ -8,13 +8,15 @@ Main.o: ../Source/Main.c ../Source/Types.h ../Source/Keyboard.h \
  ../Source/ConsoleShell.h ../Source/Task.h ../Source/List.h \
  ../Source/PIT.h ../Source/DynamicMemory.h ../Source/HardDisk.h \
  ../Source/Synchronization.h ../Source/FileSystem.h
+CronTab.o: ../Source/CronTab.c
 ConsoleShell.o: ../Source/ConsoleShell.c ../Source/ConsoleShell.h \
  ../Source/Types.h ../Source/Task.h ../Source/List.h ../Source/Console.h \
  ../Source/Keyboard.h ../Source/Utility.h \
  ../Source/../../01.Kernel32/Source/Page.h \
  ../Source/../../01.Kernel32/Source/Types.h ../Source/PIT.h \
  ../Source/RTC.h ../Source/AssemblyUtility.h ../Source/Synchronization.h \
- ../Source/DynamicMemory.h ../Source/HardDisk.h ../Source/FileSystem.h
+ ../Source/DynamicMemory.h ../Source/HardDisk.h ../Source/FileSystem.h \
+ ../Source/Vi.h
 Synchronization.o: ../Source/Synchronization.c \
  ../Source/Synchronization.h ../Source/Types.h ../Source/Utility.h \
  ../Source/Task.h ../Source/List.h ../Source/Console.h
@@ -43,6 +45,11 @@ Keyboard.o: ../Source/Keyboard.c ../Source/Types.h \
  ../Source/Console.h ../Source/Keyboard.h ../Source/Queue.h \
  ../Source/Synchronization.h
 RTC.o: ../Source/RTC.c ../Source/RTC.h ../Source/Types.h
+Vi.o: ../Source/Vi.c ../Source/DynamicMemory.h ../Source/Types.h \
+ ../Source/Keyboard.h ../Source/Utility.h ../Source/FileSystem.h \
+ ../Source/Synchronization.h ../Source/HardDisk.h \
+ ../Source/ConsoleShell.h ../Source/Task.h ../Source/List.h \
+ ../Source/Console.h ../Source/Vi.h
 List.o: ../Source/List.c ../Source/List.h ../Source/Types.h
 HardDisk.o: ../Source/HardDisk.c ../Source/HardDisk.h ../Source/Types.h \
  ../Source/Synchronization.h
