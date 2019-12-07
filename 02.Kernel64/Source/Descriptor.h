@@ -48,8 +48,8 @@
 #define GDT_TSSSEGMENT        0x18
 
 // 기타 GDT에 관련된 매크로
-// GDTR의 시작 어드레스, 1Mbyte에서 265Kbyte까지는 페이지 테이블 영역
-#define GDTR_STARTADDRESS   0x143000
+// GDTR의 시작 어드레스
+#define GDTR_STARTADDRESS   0x142000
 // 8바이트 엔트리의 개수, 널 디스크립터/커널 코드/커널 데이터
 #define GDT_MAXENTRY8COUNT  3
 // 16바이트 엔트리의 개수, TSS

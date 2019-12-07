@@ -24,12 +24,11 @@
 // 아래는 편의를 위해 정의한 플래그
 #define PAGE_FLAGS_DEFAULT	( PAGE_FLAGS_P | PAGE_FLAGS_RW )
 
-#define DOUBLE_MAPPING_ADDRESS	0xAB8000
 // 기타 페이징 관련
 #define PAGE_TABLESIZE		0x1000
 #define PAGE_MAXENTRYCOUNT 	512
 #define PAGE_DEFAULTSIZE	0x200000
-#define PAGE_5STEPSIZE		0x1000
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 // 구조체

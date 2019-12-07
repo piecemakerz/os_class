@@ -2,7 +2,6 @@
 #include "PIC.h"
 #include "Keyboard.h"
 #include "Console.h"
-#include "../../01.Kernel32/Source/Page.h"
 #include "Utility.h"
 #include "Task.h"
 #include "Descriptor.h"
@@ -92,18 +91,6 @@ void kKeyboardHandler( int iVectorNumber )
  */
 void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
 {
-    PTENTRY* pstEntry;
-    // 0MB ~ 2MB: PTEntry 수정
-    if ((dwAddress >> 20) < 2){
-        PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
-        pstEntry = &(pstPTEntry[dwAddress >> 12]);
-
-    }
-    // 2MB ~ : PDEntry 수정
-    else{
-        PDENTRY* pstPDEntry = ( PDENTRY* )0x102000;
-        pstEntry = &(pstPDEntry[dwAddress >> 20]);
-    }
     int iCursorX, iCursorY;
     if(!(qwErrorCode & 1)){
         kPrintf( "====================================================\n" );
@@ -113,10 +100,9 @@ void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
         kPrintAddress( 25, iCursorY++, dwAddress );
         kPrintf( "\n" );
         kPrintf("====================================================\n" );
-        pstEntry->dwAttributeAndLowerBaseAddress = pstEntry->dwAttributeAndLowerBaseAddress | 0x1;
-        invlpg(dwAddress);
+        //invlpg(dwAddress);
     }
-    else if (qwErrorCode & 1){
+    else{
         kPrintf( "====================================================\n" );
         kPrintf( "            Protection Fault Occur~!!!!             \n" );
         kGetCursor( &iCursorX, &iCursorY );
@@ -124,15 +110,9 @@ void kPageFaultExceptionHandler( DWORD dwAddress, QWORD qwErrorCode )
         kPrintAddress( 25, iCursorY++, dwAddress );
         kPrintf( "\n" );
         kPrintf("====================================================\n" );
-        pstEntry->dwAttributeAndLowerBaseAddress = pstEntry->dwAttributeAndLowerBaseAddress | 0x2;
-        invlpg(dwAddress);
+        //invlpg(dwAddress);
     }
-    else{
-        kPrintf( "====================================================\n" );
-        kPrintf( "                 Exception Occur~!!!!               \n" );
-        kPrintf( "====================================================\n" );
-    }
-    //while( 1 ) ; //for debug
+    while( 1 );
 }
 
 /**
