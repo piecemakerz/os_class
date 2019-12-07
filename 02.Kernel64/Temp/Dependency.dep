@@ -7,18 +7,20 @@ Main.o: ../Source/Main.c ../Source/Types.h ../Source/Keyboard.h \
  ../Source/Descriptor.h ../Source/PIC.h ../Source/Console.h \
  ../Source/ConsoleShell.h ../Source/Task.h ../Source/List.h \
  ../Source/PIT.h ../Source/DynamicMemory.h ../Source/HardDisk.h \
- ../Source/Synchronization.h ../Source/FileSystem.h
+ ../Source/Synchronization.h ../Source/FileSystem.h \
+ ../Source/TaskScheduler.h
 ConsoleShell.o: ../Source/ConsoleShell.c ../Source/ConsoleShell.h \
  ../Source/Types.h ../Source/Task.h ../Source/List.h ../Source/Console.h \
- ../Source/Keyboard.h ../Source/Utility.h \
- ../Source/../../01.Kernel32/Source/Page.h \
- ../Source/../../01.Kernel32/Source/Types.h ../Source/PIT.h \
- ../Source/RTC.h ../Source/AssemblyUtility.h ../Source/Synchronization.h \
- ../Source/DynamicMemory.h ../Source/HardDisk.h ../Source/FileSystem.h
+ ../Source/Keyboard.h ../Source/Utility.h ../Source/PIT.h ../Source/RTC.h \
+ ../Source/AssemblyUtility.h ../Source/Synchronization.h \
+ ../Source/DynamicMemory.h ../Source/HardDisk.h ../Source/FileSystem.h \
+ ../Source/TaskScheduler.h
 Synchronization.o: ../Source/Synchronization.c \
  ../Source/Synchronization.h ../Source/Types.h ../Source/Utility.h \
  ../Source/Task.h ../Source/List.h ../Source/Console.h
 PIT.o: ../Source/PIT.c ../Source/PIT.h ../Source/Types.h
+TaskScheduler.o: ../Source/TaskScheduler.c ../Source/TaskScheduler.h \
+ ../Source/Types.h ../Source/Task.h ../Source/List.h ../Source/Console.h
 DynamicMemory.o: ../Source/DynamicMemory.c ../Source/DynamicMemory.h \
  ../Source/Types.h ../Source/Utility.h ../Source/Task.h ../Source/List.h \
  ../Source/Console.h

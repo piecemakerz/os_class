@@ -2,7 +2,6 @@
 #include "Console.h"
 #include "Keyboard.h"
 #include "Utility.h"
-#include "../../01.Kernel32/Source/Page.h"
 #include "PIT.h"
 #include "RTC.h"
 #include "AssemblyUtility.h"
@@ -10,6 +9,7 @@
 #include "DynamicMemory.h"
 #include "HardDisk.h"
 #include "FileSystem.h"
+#include "TaskScheduler.h"
 
 static int bTry = 0;
 
@@ -55,6 +55,7 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
 		{ "writefile", "Write Data To File, ex) writefile a.txt", kWriteDataToFile },
 		{ "readfile", "Read Data From File, ex) readfile a.txt", kReadDataFromFile },
 		{ "testfileio", "Test File I/O Function", kTestFileIO },
+        { "registtasktoscheduler", "Regist Task to Scheduler", RegistTaskToScheduler },
 };                                     
 
 //==============================================================================
@@ -266,7 +267,7 @@ void kExecuteCommand( const char* pcCommandBuffer )
             break;
         }
     }
-    
+
     // 커맨드 테이블을 검사해서 동일한 이름의 커맨드가 있는지 확인
     iCount = sizeof( gs_vstCommandTable ) / sizeof( SHELLCOMMANDENTRY );
     for( i = 0 ; i < iCount ; i++ )
@@ -2496,4 +2497,9 @@ static void kTestFileIO( const char* pcParameterBuffer )
 
     // 메모리를 해제
     kFreeMemory( pbBuffer );
+}
+
+static void RegistTaskToScheduler( const char* pcParameterBuffer )
+{
+    kPrintf( "Debugging Success\n" );
 }
