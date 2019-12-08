@@ -310,5 +310,4 @@ DIR* kOpenDirectory(const char* pcDirectoryName);
 struct kDirectoryEntryStruct* kReadDirectory(DIR* pstDirectory);
 void kRewindDirectory(DIR* pstDirectory);
 int kCloseDirectory(DIR* pstDirectory);
-
 #endif /*__FILESYSTEM_H__*/

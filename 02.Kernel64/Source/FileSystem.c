@@ -9,6 +9,8 @@
 static FILESYSTEMMANAGER   gs_stFileSystemManager;
 // 파일 시스템 임시 버퍼. 1 블럭 크기
 static BYTE gs_vbTempBuffer[FILESYSTEM_SECTORSPERCLUSTER * 512];
+// 세그먼트가 디스크에 쓰이는 블록 갯수
+static DWORD SEGMENTBLOCKSIZE = (sizeof(SEGMENT) + FILESYSTEM_CLUSTERSIZE - 1) / FILESYSTEM_CLUSTERSIZE;
 // 메모리에서는 총 2개의 세그먼트를 관리한다.
 // 하나의 세그먼트가 가득차면 다른 세그먼트를 사용하며,
 // 가득 찬 세그먼트를 디스크에 Write하는 태스크 호출을 요청한다.
@@ -197,7 +199,8 @@ BOOL kMount(void)
 	kMemSet(segments, 0, sizeof(SEGMENT));
 	curWorkingSegment = 0;
 	segments[0].segmentStartOffset = gs_stFileSystemManager.dwDataAreaStartAddress;
-	segments[1].segmentStartOffset = segments[0].segmentStartOffset + FILESYSTEM_SECTORSPERCLUSTER;
+	segments[1].segmentStartOffset = segments[0].segmentStartOffset +
+		(SEGMENTBLOCKSIZE * FILESYSTEM_SECTORSPERCLUSTER);
 
 	// 동기화 처리
 	kUnlock(&(gs_stFileSystemManager.stMutex));
@@ -229,7 +232,7 @@ BOOL kGetHDDInformation(HDDINFORMATION* pstInformation)
 static BOOL kReadCluster(DWORD dwOffset, BYTE* pbBuffer)
 {
 	// 데이터 영역의 시작 어드레스를 더함
-	return gs_pfReadHDDSector(TRUE, TRUE, dwOffset,	FILESYSTEM_SECTORSPERCLUSTER, pbBuffer);
+	return gs_pfReadHDDSector(TRUE, TRUE, dwOffset, FILESYSTEM_SECTORSPERCLUSTER, pbBuffer);
 }
 
 /**
@@ -270,11 +273,20 @@ static BOOL kWriteHeadCheckPoint(BYTE* pbBuffer)
 static BOOL kReadINode(DWORD inumber, BYTE* pbBuffer)
 {
 	CHECKPOINT checkPoint;
+	DWORD iNodeOffset;
+
+	kPrintf("Read INode\n");
+
+	kMemSet(pbBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadHeadCheckPoint(pbBuffer);
 	kMemCpy(&checkPoint, pbBuffer, sizeof(CHECKPOINT));
 
+	iNodeOffset = checkPoint.iMap[inumber].iNodeOffset;
+	kPrintf("iNode Offset: %d\n", iNodeOffset);
 	kMemSet(pbBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-	return kReadCluster(checkPoint.iMap[inumber].iNodeOffset, pbBuffer);
+	kReadCluster(iNodeOffset, pbBuffer);
+	kPrintf("Read INode: %d, size: %d\n", ((INODE*)pbBuffer)->iNumber, ((INODE*)pbBuffer)->size);
+	return TRUE;
 }
 
 // segmentNum 세그먼트에 블록 1개 쓰기
@@ -292,7 +304,7 @@ static BOOL kWriteSegment(DWORD segmentNum, DWORD type, INODE* inode, BYTE* pbBu
 	DWORD curSegmentIdx;
 	// 현재 세그먼트 데이터 블록 수
 	DWORD curBlockCnt;
-	CHECKPOINT* checkPoint;
+	CHECKPOINT checkPoint;
 
 	curSegment = &segments[segmentNum];
 	SS = &(curSegment->SS);
@@ -302,20 +314,29 @@ static BOOL kWriteSegment(DWORD segmentNum, DWORD type, INODE* inode, BYTE* pbBu
 	curDataRegion = curSegment->dataRegion;
 
 	// 세그먼트에 블록 단위로 데이터 쓰기
-	kMemCpy(curDataRegion + curSegmentIdx, pbBuffer, FILESYSTEM_CLUSTERSIZE);
+	kMemCpy((char*)curDataRegion + curSegmentIdx, pbBuffer, FILESYSTEM_CLUSTERSIZE);
 	// 쓴 데이터 블록의 타입 할당
 	curTypeArr[curBlockCnt] = type;
 
-	// 아이노드의 경우 아이노드 맵 블록이 갱신되므로 별도의 작업 필요 없음
+	// 데이터 블록인 경우 세그먼트의 SS 블록을 갱신해준다.
+	if (type == 0)
+	{
+		SS->inumbers[curBlockCnt] = inode->iNumber;
+		SS->offsets[curBlockCnt] = inode->curDataBlocks - 1;
+	}
 
 	// 아이노드 맵 블록인 경우 디스크 상 체크포인트를 갱신한다.
 	if (type == 2)
 	{
 		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 		kReadHeadCheckPoint(gs_vbTempBuffer);
-		checkPoint = (CHECKPOINT*)gs_vbTempBuffer;
-		checkPoint->iMap[inode->iNumber].iNodeOffset = curSegment->segmentStartOffset
-				+ (curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+		kMemCpy(&checkPoint, gs_vbTempBuffer, sizeof(CHECKPOINT));
+		checkPoint.iMap[inode->iNumber].iNumber = inode->iNumber;
+		checkPoint.iMap[inode->iNumber].iNodeOffset = curSegment->segmentStartOffset
+			+ (curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+
+		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+		kMemCpy(gs_vbTempBuffer, &checkPoint, sizeof(CHECKPOINT));
 		kWriteHeadCheckPoint(gs_vbTempBuffer);
 	}
 
@@ -326,17 +347,14 @@ static BOOL kWriteSegment(DWORD segmentNum, DWORD type, INODE* inode, BYTE* pbBu
 	// 이후 작업 세그먼트를 다른 세그먼트로 교체한다.
 	if (curSegment->curBlockCnt >= FILESYSTEM_MAXSEGMENTCLUSTERCOUNT)
 	{
-		/*
-			가비지 컬렉션으로 인해 디스크 앞부분을 할당받아야 한다면 nextSegmentOffset을 다르게 할당해야 한다.
-		*/
-
+		kPrintf("Current Segment Full\n");
 		// 다른 세그먼트 초기화
 		kMemSet(&segments[!curWorkingSegment], 0, sizeof(SEGMENT));
 		// 다른 세그먼트 시작 주소 할당
 		segments[!curWorkingSegment].segmentStartOffset = segments[curWorkingSegment].nextSegmentOffset;
 		// 다른 세그먼트의 다음 세그먼트 주소 할당
 		segments[!curWorkingSegment].nextSegmentOffset = segments[!curWorkingSegment].segmentStartOffset +
-			(FILESYSTEM_MAXSEGMENTCLUSTERCOUNT * FILESYSTEM_SECTORSPERCLUSTER);
+			(SEGMENTBLOCKSIZE * FILESYSTEM_SECTORSPERCLUSTER);
 		// 세그먼트를 디스크에 통째로 Write
 		kWriteSegmentToDisk(curWorkingSegment);
 		// 세그먼트 교체
@@ -350,11 +368,11 @@ static BOOL kWriteSegment(DWORD segmentNum, DWORD type, INODE* inode, BYTE* pbBu
 // 체크포인트를 갱신해준다.
 static BOOL kWriteSegmentToDisk(DWORD segmentNum)
 {
+	kPrintf("segment Write To Disk\n");
 	SEGMENT* segment = &(segments[segmentNum]);
 	CHECKPOINT* checkPoint;
-	BYTE* dataRegion = segment->dataRegion;
-	// 세그먼트 구조체의 바이트 크기
-	DWORD segmentSizeLeft = sizeof(SEGMENT);
+	// 현재까지 디스크에 쓰인 세그먼트 구조체의 블록 수
+	DWORD curWriteSegmentBlocks = 0;
 
 	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadHeadCheckPoint(gs_vbTempBuffer);
@@ -365,18 +383,23 @@ static BOOL kWriteSegmentToDisk(DWORD segmentNum)
 
 	// 세그먼트 한 블록씩 디스크에 기록
 	// 세그먼트에 실제로 할당된 데이터 블록 갯수와 상관 없이 무조건 최대 세그먼트 크기만큼 기록
-	for (int i = 0; i < FILESYSTEM_MAXSEGMENTCLUSTERCOUNT; i++)
+	while(curWriteSegmentBlocks < SEGMENTBLOCKSIZE)
 	{
 		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-
-		if (segmentSizeLeft > 0)
+		if (curWriteSegmentBlocks == SEGMENTBLOCKSIZE - 1)
 		{
-			kMemCpy(gs_vbTempBuffer, dataRegion + (i * FILESYSTEM_CLUSTERSIZE), FILESYSTEM_CLUSTERSIZE);
+			kMemCpy(gs_vbTempBuffer, (char*)segment + (curWriteSegmentBlocks * FILESYSTEM_CLUSTERSIZE),
+				SEGMENTBLOCKSIZE * FILESYSTEM_CLUSTERSIZE - sizeof(SEGMENT));
 		}
+		else
+		{
+			kMemCpy(gs_vbTempBuffer, (char*)segment + (curWriteSegmentBlocks * FILESYSTEM_CLUSTERSIZE), FILESYSTEM_CLUSTERSIZE);
+		}
+
 		// 블럭 단위로 디스크에 Write
 		kWriteCluster(gs_stFileSystemManager.dwNextAllocateClusterOffset, gs_vbTempBuffer);
 		gs_stFileSystemManager.dwNextAllocateClusterOffset += FILESYSTEM_SECTORSPERCLUSTER;
-		segmentSizeLeft -= FILESYSTEM_CLUSTERSIZE;
+		curWriteSegmentBlocks += 1;
 	}
 
 	return TRUE;
@@ -403,31 +426,32 @@ static DWORD kFindFreeINode(void)
 	kMemCpy(&checkPoint, gs_vbTempBuffer, sizeof(CHECKPOINT));
 	inodeMap = checkPoint.iMap;
 
+	kPrintf("Find Free INode\n");
 	// 루프를 돌면서 빈 아이노드 검색
 	for (i = 1; i <= 128; i++)
 	{
-		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-		kReadCluster(inodeMap[i].iNodeOffset, gs_vbTempBuffer);
-		INODE* curINode = (INODE*)gs_vbTempBuffer;
-
+		kPrintf("iNodeMap[%d]: %d %d\n", i, inodeMap[i].iNumber, inodeMap[i].iNodeOffset);
 		// 아이넘버가 0번이면 빈 아이노드이다.
-		if (curINode->iNumber == 0)
+		if (inodeMap[i].iNumber == 0)
 		{
 			return i;
 		}
 	}
+	kPrintf("\n");
 
 	return 0;
 }
 
 /**
  *  루트 디렉터리에서 빈 디렉터리 엔트리를 반환
+	디렉터리 엔트리의 아이넘버가 0이면 빈 엔트리이다.
  */
 static int kFindFreeDirectoryEntry(void)
 {
 	DIRECTORYENTRY* pstEntry;
 	int i;
 
+	kPrintf("Find Free Directory Entry\n");
 	// 파일 시스템을 인식하지 못했으면 실패
 	if (gs_stFileSystemManager.bMounted == FALSE)
 	{
@@ -445,6 +469,7 @@ static int kFindFreeDirectoryEntry(void)
 	pstEntry = (DIRECTORYENTRY*)gs_vbTempBuffer;
 	for (i = 0; i < FILESYSTEM_MAXDIRECTORYENTRYCOUNT; i++)
 	{
+		kPrintf("Directory Entry[i] iNumber: %d\n", pstEntry[i].iNumber);
 		if (pstEntry[i].iNumber == 0)
 		{
 			return i;
@@ -514,9 +539,10 @@ static BOOL kGetDirectoryEntryData(int iIndex, DIRECTORYENTRY* pstEntry)
 /**
  *  루트 디렉터리에서 파일 이름이 일치하는 엔트리를 찾아서 인덱스를 반환
  */
-// pstEntry에 해당 엔트리 정보를 저장하고 인덱스 반환
+ // pstEntry에 해당 엔트리 정보를 저장하고 인덱스 반환
 static int kFindDirectoryEntry(const char* pcFileName, DIRECTORYENTRY* pstEntry)
 {
+	kPrintf("Find Directory Entry with Name: %s\n", pcFileName);
 	DIRECTORYENTRY* pstRootEntry;
 	int i;
 	int iLength;
@@ -540,10 +566,12 @@ static int kFindDirectoryEntry(const char* pcFileName, DIRECTORYENTRY* pstEntry)
 	{
 		if (kMemCmp(pstRootEntry[i].vcFileName, pcFileName, iLength) == 0)
 		{
+			kPrintf("Found Directory Entry[%d] with iNode %d\n", i, pstRootEntry[i].iNumber);
 			kMemCpy(pstEntry, pstRootEntry + i, sizeof(DIRECTORYENTRY));
 			return i;
 		}
 	}
+	kPrintf("Couldn't Find Directory Entry\n");
 	return -1;
 }
 
@@ -614,14 +642,9 @@ static BOOL kCreateFile(const char* pcFileName, DIRECTORYENTRY* pstEntry,
 		return FALSE;
 	}
 
-	// 아이노드 할당
-	kMemSet(&newInode, 0, sizeof(INODE));
-	newInode.iNumber = iNumber;
+	kPrintf("Create File\n");
 
-	// 아이노드 맵 할당
-	inodeMap.iNumber = iNumber;
-	inodeMap.iNodeOffset = curSegment->segmentStartOffset +
-		(curSegment->curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+	kPrintf("Found Free iNumber: %d\n", iNumber);
 
 	// 빈 디렉터리 엔트리를 검색
 	*piDirectoryEntryIndex = kFindFreeDirectoryEntry();
@@ -640,6 +663,15 @@ static BOOL kCreateFile(const char* pcFileName, DIRECTORYENTRY* pstEntry,
 	{
 		return FALSE;
 	}
+
+	// 아이노드 할당
+	kMemSet(&newInode, 0, sizeof(INODE));
+	newInode.iNumber = iNumber;
+
+	// 아이노드 맵 할당
+	inodeMap.iNumber = iNumber;
+	inodeMap.iNodeOffset = curSegment->segmentStartOffset +
+		(curSegment->curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
 
 	// 갱신 후 아이노드 정보를 세그먼트에 저장
 	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
@@ -679,9 +711,11 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	// 동기화
 	kLock(&(gs_stFileSystemManager.stMutex));
 
+	kPrintf("Open File with mode %s\n", pcMode);
 	// open을 수행하기 전 동기화를 위해 현재 세그먼트를 디스크에 write
 	kWriteSegmentToDisk(curWorkingSegment);
 
+	// 디스크로부터 체크포인트 읽기
 	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadHeadCheckPoint(gs_vbTempBuffer);
 	kMemCpy(&checkPoint, gs_vbTempBuffer, sizeof(CHECKPOINT));
@@ -690,7 +724,7 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	// 파일이 먼저 존재하는가 확인하고, 없다면 옵션을 보고 파일을 생성
 	//==========================================================================
 	iDirectoryEntryOffset = kFindDirectoryEntry(pcFileName, &stEntry);
-
+	kPrintf("Directory Entry Offset: %d\n", iDirectoryEntryOffset);
 	// 파일이 존재하지 않는 경우
 	if (iDirectoryEntryOffset == -1)
 	{
@@ -709,6 +743,16 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 			kUnlock(&(gs_stFileSystemManager.stMutex));
 			return NULL;
 		}
+
+		kPrintf("File Created while Opening\n");
+		// open을 수행하기 전 동기화를 위해 현재 세그먼트를 디스크에 write
+		kWriteSegmentToDisk(curWorkingSegment);
+
+		kPrintf("Created File iNumber: %d\n", stEntry.iNumber);
+
+		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+		kReadINode(stEntry.iNumber, gs_vbTempBuffer);
+		kMemCpy(&inode, gs_vbTempBuffer, sizeof(INODE));
 	}
 	//==========================================================================
 	// 파일의 내용을 비워야 하는 옵션이면 파일에 연결된 클러스터를 모두 제거하고
@@ -716,6 +760,7 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	//==========================================================================
 	else if (pcMode[0] == 'w')
 	{
+		kPrintf("Empty Current File\n");
 		// LFS에서는 데이터를 앞으로만 쓴다.
 		// 따라서 아이노드 데이터 블록 포인터를 모두 0으로 초기화 한
 		// 아이노드 세그먼트에 갱신 후 쓰기
@@ -724,7 +769,7 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 
 		// 아이노드 맵 정보 갱신
 		iNodeMap.iNumber = inode.iNumber;
-		iNodeMap.iNodeOffset = gs_stFileSystemManager.dwNextAllocateClusterOffset
+		iNodeMap.iNodeOffset = segments[curWorkingSegment].segmentStartOffset
 			+ (segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
 
 		// 세그먼트에 아이노드 쓰기
@@ -737,6 +782,9 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 		kMemCpy(gs_vbTempBuffer, &iNodeMap, sizeof(INODEMAPBLOCK));
 		kWriteSegment(curWorkingSegment, 2, &inode.iNumber, gs_vbTempBuffer);
 
+		// open을 수행하기 전 동기화를 위해 현재 세그먼트를 디스크에 write
+		kWriteSegmentToDisk(curWorkingSegment);
+
 		// 파일의 내용이 모두 비워졌으므로, 크기를 0으로 설정
 		stEntry.dwFileSize = 0;
 		if (kSetDirectoryEntryData(iDirectoryEntryOffset, &stEntry) == FALSE)
@@ -746,7 +794,13 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 			return NULL;
 		}
 	}
-
+	else
+	{
+		kPrintf("iNumber %d in mode r\n", stEntry.iNumber);
+		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+		kReadINode(stEntry.iNumber, gs_vbTempBuffer);
+		kMemCpy(&inode, gs_vbTempBuffer, sizeof(INODE));
+	}
 	//==========================================================================
 	// 파일 핸들을 할당 받아 데이터를 설정한 후 반환
 	//==========================================================================
@@ -759,6 +813,7 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 		return NULL;
 	}
 
+	kPrintf("Current File INode Info: %d %d %d\n", inode.iNumber, inode.size, inode.dataBlockOffset[0]);
 	// 파일 핸들에 파일 정보를 설정
 	pstFile->bType = FILESYSTEM_TYPE_FILE;
 	pstFile->stFileHandle.iDirectoryEntryOffset = iDirectoryEntryOffset;
@@ -803,20 +858,22 @@ DWORD kReadFile(void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile)
 		return 0;
 	}
 
+	kPrintf("Read File\n");
+	// 동기화를 위해 세그먼트 비우기
 	kWriteSegmentToDisk(curWorkingSegment);
 	pstFileHandle = &(pstFile->stFileHandle);
-
 
 	iNumber = pstFileHandle->iNumber;
 	kReadINode(iNumber, gs_vbTempBuffer);
 	kMemCpy(&iNode, gs_vbTempBuffer, sizeof(INODE));
 
-	// 파일의 끝이면 종료
-	if ((iNode.curDataBlocks == 0) || (
-			(pstFileHandle->dwCurrentFileOffset == (iNode.curDataBlocks - 1))
-			&& (pstFileHandle->dwCurrentOffset == iNode.dataBlockActualDataSize[pstFileHandle->dwCurrentFileOffset])
-			))
+	// 파일이 비었거나 이미 파일의 끝이면 종료
+	if ((pstFileHandle->dwFileSize == 0) || (
+		(pstFileHandle->dwCurrentFileOffset == (iNode.curDataBlocks - 1))
+		&& (pstFileHandle->dwCurrentOffset == iNode.dataBlockActualDataSize[pstFileHandle->dwCurrentFileOffset])
+		))
 	{
+		kPrintf("Read Failed with %d %d\n", pstFileHandle->iNumber, pstFileHandle->dwStartFileOffset);
 		return 0;
 	}
 
@@ -824,6 +881,7 @@ DWORD kReadFile(void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile)
 	currentDataBlockIdx = pstFileHandle->dwCurrentFileOffset;
 	// 현재 데이터 블록에서의 오프셋
 	dwOffsetInCluster = pstFileHandle->dwCurrentOffset;
+	// 실제로 읽을 데이터 크기
 	actualDataSize += (iNode.dataBlockActualDataSize[currentDataBlockIdx]
 		- dwOffsetInCluster);
 
@@ -852,13 +910,16 @@ DWORD kReadFile(void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile)
 			dwCopySize = MIN(iNode.dataBlockActualDataSize[currentDataBlockIdx]
 				- pstFileHandle->dwCurrentOffset, dwTotalCount - dwReadCount);
 		}
+		// 데이터 블록의 처음부터 읽는 경우
 		else
 		{
 			dwCopySize = MIN(iNode.dataBlockActualDataSize[currentDataBlockIdx], dwTotalCount - dwReadCount);
 		}
 
+		// 버퍼에 읽은 데이터 출력
 		kMemCpy((char*)pvBuffer + dwReadCount, gs_vbTempBuffer, dwCopySize);
 		dwReadCount += dwCopySize;
+		currentDataBlockIdx++;
 
 		// 데이터 블록의 끝까지 읽은 경우
 		if (dwCopySize == iNode.dataBlockActualDataSize[currentDataBlockIdx])
@@ -928,6 +989,10 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 	FILEHANDLE* pstFileHandle;
 	DIRECTORYENTRY stEntry;
 	INODE tempNode;
+	BYTE tempFrontData[FILESYSTEM_SECTORSPERCLUSTER * 512];
+	BYTE tempBackData[FILESYSTEM_SECTORSPERCLUSTER * 512];
+	DWORD tempFrontSize;
+	DWORD tempBackSize;
 	DWORD startFileOffset;
 	DWORD blocksToMove;
 	DWORD i;
@@ -940,30 +1005,31 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 	}
 	pstFileHandle = &(pstFile->stFileHandle);
 
-	// 디렉토리 엔트리 읽어오기
+	// 파일에 해당하는 디렉토리 엔트리 읽어오기
 	kGetDirectoryEntryData(pstFileHandle->iDirectoryEntryOffset, &stEntry);
 
+	kMemSet(tempFrontData, 0, sizeof(tempFrontData));
+	kMemSet(tempBackData, 0, sizeof(tempBackData));
+
 	// 파일 아이노드 읽어오기
-	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	iNumber = pstFileHandle->iNumber;
+	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadINode(iNumber, gs_vbTempBuffer);
 	kMemCpy(&iNode, gs_vbTempBuffer, sizeof(INODE));
 	kMemCpy(&tempNode, &iNode, sizeof(INODE));
 
-	// 총 바이트 수
+	// 파일에 쓸 총 바이트 수
 	dwTotalCount = dwSize * dwCount;
 
 	// 동기화
 	kLock(&(gs_stFileSystemManager.stMutex));
-
+	kWriteSegmentToDisk(curWorkingSegment);
 	// 다 쓸 때까지 반복
 	dwWriteCount = 0;
 
-	// 현재 블록이 파일의 처음이거나 파일의 끝(SEEK_END)이면 새로운 데이터 블록 추가
-	if ( (pstFileHandle->dwCurrentOffset == 0 && pstFileHandle->dwCurrentFileOffset == 0) ||
-			(iNode.curDataBlocks == 0 || ((pstFileHandle->dwCurrentFileOffset == (iNode.curDataBlocks - 1))
-		&& (pstFileHandle->dwCurrentOffset == iNode.dataBlockActualDataSize[iNode.curDataBlocks - 1])))
-		)
+	// 파일이 비었거나 파일의 끝(SEEK_END)이면 새로운 데이터 블록 추가
+	if (iNode.size == 0 || ((pstFileHandle->dwCurrentFileOffset == (iNode.curDataBlocks - 1))
+			&& (pstFileHandle->dwCurrentOffset == iNode.dataBlockActualDataSize[iNode.curDataBlocks - 1])))
 	{
 		while (dwWriteCount != dwTotalCount)
 		{
@@ -972,6 +1038,110 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 
 			// 아이노드 갱신
 			iNode.dataBlockOffset[iNode.curDataBlocks] = segments[curWorkingSegment].segmentStartOffset
+				+ (segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+			iNode.dataBlockActualDataSize[iNode.curDataBlocks] = dwCopySize;
+			iNode.size += dwCopySize;
+			iNode.curDataBlocks++;
+
+			// 세그먼트에 새로운 데이터 블록 쓰기
+			kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+			kMemCpy(gs_vbTempBuffer, (char*)pvBuffer + dwWriteCount, dwCopySize);
+			kWriteSegment(curWorkingSegment, 0, &iNode, gs_vbTempBuffer);
+
+			// 아이노드 맵 정보 갱신
+			iNodeMap.iNumber = iNode.iNumber;
+			iNodeMap.iNodeOffset = segments[curWorkingSegment].segmentStartOffset +
+				(segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+
+			// 세그먼트에 아이노드 쓰기
+			kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+			kMemCpy(gs_vbTempBuffer, &iNode, sizeof(INODE));
+			kWriteSegment(curWorkingSegment, 1, &iNode, gs_vbTempBuffer);
+
+			// 세그먼트에 아이노드 맵 쓰기
+			kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+			kMemCpy(gs_vbTempBuffer, &iNodeMap, sizeof(INODEMAPBLOCK));
+			kWriteSegment(curWorkingSegment, 2, &iNode, gs_vbTempBuffer);
+
+			// 파일 핸들 갱신
+			pstFileHandle->dwCurrentFileOffset++;
+			pstFileHandle->dwCurrentOffset = 0;
+			pstFileHandle->dwFileSize += dwCopySize;
+
+			dwWriteCount += dwCopySize;
+		}
+	}
+	// 기존 파일의 중간에서부터 데이터를 쓰는 경우
+	// 현재 블록을 '처음부터 중간' / '중간부터 끝까지'의 블록으로 나눈 후,
+	// '처음부터 중간' 블록의 남은 공간부터 입력된 데이터를 쓰기 시작
+	// '중간부터 끝까지' 데이터는 별도의 데이터 블록으로 추가한다.
+	// 체크포인트의 아이노드 맵, 세그먼트 요약 블록, 아이노드를 갱신해야 한다.
+	else
+	{
+		startFileOffset = pstFileHandle->dwCurrentFileOffset;
+		// 현재 블록 읽기
+		kReadCluster(iNode.dataBlockOffset[startFileOffset], gs_vbTempBuffer);
+
+		// 현재 블록을 '처음부터 중간' / '중간부터 끝까지'으로 나누기
+		tempFrontSize = pstFileHandle->dwCurrentOffset;
+		tempBackSize = iNode.dataBlockActualDataSize[startFileOffset] - tempFrontSize;
+
+		kMemCpy(tempFrontData, gs_vbTempBuffer, tempFrontSize);
+		kMemCpy(tempBackData, (char*)gs_vbTempBuffer + tempFrontSize, tempBackSize);
+
+		// '처음부터 중간' 블록에 추가로 쓸 블록
+		dwCopySize = MIN(FILESYSTEM_CLUSTERSIZE - tempFrontSize, dwTotalCount - dwWriteCount);
+
+		// 아이노드 갱신
+		iNode.dataBlockOffset[startFileOffset] = segments[curWorkingSegment].segmentStartOffset
+			+ (segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+		iNode.dataBlockActualDataSize[startFileOffset] += dwCopySize;
+		iNode.size += dwCopySize;
+
+		// '처음부터 중간' 블록에 파일에 쓸 데이터를 추가한 블록 세그먼트에 쓰기
+		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+		kMemCpy(gs_vbTempBuffer, tempFrontData, tempFrontSize);
+		kMemCpy((char*)gs_vbTempBuffer + tempFrontSize, pvBuffer, dwCopySize);
+		kWriteSegment(curWorkingSegment, 0, &iNode, gs_vbTempBuffer);
+
+		// 아이노드 맵 정보 갱신
+		iNodeMap.iNumber = iNode.iNumber;
+		iNodeMap.iNodeOffset = segments[curWorkingSegment].segmentStartOffset +
+			(segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
+
+		// 세그먼트에 아이노드 쓰기
+		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+		kMemCpy(gs_vbTempBuffer, &iNode, sizeof(INODE));
+		kWriteSegment(curWorkingSegment, 1, &iNode, gs_vbTempBuffer);
+
+		// 세그먼트에 아이노드 맵 쓰기
+		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+		kMemCpy(gs_vbTempBuffer, &iNodeMap, sizeof(INODEMAPBLOCK));
+		kWriteSegment(curWorkingSegment, 2, &iNode, gs_vbTempBuffer);
+
+		// 파일 핸들 갱신
+		if (startFileOffset == 0)
+		{
+			pstFileHandle->dwStartFileOffset = iNode.dataBlockOffset[startFileOffset];
+		}
+		pstFileHandle->dwCurrentFileOffset++;
+		pstFileHandle->dwCurrentOffset = 0;
+		pstFileHandle->dwFileSize += dwCopySize;
+
+		dwWriteCount += dwCopySize;
+
+		blocksToMove = 0;
+		// 파일에 쓸 부분 중 남은 부분은 새로운 데이터 블록을 할당받음
+		while (dwWriteCount != dwTotalCount)
+		{
+			// 옮겨야 할 데이터 블록 포인터 수
+			blocksToMove++;
+
+			// 파일에 쓸 데이터 중 1블럭 크기 추출
+			dwCopySize = MIN(FILESYSTEM_CLUSTERSIZE, dwTotalCount - dwWriteCount);
+
+			// 아이노드 갱신
+			iNode.dataBlockOffset[pstFileHandle->dwCurrentFileOffset] = segments[curWorkingSegment].segmentStartOffset
 				+ (segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
 			iNode.dataBlockActualDataSize[iNode.curDataBlocks] += dwCopySize;
 			iNode.size += dwCopySize;
@@ -1004,26 +1174,15 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 
 			dwWriteCount += dwCopySize;
 		}
-	}
-	// 현재 블록이 파일의 중간이라면 해당 중간 블록 부터 끝까지 새로 세그먼트에 쓰기
-	// 체크포인트의 아이노드 맵, 세그먼트 요약 블록, 아이노드를 갱신해야 한다.
-	else
-	{
-		startFileOffset = pstFileHandle->dwCurrentFileOffset;
 
-		// 현재 블록에 쓸 수 있는 남은 공간 계산
-		dwCopySize;
-
+		// '중간부터 끝까지' 블록 데이터 세그먼트에 쓰기
 		// 아이노드 갱신
-		iNode.dataBlockOffset[startFileOffset] = segments[curWorkingSegment].segmentStartOffset
+		iNode.dataBlockOffset[pstFileHandle->dwCurrentFileOffset] = segments[curWorkingSegment].segmentStartOffset
 			+ (segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
-		iNode.dataBlockActualDataSize[startFileOffset] += dwCopySize;
-		iNode.size += dwCopySize;
+		iNode.dataBlockActualDataSize[pstFileHandle->dwCurrentFileOffset] = tempBackSize;
 
-		// 현재 블록의 남은 공간에 파일에 쓸 내용의 앞부분을 추가하여 세그먼트에 쓰기
 		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-		kReadCluster(iNode.dataBlockOffset[startFileOffset], gs_vbTempBuffer);
-		kMemCpy((char*)gs_vbTempBuffer + pstFileHandle->dwCurrentOffset, (char*)pvBuffer, dwCopySize);
+		kMemCpy(gs_vbTempBuffer, tempBackData, tempBackSize);
 		kWriteSegment(curWorkingSegment, 0, &iNode, gs_vbTempBuffer);
 
 		// 아이노드 맵 정보 갱신
@@ -1044,63 +1203,17 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 		// 파일 핸들 갱신
 		pstFileHandle->dwCurrentFileOffset++;
 		pstFileHandle->dwCurrentOffset = 0;
-		pstFileHandle->dwFileSize += dwCopySize;
-
-		dwWriteCount += dwCopySize;
-
-		blocksToMove = 0;
-
-		// 파일에 쓸 부분 중 남은 부분은 새로운 데이터 블록을 할당받음
-		while (dwWriteCount != dwTotalCount)
-		{
-			// 옮겨야 할 데이터 블록 포인터 수
-			blocksToMove++;
-
-			// 파일에 쓸 데이터 중 1블럭 크기 추출
-			dwCopySize = MIN(FILESYSTEM_CLUSTERSIZE, dwTotalCount - dwWriteCount);
-
-			// 아이노드 갱신
-			iNode.dataBlockOffset[startFileOffset + blocksToMove] = segments[curWorkingSegment].segmentStartOffset
-				+ (segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
-			iNode.dataBlockActualDataSize[iNode.curDataBlocks] += dwCopySize;
-			iNode.size += dwCopySize;
-			iNode.curDataBlocks++;
-
-			// 세그먼트에 데이터 블록 쓰기
-			kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-			kMemCpy(gs_vbTempBuffer, (char*)pvBuffer + dwWriteCount, dwCopySize);
-			kWriteSegment(curWorkingSegment, 0, &iNode, gs_vbTempBuffer);
-
-			// 아이노드 맵 정보 갱신
-			iNodeMap.iNumber = iNode.iNumber;
-			iNodeMap.iNodeOffset = segments[curWorkingSegment].segmentStartOffset +
-				(segments[curWorkingSegment].curBlockCnt * FILESYSTEM_SECTORSPERCLUSTER);
-
-			// 세그먼트에 아이노드 쓰기
-			kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-			kMemCpy(gs_vbTempBuffer, &iNode, sizeof(INODE));
-			kWriteSegment(curWorkingSegment, 1, &iNode, gs_vbTempBuffer);
-
-			// 세그먼트에 아이노드 맵 쓰기
-			kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-			kMemCpy(gs_vbTempBuffer, &iNodeMap, sizeof(INODEMAPBLOCK));
-			kWriteSegment(curWorkingSegment, 2, &iNode, gs_vbTempBuffer);
-
-			// 파일 핸들 갱신
-			pstFileHandle->dwCurrentFileOffset++;
-			pstFileHandle->dwCurrentOffset = 0;
-			pstFileHandle->dwFileSize += dwCopySize;
-
-			dwWriteCount += dwCopySize;
-		}
 
 		// 추가된 데이터 블록으로 인해 뒤로 밀린 데이터 블록들 복구
-		for (i = startFileOffset + 1; i < tempNode.curDataBlocks; i++)
+		for (i = 0; i < blocksToMove; i++)
 		{
-			iNode.dataBlockOffset[pstFileHandle->dwCurrentFileOffset] =
-				tempNode.dataBlockOffset[i];
-			iNode.dataBlockActualDataSize[pstFileHandle->dwCurrentFileOffset] =
-				tempNode.dataBlockActualDataSize[i];
+			iNode.dataBlockOffset[startFileOffset + 1 + blocksToMove + i] =
+				tempNode.dataBlockOffset[startFileOffset + 1 + i];
+			iNode.dataBlockActualDataSize[startFileOffset + 1 + blocksToMove + i] =
+				tempNode.dataBlockActualDataSize[startFileOffset + 1 + i];
+
+			pstFileHandle->dwCurrentFileOffset++;
+			pstFileHandle->dwCurrentOffset = 0;
 		}
 
 		// 아이노드 맵 정보 갱신
@@ -1117,14 +1230,13 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 		kMemCpy(gs_vbTempBuffer, &iNodeMap, sizeof(INODEMAPBLOCK));
 		kWriteSegment(curWorkingSegment, 2, &iNode, gs_vbTempBuffer);
-
-		// 파일 핸들 갱신
-		pstFileHandle->dwCurrentFileOffset += (tempNode.curDataBlocks - (startFileOffset + 1));
-		pstFileHandle->dwCurrentOffset = tempNode.dataBlockActualDataSize[tempNode.curDataBlocks - 1];
 	}
 	//==========================================================================
    // 파일 크기가 변했다면 루트 디렉터리에 있는 디렉터리 엔트리 정보를 갱신
   //==========================================================================
+
+	pstFileHandle->dwCurrentFileOffset--;
+	pstFileHandle->dwCurrentOffset = iNode.dataBlockActualDataSize[pstFileHandle->dwCurrentFileOffset];
 
 	if (pstFileHandle->dwFileSize > tempNode.size)
 	{
@@ -1146,6 +1258,7 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 	DWORD dwRealOffset;
 	DWORD i;
 	DWORD tempOffset;
+	DWORD curEntireFileOffset = 0;
 	FILEHANDLE* pstFileHandle;
 	INODE iNode;
 
@@ -1157,6 +1270,23 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 	}
 	pstFileHandle = &(pstFile->stFileHandle);
 
+
+	// 파일 아이노드 가져오기
+	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
+	kReadINode(pstFileHandle->iNumber, gs_vbTempBuffer);
+	kMemCpy(&iNode, gs_vbTempBuffer, sizeof(INODE));
+
+	for (i = 0; i <= pstFileHandle->dwCurrentFileOffset; i++)
+	{
+		if (i == pstFileHandle->dwCurrentFileOffset)
+		{
+			curEntireFileOffset += pstFileHandle->dwCurrentOffset;
+		}
+		else
+		{
+			curEntireFileOffset += iNode.dataBlockActualDataSize[i];
+		}
+	}
 	//==========================================================================
 	// Origin과 Offset을 조합하여 파일 시작을 기준으로 파일 포인터를 옮겨야 할 위치를
 	// 계산
@@ -1183,13 +1313,13 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 		// 이동할 오프셋이 음수이고 현재 파일 포인터의 값보다 크다면
 		// 더 이상 갈 수 없으므로 파일의 처음으로 이동
 		if ((iOffset < 0) &&
-			(pstFileHandle->dwCurrentOffset <= (DWORD)-iOffset))
+			(curEntireFileOffset <= (DWORD)-iOffset))
 		{
 			dwRealOffset = 0;
 		}
 		else
 		{
-			dwRealOffset = pstFileHandle->dwCurrentOffset + iOffset;
+			dwRealOffset = curEntireFileOffset + iOffset;
 		}
 		break;
 
@@ -1198,7 +1328,7 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 		// 이동할 오프셋이 음수이고 현재 파일 포인터의 값보다 크다면
 		// 더 이상 갈 수 없으므로 파일의 처음으로 이동
 		if ((iOffset < 0) &&
-			(pstFileHandle->dwFileSize <= (DWORD)-iOffset))
+			(curEntireFileOffset <= (DWORD)-iOffset))
 		{
 			dwRealOffset = 0;
 		}
@@ -1209,10 +1339,6 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 		break;
 	}
 
-	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
-	kReadINode(pstFileHandle->iNumber, gs_vbTempBuffer);
-	kMemCpy(&iNode, gs_vbTempBuffer, sizeof(INODE));
-
 	pstFileHandle->dwCurrentFileOffset = 0;
 	pstFileHandle->dwCurrentOffset = 0;
 
@@ -1221,6 +1347,7 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 		if (dwRealOffset < iNode.dataBlockActualDataSize[i])
 		{
 			pstFileHandle->dwCurrentOffset = dwRealOffset;
+			dwRealOffset = 0;
 			break;
 		}
 		dwRealOffset -= iNode.dataBlockActualDataSize[i];
@@ -1228,7 +1355,7 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 		pstFileHandle->dwCurrentOffset = 0;
 	}
 
-	if (dwRealOffset < 0)
+	if (dwRealOffset > 0)
 	{
 		return -1;
 	}
@@ -1275,8 +1402,7 @@ BOOL kIsFileOpened(const DIRECTORYENTRY* pstEntry)
 
 		// 파일 타입 중에서 시작 클러스터가 일치하면 반환
 		if ((pstFile[i].bType == FILESYSTEM_TYPE_FILE) &&
-			(pstFile[i].stFileHandle.dwStartFileOffset ==
-				iNode->dataBlockOffset[0]))
+			(pstFile[i].stFileHandle.dwStartFileOffset == iNode->dataBlockOffset[0]))
 		{
 			return TRUE;
 		}
@@ -1327,6 +1453,7 @@ int kRemoveFile(const char* pcFileName)
 	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadHeadCheckPoint(gs_vbTempBuffer);
 	kMemCpy(&checkPoint, gs_vbTempBuffer, sizeof(CHECKPOINT));
+	checkPoint.iMap[stEntry.iNumber].iNumber = 0;
 	checkPoint.iMap[stEntry.iNumber].iNodeOffset = 0;
 
 	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
@@ -1342,9 +1469,6 @@ int kRemoveFile(const char* pcFileName)
 		return -1;
 	}
 
-	/*
-		체크포인트의 세그먼트 오프셋도 갱신해줘야 한다.
-	*/
 	// 동기화
 	kUnlock(&(gs_stFileSystemManager.stMutex));
 	return 0;
@@ -1382,7 +1506,7 @@ DIR* kOpenDirectory(const char* pcDirectoryName)
 	}
 
 	// 루트 디렉터리를 읽음
-	if (kReadRootDirectory((BYTE*) pstDirectoryBuffer) == FALSE)
+	if (kReadRootDirectory((BYTE*)pstDirectoryBuffer) == FALSE)
 	{
 		// 실패하면 핸들과 메모리를 모두 반환해야 함
 		kFreeFileDirectoryHandle(pstDirectory);

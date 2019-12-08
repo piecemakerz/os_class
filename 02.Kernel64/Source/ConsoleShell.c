@@ -2490,3 +2490,4 @@ static void kTestFileIO( const char* pcParameterBuffer )
     // 메모리를 해제
     kFreeMemory( pbBuffer );
 }
+
