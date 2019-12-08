@@ -55,7 +55,9 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
 		{ "writefile", "Write Data To File, ex) writefile a.txt", kWriteDataToFile },
 		{ "readfile", "Read Data From File, ex) readfile a.txt", kReadDataFromFile },
 		{ "testfileio", "Test File I/O Function", kTestFileIO },
-        { "registtasktoscheduler", "Regist Task to Scheduler", RegistTaskToScheduler },
+        { "registtasktoscheduler", "Regist Task to Scheduler, ex)2 2019 12 08 21 25 cls", registTaskToScheduler },
+        { "showscheduledtask", "Show Scheduled Task", showScheduledTask },
+        { "deletescheduledtask", "Delete Scheduled Task, ex)deletescheduledtask 4(id)", deleteScheduledTask },
 };                                     
 
 //==============================================================================
@@ -2499,7 +2501,70 @@ static void kTestFileIO( const char* pcParameterBuffer )
     kFreeMemory( pbBuffer );
 }
 
-static void RegistTaskToScheduler( const char* pcParameterBuffer )
+static void registTaskToScheduler( const char* pcParameterBuffer )
 {
-    //addTrigger();
+    PARAMETERLIST stList;
+
+    int i;
+    int j;
+
+    char cType[ 30 ];
+    char cYear[ 30 ];
+    char cMonth[ 30 ];
+    char cDay[ 30 ];
+    char cHour[ 30 ];
+    char cMinute[ 30 ];
+
+    int taskType;
+    int year, month, day, hour, minute;
+    char parameter[MAX_LENGTH_SCHEDULER_PARAMETER];
+
+    // 파라미터를 추출
+    kInitializeParameter( &stList, pcParameterBuffer );
+    kGetNextParameter( &stList, cType );
+    kGetNextParameter( &stList, cYear );
+    kGetNextParameter( &stList, cMonth );
+    kGetNextParameter( &stList, cDay );
+    kGetNextParameter( &stList, cHour );
+    kGetNextParameter( &stList, cMinute );
+
+    taskType = kAToI( cType, 10 );
+    year = kAToI( cYear, 10 );
+    month = kAToI( cMonth, 10 );
+    day = kAToI( cDay, 10 );
+    hour = kAToI( cHour, 10 );
+    minute = kAToI( cMinute, 10 );
+
+    i = stList.iCurrentPosition;
+    j = 0;
+    while(1)
+    {
+        if(stList.pcBuffer[i] == '\0')
+        {
+            parameter[j] = stList.pcBuffer[i];
+            break;
+        }
+        else
+        {
+            parameter[j] = stList.pcBuffer[i];
+            i++;
+            j++;
+        }
+    }
+
+    addTrigger(taskType, year, month, day, hour, minute, parameter);
+}
+
+static void showScheduledTask( const char* pcParameterBuffer )
+{
+    showTriggers();
+}
+
+static void deleteScheduledTask( const char* pcParameterBuffer )
+{
+    PARAMETERLIST stList;
+    char cIndex[ 30 ];
+    kInitializeParameter( &stList, pcParameterBuffer );
+    kGetNextParameter( &stList, cIndex );
+    deleteTrigger(kAToI( cIndex, 10 ));
 }

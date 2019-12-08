@@ -129,5 +129,7 @@ static void kWriteDataToFile( const char* pcParameterBuffer );
 static void kReadDataFromFile( const char* pcParameterBuffer );
 static void kTestFileIO( const char* pcParameterBuffer );
 // for Task Scheduler
-static void RegistTaskToScheduler( const char* pcParameterBuffer );
+static void registTaskToScheduler( const char* pcParameterBuffer );
+static void showScheduledTask( const char* pcParameterBuffer );
+static void deleteScheduledTask( const char* pcParameterBuffer );
 #endif /*__CONSOLESHELL_H__*/
