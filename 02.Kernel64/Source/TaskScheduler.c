@@ -2,6 +2,7 @@
 
 static TASKTRIGGER triggers[MAX_NUM_SCHEDULED_TASK];
 static int numScheduledTask;
+static BOOL thisIsRepeatedTask;
 
 void initScheduler()
 {
@@ -29,6 +30,7 @@ static void startScheduler()
     while(1)
     {
         for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++){
+            thisIsRepeatedTask = FALSE;
             if(triggers[i].taskType)
             {
                 if(cmpPresentDate(&(triggers[i])) < 1)
@@ -42,8 +44,10 @@ static void startScheduler()
                     {
                         kExecuteCommand( triggers[i].parameter );
                     }
-                    resetTrigger(&(triggers[i]));
-                    numScheduledTask--;
+                    if(thisIsRepeatedTask == FALSE){
+                        resetTrigger(&(triggers[i]));
+                        numScheduledTask--;
+                    }
                 }
             }
         }
@@ -70,6 +74,7 @@ void addTrigger(int taskType, int year, int month, int day, int hour, int minute
                 triggers[i].day = day;
                 triggers[i].hour = hour;
                 triggers[i].minute = minute;
+                triggers[i].lastMinute = 415325136;
                 j = 0;
                 while(1)
                 {
@@ -100,19 +105,34 @@ int cmpPresentDate(TASKTRIGGER *trigger)
     kReadRTCTime( &bHour, &bMinute, &bSecond );
     kReadRTCDate( &wYear, &bMonth, &bDayOfMonth, &bDayOfWeek );
 
-    if(trigger->year == wYear)
+    if(trigger->year == (int)'*' ||
+        trigger->month == (int) '*' ||
+        trigger->day == (int) '*' ||
+        trigger->hour == (int) '*' ||
+        trigger->minute == (int) '*')
+        thisIsRepeatedTask = TRUE;
+
+    if(triggers->lastMinute == bMinute){
+        return 1;
+    }else
     {
-        if(trigger->month == bMonth)
+        triggers->lastMinute = bMinute;
+    }
+    
+
+    if(trigger->year == wYear || trigger->year == (int)'*')
+    {
+        if(trigger->month == bMonth || trigger->month == (int)'*')
         {
-            if(trigger->day == bDayOfMonth)
+            if(trigger->day == bDayOfMonth || trigger->day == (int)'*')
             {
-                if(trigger->hour == bHour)
+                if(trigger->hour == bHour || trigger->hour == (int)'*')
                 {
-                    if(trigger->minute == bMinute)
+                    if(trigger->minute == bMinute || trigger->minute == (int)'*')
                     {
                         return 0;
                     }
-                    else if(trigger->minute > bMinute)
+                    else if(trigger->minute > bMinute || trigger->minute == (int)'*')
                     {
                         return 1;
                     }
@@ -121,7 +141,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
                         return -1;
                     }
                 }
-                else if(trigger->hour > bHour)
+                else if(trigger->hour > bHour || trigger->hour == (int)'*')
                 {
                     return 1;
                 }
@@ -130,7 +150,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
                     return -1;
                 }
             }
-            else if(trigger->day > bDayOfMonth)
+            else if(trigger->day > bDayOfMonth || trigger->day == (int)'*')
             {
                 return 1;
             }
@@ -139,7 +159,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
                 return -1;
             }
         }
-        else if(trigger->month > bMonth)
+        else if(trigger->month > bMonth || trigger->month == (int)'*')
         {
             return 1;
         }
@@ -148,7 +168,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
             return -1;
         }
     }
-    else if(trigger->year > wYear)
+    else if(trigger->year > wYear || trigger->year == '*')
     {
         return 1;
     }

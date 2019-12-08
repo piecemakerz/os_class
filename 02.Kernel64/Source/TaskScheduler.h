@@ -13,7 +13,7 @@
 typedef struct taskTriggerStruct
 {
     int taskType; // 0 is nothing
-    int year, month, day, hour, minute;
+    int year, month, day, hour, minute, lastMinute;
     char parameter[MAX_LENGTH_SCHEDULER_PARAMETER];
 } TASKTRIGGER;
 

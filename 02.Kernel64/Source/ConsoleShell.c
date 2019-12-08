@@ -95,8 +95,9 @@ void kStartConsoleShell( void )
     curMallocPos = 0x1436F0;
     head = kMalloc(sizeof(Trie));
     kTrieInitialize(head);
-
-    for(int i=0; i<34; i++)
+    
+    int iCount = sizeof( gs_vstCommandTable ) / sizeof( SHELLCOMMANDENTRY );
+    for(int i=0; i<iCount; i++)
     {
     	kTrieInsert(head, gs_vstCommandTable[i].pcCommand);
     }
@@ -2529,11 +2530,12 @@ static void registTaskToScheduler( const char* pcParameterBuffer )
     kGetNextParameter( &stList, cMinute );
 
     taskType = kAToI( cType, 10 );
-    year = kAToI( cYear, 10 );
-    month = kAToI( cMonth, 10 );
-    day = kAToI( cDay, 10 );
-    hour = kAToI( cHour, 10 );
-    minute = kAToI( cMinute, 10 );
+    year = cYear[0] == '*' ? (int)'*' : kAToI( cYear, 10 );
+    month = cMonth[0] == '*' ? (int)'*' : kAToI( cMonth, 10 );
+    day = cDay[0]== '*' ? (int)'*' : kAToI( cDay, 10 );
+    hour = cHour[0] == '*' ? (int)'*' : kAToI( cHour, 10 );
+    minute = cMinute[0] == '*' ? (int)'*' : kAToI( cMinute, 10 );
+    kPrintf("%c\n", minute);
 
     i = stList.iCurrentPosition;
     j = 0;
