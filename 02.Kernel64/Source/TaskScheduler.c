@@ -70,15 +70,16 @@ void showTriggers()
 {
     int i = 0; // 0은 headTrigger, 1부터 정상 trigger
     TASKTRIGGER* trigger = headTrigger;
-    kPrintf("[id] YYYY MM DD HH MM EVENT\n");
+    if (trigger->next != trigger)
+        kPrintf("[id] YYYY MM DD HH MM EVENT\n");
     while(trigger->next != trigger){
         trigger = trigger->next;
         kPrintf("[%2d] ", i++);
         trigger->year  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%4d ", trigger->year);;
-        trigger->month == TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%2d ", trigger->month);
-        trigger->day   == TASK_REPEAT ? kPrintf("  %c ", '*') : kPrintf("%2d ", trigger->day);
-        trigger->hour  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%2d ", trigger->hour);
-        trigger->minute== TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%2d ", trigger->minute);
+        trigger->month == TASK_REPEAT ? kPrintf(" %c ", '*') : kPrintf("%2d ", trigger->month);
+        trigger->day   == TASK_REPEAT ? kPrintf(" %c ", '*') : kPrintf("%2d ", trigger->day);
+        trigger->hour  == TASK_REPEAT ? kPrintf(" %c ", '*') : kPrintf("%2d ", trigger->hour);
+        trigger->minute== TASK_REPEAT ? kPrintf(" %c ", '*') : kPrintf("%2d ", trigger->minute);
         kPrintf("%s\n", trigger->parameter);
     }
     kPrintf("Number of Scheduled Tasks: %d\n", i);
