@@ -1,4 +1,5 @@
 #include "HardDisk.h"
+#include "Utility.h"
 
 // 하드 디스크를 관리하는 자료구조
 static HDDMANAGER gs_stHDDManager;

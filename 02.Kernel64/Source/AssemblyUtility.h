@@ -3,19 +3,18 @@
 
 #include "Types.h"
 #include "Task.h"
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  ÇÔ¼ö
 //
 ////////////////////////////////////////////////////////////////////////////////
-BYTE kInPortByte( WORD wPort );
-void kOutPortByte( WORD wPort, BYTE bData );
+extern BYTE kInPortByte( WORD wPort );
+extern void kOutPortByte( WORD wPort, BYTE bData );
 // ?? ??? ???? ??
-WORD kInPortWord( WORD wPort );
-void kOutPortWord( WORD wPort, WORD wData );
+extern WORD kInPortWord( WORD wPort );
+extern void kOutPortWord( WORD wPort, WORD wData );
 
-void kLoadGDTR( QWORD qwGDTRAddress );
+extern void kLoadGDTR( QWORD qwGDTRAddress );
 void kLoadTR( WORD wTSSSegmentOffset );
 void kLoadIDTR( QWORD qwIDTRAddress);
 void kEnableInterrupt( void );
@@ -24,7 +23,7 @@ QWORD kReadRFLAGS( void );
 QWORD kReadTSC(void);
 void kSwitchContext(CONTEXT* pstCurrentContext, CONTEXT* pstNextContext);
 void kHlt(void);
-BOOL kTestAndSet(volatile BYTE* pbDestination, BYTE bCompare, BYTE bSource);
+extern BOOL kTestAndSet(volatile BYTE* pbDestination, BYTE bCompare, BYTE bSource);
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  FPU ??

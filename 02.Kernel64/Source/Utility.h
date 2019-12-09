@@ -15,7 +15,8 @@
 void kMemSet( void* pvDestination, BYTE bData, int iSize );
 int kMemCpy( void* pvDestination, const void* pvSource, int iSize );
 int kMemCmp( const void* pvDestination, const void* pvSource, int iSize );
-BOOL kSetInterruptFlag( BOOL bEnableInterrupt );
+extern BOOL kSetInterruptFlag( BOOL bEnableInterrupt );
+extern int kStrLen( const char* pcBuffer );
 void kCheckTotalRAMSize( void );
 QWORD kGetTotalRAMSize( void );
 void kReverseString( char* pcBuffer );
@@ -33,5 +34,5 @@ DWORD rand(WORD max_rand);
 void srand(WORD seed);
 //unsigned long time(void);
 WORD time(void);
-void kSleep(QWORD qwMillisecond);
+extern void kSleep(QWORD qwMillisecond);
 #endif /*__UTILITY_H__*/

@@ -107,7 +107,7 @@ void kTraceScheduler(const char* pcParameterBuffer);
 static void kCreateThreadTask(void);
 static void kShowMatrix(const char* pcParameterBuffer);
 static void kTestThread(const char* pcParameterBuffer);
-static void kShowFairness(void);
+static void kShowFairness( const char* pcParameterBuffer );
 // FPU 관련
 static void kTestPIE( const char* pcParameterBuffer );
 // 동적 메모리 할당 관련

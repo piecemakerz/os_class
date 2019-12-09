@@ -32,8 +32,8 @@ typedef struct kMutexStruct
 // ÇÔ¼ö
 //
 ////////////////////////////////////////////////////////////////////////////////
-BOOL kLockForSystemData( void );
-void kUnlockForSystemData( BOOL bInterruptFlag );
+extern BOOL kLockForSystemData( void );
+extern void kUnlockForSystemData( BOOL bInterruptFlag );
 
 void kInitializeMutex( MUTEX* pstMutex );
 void kLock( MUTEX* pstMutex );

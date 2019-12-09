@@ -462,7 +462,7 @@ static void kRaiseFault( const char* pcParamegerBuffer )
     // PTENTRY* pstPTEntry = ( PTENTRY* ) 0x142000;
     // PTENTRY* pstEntry = &(pstPTEntry[511]);
     // DWORD* pstPage = 0x1ff000;
-    long *ptr = 0x1ff000;
+    long *ptr = (long*) 0x1ff000;
     DWORD data = 0x99;
     if(bTry == 0){
         // invlpg(0x1ff000);
@@ -1417,7 +1417,7 @@ static void kFairnessGraph(){
     }
 }
 
-static void kShowFairness( void ){
+static void kShowFairness(  const char* pcParameterBuffer  ){
     kClearScreen();
     TCB* pstProcess;
     pstProcess = kCreateTask( TASK_FLAGS_PROCESS | TASK_FLAGS_LOW, ( void* ) 0xE00000, 0xE00000,
@@ -2501,11 +2501,9 @@ static void kTestFileIO( const char* pcParameterBuffer )
     // 메모리를 해제
     kFreeMemory( pbBuffer );
 }
-
 static void registTaskToScheduler( const char* pcParameterBuffer )
 {
     PARAMETERLIST stList;
-
     int i;
     int j;
 
@@ -2530,12 +2528,11 @@ static void registTaskToScheduler( const char* pcParameterBuffer )
     kGetNextParameter( &stList, cMinute );
 
     taskType = kAToI( cType, 10 );
-    year = cYear[0] == '*' ? (int)'*' : kAToI( cYear, 10 );
-    month = cMonth[0] == '*' ? (int)'*' : kAToI( cMonth, 10 );
-    day = cDay[0]== '*' ? (int)'*' : kAToI( cDay, 10 );
-    hour = cHour[0] == '*' ? (int)'*' : kAToI( cHour, 10 );
-    minute = cMinute[0] == '*' ? (int)'*' : kAToI( cMinute, 10 );
-    kPrintf("%c\n", minute);
+    year = cYear[0]     == '*' ? TASK_REPEAT : kAToI( cYear, 10 );
+    month = cMonth[0]   == '*' ? TASK_REPEAT : kAToI( cMonth, 10 );
+    day = cDay[0]       == '*' ? TASK_REPEAT : kAToI( cDay, 10 );
+    hour = cHour[0]     == '*' ? TASK_REPEAT : kAToI( cHour, 10 );
+    minute = cMinute[0] == '*' ? TASK_REPEAT : kAToI( cMinute, 10 );
 
     i = stList.iCurrentPosition;
     j = 0;
@@ -2556,6 +2553,7 @@ static void registTaskToScheduler( const char* pcParameterBuffer )
 
     addTrigger(taskType, year, month, day, hour, minute, parameter);
 }
+
 
 static void showScheduledTask( const char* pcParameterBuffer )
 {

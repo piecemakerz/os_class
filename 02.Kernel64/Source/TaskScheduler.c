@@ -1,6 +1,9 @@
 #include "TaskScheduler.h"
+#include "DynamicMemory.h"
+#include "Utility.h"
 
-static TASKTRIGGER triggers[MAX_NUM_SCHEDULED_TASK];
+// static TASKTRIGGER triggers[MAX_NUM_SCHEDULED_TASK];
+static TASKTRIGGER* headTrigger;
 static int numScheduledTask;
 static BOOL thisIsRepeatedTask;
 
@@ -8,95 +11,125 @@ void initScheduler()
 {
     int i;
     int j;
-    for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++)
-    {
-        resetTrigger(&(triggers[i]));
-        for(j = 0; j < MAX_LENGTH_SCHEDULER_PARAMETER; j++)
-        {
-            triggers[i].parameter[j] = '\0';
-        }
-    }
-    numScheduledTask = 0;
+    headTrigger = (TASKTRIGGER*)kAllocateMemory(sizeof(TASKTRIGGER));
+    headTrigger->prev = headTrigger;
+    headTrigger->next = headTrigger;
 
-    if( kCreateTask( TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, ( QWORD ) startScheduler ) == NULL )
+    // for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++)
+    // {
+    //     resetTrigger(&(triggers[i]));
+    //     for(j = 0; j < MAX_LENGTH_SCHEDULER_PARAMETER; j++)
+    //     {
+    //         triggers[i].parameter[j] = '\0';
+    //     }
+    // }
+    // numScheduledTask = 0;
+
+    if( kCreateTask( TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, ( QWORD ) _startScheduler ) == NULL )
     {
         kPrintf("Task Scheduelr Fail\n");
     }
 }
 
-static void startScheduler()
+
+
+void addTrigger(int taskType, int year, int month, int day, int hour, int minute, char* parameter)
+{
+    int j;
+    TASKTRIGGER* prevTrigger = headTrigger;
+    while(prevTrigger->next != prevTrigger){
+         prevTrigger = prevTrigger->next;
+    }
+
+    TASKTRIGGER* newTrigger = (TASKTRIGGER*)kAllocateMemory(sizeof(TASKTRIGGER));
+    newTrigger->prev = prevTrigger;
+    prevTrigger->next = newTrigger;
+    newTrigger->next = newTrigger;
+
+    if((taskType) > 0)
+    {
+        newTrigger->taskType = taskType;
+        newTrigger->year = year;
+        newTrigger->month = month;
+        newTrigger->day = day;
+        newTrigger->hour = hour;
+        newTrigger->minute = minute;
+        newTrigger->lastMinute = 415325136;
+        j = 0;
+        while(1)
+        {
+            if(parameter[j] == '\0')
+            {
+                newTrigger->parameter[j] = parameter[j];
+                break;
+            }
+            else
+            {
+                newTrigger->parameter[j] = parameter[j];
+                j++;
+            }
+        }
+    }
+
+}
+
+void showTriggers()
+{
+    int i = 0; // 0은 headTrigger, 1부터 정상 trigger
+    TASKTRIGGER* trigger = headTrigger;
+    kPrintf("[id] YEAR MONTH DAY HOUR MINUTE EVENT\n");
+    while(trigger->next != trigger){
+        trigger = trigger->next;
+        kPrintf("[%2d] ", i++);
+        trigger->year  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%04d ", trigger->year);;
+        trigger->month == TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%05d ", trigger->month);
+        trigger->day   == TASK_REPEAT ? kPrintf("  %c ", '*') : kPrintf("%03d ", trigger->day);
+        trigger->hour  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%04d ", trigger->hour);
+        trigger->minute== TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%05d ", trigger->minute);
+        kPrintf("%s\n", trigger->parameter);
+    }
+    kPrintf("Number of Scheduled Tasks: %d\n", i);
+}
+
+void deleteTrigger(int i)
+{
+    //resetTrigger(&(triggers[i]));
+    TASKTRIGGER* trigger = _getTrigger(i);
+    _deleteTrigger(trigger);
+    kPrintf("ID %d is deleted.\n", i);
+    numScheduledTask--;
+}
+
+static void _startScheduler()
 {
     int i;
+    TASKTRIGGER *trigger;
     while(1)
     {
-        for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++){
-            thisIsRepeatedTask = FALSE;
-            if(triggers[i].taskType)
-            {
-                if(cmpPresentDate(&(triggers[i])) < 1)
-                {
-                    if(triggers[i].taskType == 1)
-                    {
-                        kPrintf( "Notification Message~!!\n" );
-                        kPrintf( "%s\n", triggers[i].parameter );
-                    }
-                    else if(triggers[i].taskType == 2)
-                    {
-                        kExecuteCommand( triggers[i].parameter );
-                    }
-                    if(thisIsRepeatedTask == FALSE){
-                        resetTrigger(&(triggers[i]));
-                        numScheduledTask--;
-                    }
+        i=0;
+        trigger = headTrigger;
+        while (trigger->next != trigger){
+            i++;
+            trigger = trigger->next;
+            if(_cmpPresentDate(trigger) < 1){
+                if(trigger->taskType == 1){ // Notification
+                    kPrintf("[Notification]%s\n", trigger->parameter);
+                }else if(trigger->taskType == 2){
+                    kExecuteCommand(trigger->parameter);
+                }
+                if(thisIsRepeatedTask == FALSE){
+                    // _deleteTrigger(trigger);
+                    numScheduledTask--;
                 }
             }
         }
-        kSchedule();
+        // kPrintf("[%d]", i);
+        kSleep(1000);
     }
     kExitTask();
 }
 
-void addTrigger(int taskType, int year, int month, int day, int hour, int minute, char* parameter)
-{
-    int i;
-    int j;
-    if(numScheduledTask == MAX_NUM_SCHEDULED_TASK)
-    {
-        kPrintf("Task list is full.\n");
-    }
-    else{
-        for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++){
-            if(!(triggers[i].taskType))
-            {
-                triggers[i].taskType = taskType;
-                triggers[i].year = year;
-                triggers[i].month = month;
-                triggers[i].day = day;
-                triggers[i].hour = hour;
-                triggers[i].minute = minute;
-                triggers[i].lastMinute = 415325136;
-                j = 0;
-                while(1)
-                {
-                    if(parameter[j] == '\0')
-                    {
-                        triggers[i].parameter[j] = parameter[j];
-                        break;
-                    }
-                    else
-                    {
-                        triggers[i].parameter[j] = parameter[j];
-                        j++;
-                    }
-                }
-                numScheduledTask++;
-                break;
-            }
-        }
-    }
-}
-
-int cmpPresentDate(TASKTRIGGER *trigger)
+static int _cmpPresentDate(TASKTRIGGER *trigger)
 {
     BYTE bSecond, bMinute, bHour;
     BYTE bDayOfWeek, bDayOfMonth, bMonth;
@@ -105,34 +138,34 @@ int cmpPresentDate(TASKTRIGGER *trigger)
     kReadRTCTime( &bHour, &bMinute, &bSecond );
     kReadRTCDate( &wYear, &bMonth, &bDayOfMonth, &bDayOfWeek );
 
-    if(trigger->year == (int)'*' ||
-        trigger->month == (int) '*' ||
-        trigger->day == (int) '*' ||
-        trigger->hour == (int) '*' ||
-        trigger->minute == (int) '*')
+    if(trigger->year    == TASK_REPEAT ||
+        trigger->month  == TASK_REPEAT ||
+        trigger->day    == TASK_REPEAT ||
+        trigger->hour   == TASK_REPEAT ||
+        trigger->minute == TASK_REPEAT)
         thisIsRepeatedTask = TRUE;
 
-    if(triggers->lastMinute == bMinute){
+    if(trigger->lastMinute == bMinute){
         return 1;
     }else
     {
-        triggers->lastMinute = bMinute;
+        trigger->lastMinute = bMinute;
     }
     
 
-    if(trigger->year == wYear || trigger->year == (int)'*')
+    if(trigger->year == wYear || trigger->year == TASK_REPEAT)
     {
-        if(trigger->month == bMonth || trigger->month == (int)'*')
+        if(trigger->month == bMonth || trigger->month == TASK_REPEAT)
         {
-            if(trigger->day == bDayOfMonth || trigger->day == (int)'*')
+            if(trigger->day == bDayOfMonth || trigger->day == TASK_REPEAT)
             {
-                if(trigger->hour == bHour || trigger->hour == (int)'*')
+                if(trigger->hour == bHour || trigger->hour == TASK_REPEAT)
                 {
-                    if(trigger->minute == bMinute || trigger->minute == (int)'*')
+                    if(trigger->minute == bMinute || trigger->minute == TASK_REPEAT)
                     {
                         return 0;
                     }
-                    else if(trigger->minute > bMinute || trigger->minute == (int)'*')
+                    else if(trigger->minute > bMinute || trigger->minute == TASK_REPEAT)
                     {
                         return 1;
                     }
@@ -141,7 +174,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
                         return -1;
                     }
                 }
-                else if(trigger->hour > bHour || trigger->hour == (int)'*')
+                else if(trigger->hour > bHour || trigger->hour == TASK_REPEAT)
                 {
                     return 1;
                 }
@@ -150,7 +183,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
                     return -1;
                 }
             }
-            else if(trigger->day > bDayOfMonth || trigger->day == (int)'*')
+            else if(trigger->day > bDayOfMonth || trigger->day == TASK_REPEAT)
             {
                 return 1;
             }
@@ -159,7 +192,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
                 return -1;
             }
         }
-        else if(trigger->month > bMonth || trigger->month == (int)'*')
+        else if(trigger->month > bMonth || trigger->month == TASK_REPEAT)
         {
             return 1;
         }
@@ -178,7 +211,7 @@ int cmpPresentDate(TASKTRIGGER *trigger)
     }
 }
 
-void resetTrigger(TASKTRIGGER *trigger)
+static void resetTrigger(TASKTRIGGER *trigger)
 {
     trigger->taskType = 0;
     trigger->year = 0;
@@ -186,24 +219,24 @@ void resetTrigger(TASKTRIGGER *trigger)
     trigger->day = 0;
     trigger->hour = 0;
     trigger->minute = 0;
-}
-
-void showTriggers()
-{
-    int i;
-    kPrintf("Number of Scheduled Tasks: %d\n", numScheduledTask);
-    for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++)
-    {
-        if(triggers[i].taskType)
-        {
-            kPrintf("Scheduler ID: %d\n", i);
-        }
+}static TASKTRIGGER* _getTrigger(int i){
+    TASKTRIGGER* trigger = headTrigger;
+    for(i=i<0?0:i; i!=0; i--){
+        trigger = trigger->next;
     }
+    if(trigger == headTrigger) return NULL;
+    return trigger;
 }
 
-void deleteTrigger(int i)
-{
-    resetTrigger(&(triggers[i]));
-    kPrintf("ID %d is deleted.\n", i);
-    numScheduledTask--;
+static void _deleteTrigger(TASKTRIGGER* trigger){
+    if(trigger == NULL) return; // no trigger
+    if(trigger->prev == trigger) return; // this is head trigger;
+    trigger->next->prev = trigger->prev;
+
+    if(trigger->next == trigger)
+        trigger->prev->next = trigger->prev;
+    else
+        trigger->prev->next = trigger->next;
+    kFreeMemory(trigger);
+
 }

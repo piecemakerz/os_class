@@ -21,7 +21,8 @@ Synchronization.o: ../Source/Synchronization.c \
 PIT.o: ../Source/PIT.c ../Source/PIT.h ../Source/Types.h
 TaskScheduler.o: ../Source/TaskScheduler.c ../Source/TaskScheduler.h \
  ../Source/Types.h ../Source/Task.h ../Source/List.h ../Source/Console.h \
- ../Source/ConsoleShell.h ../Source/RTC.h
+ ../Source/ConsoleShell.h ../Source/RTC.h ../Source/DynamicMemory.h \
+ ../Source/Utility.h
 DynamicMemory.o: ../Source/DynamicMemory.c ../Source/DynamicMemory.h \
  ../Source/Types.h ../Source/Utility.h ../Source/Task.h ../Source/List.h \
  ../Source/Console.h
@@ -30,7 +31,7 @@ InterruptHandler.o: ../Source/InterruptHandler.c \
  ../Source/Keyboard.h ../Source/Console.h ../Source/Utility.h \
  ../Source/Task.h ../Source/List.h ../Source/Descriptor.h \
  ../Source/AssemblyUtility.h ../Source/HardDisk.h \
- ../Source/Synchronization.h
+ ../Source/Synchronization.h ../Source/Main.h
 Descriptor.o: ../Source/Descriptor.c ../Source/Descriptor.h \
  ../Source/Types.h ../Source/Utility.h ../Source/ISR.h
 Console.o: ../Source/Console.c ../Source/Console.h ../Source/Types.h \
@@ -42,10 +43,10 @@ PIC.o: ../Source/PIC.c ../Source/PIC.h ../Source/Types.h
 Keyboard.o: ../Source/Keyboard.c ../Source/Types.h \
  ../Source/AssemblyUtility.h ../Source/Task.h ../Source/List.h \
  ../Source/Console.h ../Source/Keyboard.h ../Source/Queue.h \
- ../Source/Synchronization.h
+ ../Source/Synchronization.h ../Source/Utility.h
 RTC.o: ../Source/RTC.c ../Source/RTC.h ../Source/Types.h
 List.o: ../Source/List.c ../Source/List.h ../Source/Types.h
 HardDisk.o: ../Source/HardDisk.c ../Source/HardDisk.h ../Source/Types.h \
- ../Source/Synchronization.h
+ ../Source/Synchronization.h ../Source/Utility.h
 Task.o: ../Source/Task.c ../Source/Task.h ../Source/Types.h \
  ../Source/List.h ../Source/Console.h ../Source/Descriptor.h

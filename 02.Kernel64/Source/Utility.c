@@ -383,6 +383,14 @@ int kVSPrintf( char* pcBuffer, const char* pcFormatString, va_list ap )
     char* pcCopyString;
     QWORD qwValue;
     int iValue;
+
+    BOOL useField = FALSE;
+    char fieldBuffer[5];
+    int fieldBufferIndex = 0;
+    char numberBuffer[21];
+    int fieldLength;
+    int numberLength;
+    int paddingLength;
     
     // 포맷 문자열의 길이를 읽어서 문자열의 길이만큼 데이터를 출력 버퍼에 출력
     iFormatLength = kStrLen( pcFormatString );
@@ -393,6 +401,13 @@ int kVSPrintf( char* pcBuffer, const char* pcFormatString, va_list ap )
         {
             // % 다음의 문자로 이동
             i++;
+            while( pcFormatString[ i ] >= '0' && pcFormatString[ i ] <= '9'){
+                if(! useField ){
+                    useField = TRUE;
+                    fieldBufferIndex = 0;
+                }
+                fieldBuffer[fieldBufferIndex++] = pcFormatString[ i++ ];
+            }
             switch( pcFormatString[ i ] ) 
             {
                 // 문자열 출력  
@@ -420,7 +435,25 @@ int kVSPrintf( char* pcBuffer, const char* pcFormatString, va_list ap )
                 // 가변 인자에 들어있는 파라미터를 정수 타입으로 변환하여
                 // 출력 버퍼에 복사하고 출력한 길이만큼 버퍼의 인덱스를 이동
                 iValue = ( int ) ( va_arg( ap, int ) );
-                iBufferIndex += kIToA( iValue, pcBuffer + iBufferIndex, 10 );
+
+                if( useField ){
+                    useField = FALSE;
+
+                    fieldBuffer[fieldBufferIndex] = '\0';
+                    fieldLength = kAToI(fieldBuffer,10);
+
+                    numberLength = kIToA(iValue, numberBuffer, 10);
+                    paddingLength = fieldLength > numberLength ? fieldLength - numberLength : 0;
+
+                    for (int k=0; k<paddingLength; k++)
+                        pcBuffer[iBufferIndex + k] = (fieldBuffer[0] == '0' && iValue > 0) ? '0' : ' ';
+                    
+                    for (int k=0; k<numberLength; k++)
+                        pcBuffer[iBufferIndex + paddingLength + k] = numberBuffer[k];
+                    iBufferIndex += paddingLength + numberLength;
+                }else{
+                    iBufferIndex += kIToA( iValue, pcBuffer + iBufferIndex, 10 );
+                }
                 break;
                 
                 // 4바이트 Hex 출력
