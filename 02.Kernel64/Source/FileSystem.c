@@ -275,17 +275,13 @@ static BOOL kReadINode(DWORD inumber, BYTE* pbBuffer)
 	CHECKPOINT checkPoint;
 	DWORD iNodeOffset;
 
-	kPrintf("Read INode\n");
-
 	kMemSet(pbBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadHeadCheckPoint(pbBuffer);
 	kMemCpy(&checkPoint, pbBuffer, sizeof(CHECKPOINT));
 
 	iNodeOffset = checkPoint.iMap[inumber].iNodeOffset;
-	kPrintf("iNode Offset: %d\n", iNodeOffset);
 	kMemSet(pbBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadCluster(iNodeOffset, pbBuffer);
-	kPrintf("Read INode: %d, size: %d\n", ((INODE*)pbBuffer)->iNumber, ((INODE*)pbBuffer)->size);
 	return TRUE;
 }
 
@@ -347,7 +343,6 @@ static BOOL kWriteSegment(DWORD segmentNum, DWORD type, INODE* inode, BYTE* pbBu
 	// 이후 작업 세그먼트를 다른 세그먼트로 교체한다.
 	if (curSegment->curBlockCnt >= FILESYSTEM_MAXSEGMENTCLUSTERCOUNT)
 	{
-		kPrintf("Current Segment Full\n");
 		// 다른 세그먼트 초기화
 		kMemSet(&segments[!curWorkingSegment], 0, sizeof(SEGMENT));
 		// 다른 세그먼트 시작 주소 할당
@@ -368,7 +363,6 @@ static BOOL kWriteSegment(DWORD segmentNum, DWORD type, INODE* inode, BYTE* pbBu
 // 체크포인트를 갱신해준다.
 static BOOL kWriteSegmentToDisk(DWORD segmentNum)
 {
-	kPrintf("segment Write To Disk\n");
 	SEGMENT* segment = &(segments[segmentNum]);
 	CHECKPOINT* checkPoint;
 	// 현재까지 디스크에 쓰인 세그먼트 구조체의 블록 수
@@ -426,18 +420,15 @@ static DWORD kFindFreeINode(void)
 	kMemCpy(&checkPoint, gs_vbTempBuffer, sizeof(CHECKPOINT));
 	inodeMap = checkPoint.iMap;
 
-	kPrintf("Find Free INode\n");
 	// 루프를 돌면서 빈 아이노드 검색
 	for (i = 1; i <= 128; i++)
 	{
-		kPrintf("iNodeMap[%d]: %d %d\n", i, inodeMap[i].iNumber, inodeMap[i].iNodeOffset);
 		// 아이넘버가 0번이면 빈 아이노드이다.
 		if (inodeMap[i].iNumber == 0)
 		{
 			return i;
 		}
 	}
-	kPrintf("\n");
 
 	return 0;
 }
@@ -451,7 +442,6 @@ static int kFindFreeDirectoryEntry(void)
 	DIRECTORYENTRY* pstEntry;
 	int i;
 
-	kPrintf("Find Free Directory Entry\n");
 	// 파일 시스템을 인식하지 못했으면 실패
 	if (gs_stFileSystemManager.bMounted == FALSE)
 	{
@@ -469,7 +459,6 @@ static int kFindFreeDirectoryEntry(void)
 	pstEntry = (DIRECTORYENTRY*)gs_vbTempBuffer;
 	for (i = 0; i < FILESYSTEM_MAXDIRECTORYENTRYCOUNT; i++)
 	{
-		kPrintf("Directory Entry[i] iNumber: %d\n", pstEntry[i].iNumber);
 		if (pstEntry[i].iNumber == 0)
 		{
 			return i;
@@ -542,7 +531,6 @@ static BOOL kGetDirectoryEntryData(int iIndex, DIRECTORYENTRY* pstEntry)
  // pstEntry에 해당 엔트리 정보를 저장하고 인덱스 반환
 static int kFindDirectoryEntry(const char* pcFileName, DIRECTORYENTRY* pstEntry)
 {
-	kPrintf("Find Directory Entry with Name: %s\n", pcFileName);
 	DIRECTORYENTRY* pstRootEntry;
 	int i;
 	int iLength;
@@ -566,12 +554,10 @@ static int kFindDirectoryEntry(const char* pcFileName, DIRECTORYENTRY* pstEntry)
 	{
 		if (kMemCmp(pstRootEntry[i].vcFileName, pcFileName, iLength) == 0)
 		{
-			kPrintf("Found Directory Entry[%d] with iNode %d\n", i, pstRootEntry[i].iNumber);
 			kMemCpy(pstEntry, pstRootEntry + i, sizeof(DIRECTORYENTRY));
 			return i;
 		}
 	}
-	kPrintf("Couldn't Find Directory Entry\n");
 	return -1;
 }
 
@@ -642,10 +628,6 @@ static BOOL kCreateFile(const char* pcFileName, DIRECTORYENTRY* pstEntry,
 		return FALSE;
 	}
 
-	kPrintf("Create File\n");
-
-	kPrintf("Found Free iNumber: %d\n", iNumber);
-
 	// 빈 디렉터리 엔트리를 검색
 	*piDirectoryEntryIndex = kFindFreeDirectoryEntry();
 	if (*piDirectoryEntryIndex == -1)
@@ -711,7 +693,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	// 동기화
 	kLock(&(gs_stFileSystemManager.stMutex));
 
-	kPrintf("Open File with mode %s\n", pcMode);
 	// open을 수행하기 전 동기화를 위해 현재 세그먼트를 디스크에 write
 	kWriteSegmentToDisk(curWorkingSegment);
 
@@ -724,7 +705,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	// 파일이 먼저 존재하는가 확인하고, 없다면 옵션을 보고 파일을 생성
 	//==========================================================================
 	iDirectoryEntryOffset = kFindDirectoryEntry(pcFileName, &stEntry);
-	kPrintf("Directory Entry Offset: %d\n", iDirectoryEntryOffset);
 	// 파일이 존재하지 않는 경우
 	if (iDirectoryEntryOffset == -1)
 	{
@@ -744,12 +724,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 			return NULL;
 		}
 
-		kPrintf("File Created while Opening\n");
-		// open을 수행하기 전 동기화를 위해 현재 세그먼트를 디스크에 write
-		kWriteSegmentToDisk(curWorkingSegment);
-
-		kPrintf("Created File iNumber: %d\n", stEntry.iNumber);
-
 		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 		kReadINode(stEntry.iNumber, gs_vbTempBuffer);
 		kMemCpy(&inode, gs_vbTempBuffer, sizeof(INODE));
@@ -760,7 +734,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	//==========================================================================
 	else if (pcMode[0] == 'w')
 	{
-		kPrintf("Empty Current File\n");
 		// LFS에서는 데이터를 앞으로만 쓴다.
 		// 따라서 아이노드 데이터 블록 포인터를 모두 0으로 초기화 한
 		// 아이노드 세그먼트에 갱신 후 쓰기
@@ -782,9 +755,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 		kMemCpy(gs_vbTempBuffer, &iNodeMap, sizeof(INODEMAPBLOCK));
 		kWriteSegment(curWorkingSegment, 2, &inode.iNumber, gs_vbTempBuffer);
 
-		// open을 수행하기 전 동기화를 위해 현재 세그먼트를 디스크에 write
-		kWriteSegmentToDisk(curWorkingSegment);
-
 		// 파일의 내용이 모두 비워졌으므로, 크기를 0으로 설정
 		stEntry.dwFileSize = 0;
 		if (kSetDirectoryEntryData(iDirectoryEntryOffset, &stEntry) == FALSE)
@@ -796,7 +766,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 	}
 	else
 	{
-		kPrintf("iNumber %d in mode r\n", stEntry.iNumber);
 		kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 		kReadINode(stEntry.iNumber, gs_vbTempBuffer);
 		kMemCpy(&inode, gs_vbTempBuffer, sizeof(INODE));
@@ -813,7 +782,6 @@ FILE* kOpenFile(const char* pcFileName, const char* pcMode)
 		return NULL;
 	}
 
-	kPrintf("Current File INode Info: %d %d %d\n", inode.iNumber, inode.size, inode.dataBlockOffset[0]);
 	// 파일 핸들에 파일 정보를 설정
 	pstFile->bType = FILESYSTEM_TYPE_FILE;
 	pstFile->stFileHandle.iDirectoryEntryOffset = iDirectoryEntryOffset;
@@ -858,7 +826,6 @@ DWORD kReadFile(void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile)
 		return 0;
 	}
 
-	kPrintf("Read File\n");
 	// 동기화를 위해 세그먼트 비우기
 	kWriteSegmentToDisk(curWorkingSegment);
 	pstFileHandle = &(pstFile->stFileHandle);
@@ -873,7 +840,6 @@ DWORD kReadFile(void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFile)
 		&& (pstFileHandle->dwCurrentOffset == iNode.dataBlockActualDataSize[pstFileHandle->dwCurrentFileOffset])
 		))
 	{
-		kPrintf("Read Failed with %d %d\n", pstFileHandle->iNumber, pstFileHandle->dwStartFileOffset);
 		return 0;
 	}
 
@@ -1005,6 +971,8 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 	}
 	pstFileHandle = &(pstFile->stFileHandle);
 
+	kWriteSegmentToDisk(curWorkingSegment);
+
 	// 파일에 해당하는 디렉토리 엔트리 읽어오기
 	kGetDirectoryEntryData(pstFileHandle->iDirectoryEntryOffset, &stEntry);
 
@@ -1023,7 +991,6 @@ DWORD kWriteFile(const void* pvBuffer, DWORD dwSize, DWORD dwCount, FILE* pstFil
 
 	// 동기화
 	kLock(&(gs_stFileSystemManager.stMutex));
-	kWriteSegmentToDisk(curWorkingSegment);
 	// 다 쓸 때까지 반복
 	dwWriteCount = 0;
 
@@ -1270,7 +1237,7 @@ int kSeekFile(FILE* pstFile, int iOffset, int iOrigin)
 	}
 	pstFileHandle = &(pstFile->stFileHandle);
 
-
+	kWriteSegmentToDisk(curWorkingSegment);
 	// 파일 아이노드 가져오기
 	kMemSet(gs_vbTempBuffer, 0, FILESYSTEM_CLUSTERSIZE);
 	kReadINode(pstFileHandle->iNumber, gs_vbTempBuffer);
