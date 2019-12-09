@@ -124,20 +124,27 @@ static void _loadSchedule(){
 }
 
 static void _saveSchedule(){
-    TASKTRIGGER* trigger = headTrigger;
-    FILE* fp = fopen(SCHEDULE_FILE, "w");
-    if (fp!=NULL){
-        while(trigger->next != trigger){
-            trigger = trigger->next;
-            fwrite(trigger, sizeof(TASKTRIGGER), 1, fp);
+    BOOL success = FALSE;
+    while(!success){
+        TASKTRIGGER* trigger = headTrigger;
+
+        FILE* fp = fopen(SCHEDULE_FILE, "w");
+        if (fp!=NULL){
+            while(trigger->next != trigger){
+                trigger = trigger->next;
+                if(fwrite(trigger, sizeof(TASKTRIGGER), 1, fp) == sizeof(TASKTRIGGER))
+                    break;
+            }
+            if(trigger == trigger->next) break;
         }
+        fclose(fp);
     }
-    fclose(fp);
 }
 
 static void _startScheduler()
 {
     int i;
+    int j = 0;
     TASKTRIGGER *trigger;
     while(1)
     {
@@ -158,8 +165,10 @@ static void _startScheduler()
                 }
             }
         }
-        // kPrintf("[%d]", i);
-        _saveSchedule();
+        while(j++ > 30){
+            _saveSchedule();
+            j=0;
+        }
         kSleep(1000);
     }
     kExitTask();
