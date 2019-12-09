@@ -150,18 +150,22 @@ static void _startScheduler()
     {
         i=0;
         trigger = headTrigger;
-        while (trigger->next != trigger){
-            i++;
-            trigger = trigger->next;
-            if(_cmpPresentDate(trigger) < 1){
-                if(trigger->taskType == 1){ // Notification
-                    kPrintf("[Notification]%s\n", trigger->parameter);
-                }else if(trigger->taskType == 2){
-                    kExecuteCommand(trigger->parameter);
-                }
-                if(thisIsRepeatedTask == FALSE){
-                    // _deleteTrigger(trigger);
-                    numScheduledTask--;
+        if(kGetProcessorLoad() < 50){
+            while (trigger->next != trigger){
+                i++;
+                trigger = trigger->next;
+                if(_cmpPresentDate(trigger) < 1){
+                    if(trigger->taskType == 1){ // Notification
+                        kPrintf("[Notification]%s\n", trigger->parameter);
+                    }else if(trigger->taskType == 2){
+                        kExecuteCommand(trigger->parameter);
+                    }else if(trigger->taskType == 3){
+                        kExecuteCommand(trigger->parameter);
+                    }
+                    if(thisIsRepeatedTask == FALSE){
+                        // _deleteTrigger(trigger);
+                        numScheduledTask--;
+                    }
                 }
             }
         }
