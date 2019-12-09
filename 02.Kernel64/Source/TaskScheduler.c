@@ -74,7 +74,7 @@ void showTriggers()
         kPrintf("[id] YYYY MM DD HH MM EVENT\n");
     while(trigger->next != trigger){
         trigger = trigger->next;
-        kPrintf("[%2d] ", i++);
+        kPrintf("[%2d] ", ++i);
         trigger->year  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%4d ", trigger->year);;
         trigger->month == TASK_REPEAT ? kPrintf(" %c ", '*') : kPrintf("%2d ", trigger->month);
         trigger->day   == TASK_REPEAT ? kPrintf(" %c ", '*') : kPrintf("%2d ", trigger->day);
@@ -163,7 +163,7 @@ static void _startScheduler()
                         kExecuteCommand(trigger->parameter);
                     }
                     if(thisIsRepeatedTask == FALSE){
-                        // _deleteTrigger(trigger);
+                        _deleteTrigger(trigger);
                         numScheduledTask--;
                     }
                 }
