@@ -10,6 +10,7 @@
 #define MAX_NUM_SCHEDULED_TASK 10
 #define MAX_LENGTH_SCHEDULER_PARAMETER 100
 #define TASK_REPEAT 84515
+#define SCHEDULE_FILE "schedule"
 
 typedef struct TaskTrigger TASKTRIGGER;
 
@@ -26,6 +27,8 @@ extern void addTrigger(int taskType, int year, int month, int day, int hour, int
 extern void deleteTrigger(int i);
 extern void showTriggers();
 
+static void _loadSchedule();
+static void saveSchedule();
 static void _startScheduler();
 static int _cmpPresentDate(TASKTRIGGER *trigger);
 static void resetTrigger(TASKTRIGGER *trigger);

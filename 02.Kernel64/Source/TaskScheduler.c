@@ -1,6 +1,7 @@
 #include "TaskScheduler.h"
 #include "DynamicMemory.h"
 #include "Utility.h"
+#include "FileSystem.h"
 
 // static TASKTRIGGER triggers[MAX_NUM_SCHEDULED_TASK];
 static TASKTRIGGER* headTrigger;
@@ -15,15 +16,7 @@ void initScheduler()
     headTrigger->prev = headTrigger;
     headTrigger->next = headTrigger;
 
-    // for(i = 0; i < MAX_NUM_SCHEDULED_TASK; i++)
-    // {
-    //     resetTrigger(&(triggers[i]));
-    //     for(j = 0; j < MAX_LENGTH_SCHEDULER_PARAMETER; j++)
-    //     {
-    //         triggers[i].parameter[j] = '\0';
-    //     }
-    // }
-    // numScheduledTask = 0;
+    _loadSchedule();
 
     if( kCreateTask( TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, ( QWORD ) _startScheduler ) == NULL )
     {
@@ -77,15 +70,15 @@ void showTriggers()
 {
     int i = 0; // 0은 headTrigger, 1부터 정상 trigger
     TASKTRIGGER* trigger = headTrigger;
-    kPrintf("[id] YEAR MONTH DAY HOUR MINUTE EVENT\n");
+    kPrintf("[id] YYYY MM DD HH MM EVENT\n");
     while(trigger->next != trigger){
         trigger = trigger->next;
         kPrintf("[%2d] ", i++);
-        trigger->year  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%04d ", trigger->year);;
-        trigger->month == TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%05d ", trigger->month);
-        trigger->day   == TASK_REPEAT ? kPrintf("  %c ", '*') : kPrintf("%03d ", trigger->day);
-        trigger->hour  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%04d ", trigger->hour);
-        trigger->minute== TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%05d ", trigger->minute);
+        trigger->year  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%4d ", trigger->year);;
+        trigger->month == TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%2d ", trigger->month);
+        trigger->day   == TASK_REPEAT ? kPrintf("  %c ", '*') : kPrintf("%2d ", trigger->day);
+        trigger->hour  == TASK_REPEAT ? kPrintf("   %c ", '*') : kPrintf("%2d ", trigger->hour);
+        trigger->minute== TASK_REPEAT ? kPrintf("    %c ", '*') : kPrintf("%2d ", trigger->minute);
         kPrintf("%s\n", trigger->parameter);
     }
     kPrintf("Number of Scheduled Tasks: %d\n", i);
@@ -98,6 +91,47 @@ void deleteTrigger(int i)
     _deleteTrigger(trigger);
     kPrintf("ID %d is deleted.\n", i);
     numScheduledTask--;
+}
+
+static void _loadSchedule(){
+    TASKTRIGGER* trigger = headTrigger;
+    TASKTRIGGER load;
+    FILE* fp = fopen(SCHEDULE_FILE, "r");
+    if (fp!=NULL){
+        while(fread(&load, sizeof(TASKTRIGGER), 1, fp) == 1){
+            trigger->next = (TASKTRIGGER*)kAllocateMemory(sizeof(TASKTRIGGER));
+            trigger->next->prev = trigger;
+            trigger = trigger->next;
+            trigger->next = trigger;
+
+            trigger->taskType = load.taskType;
+            trigger->year     =load.year;
+            trigger->month    =load.month;
+            trigger->day      =load.day;
+            trigger->hour     =load.hour;
+            trigger->minute   =load.minute;
+
+            int i=-1;
+            do{
+                i++;
+                trigger->parameter[i] = load.parameter[i];
+            }while(load.parameter[i] != '\0');
+            
+        }
+    }
+    fclose(fp);
+}
+
+static void _saveSchedule(){
+    TASKTRIGGER* trigger = headTrigger;
+    FILE* fp = fopen(SCHEDULE_FILE, "w");
+    if (fp!=NULL){
+        while(trigger->next != trigger){
+            trigger = trigger->next;
+            fwrite(trigger, sizeof(TASKTRIGGER), 1, fp);
+        }
+    }
+    fclose(fp);
 }
 
 static void _startScheduler()
@@ -124,6 +158,7 @@ static void _startScheduler()
             }
         }
         // kPrintf("[%d]", i);
+        _saveSchedule();
         kSleep(1000);
     }
     kExitTask();
