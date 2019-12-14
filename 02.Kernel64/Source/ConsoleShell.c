@@ -55,6 +55,8 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
 		{ "writefile", "Write Data To File, ex) writefile a.txt", kWriteDataToFile },
 		{ "readfile", "Read Data From File, ex) readfile a.txt", kReadDataFromFile },
 		{ "testfileio", "Test File I/O Function", kTestFileIO },
+        { "testperformance", "Test File Read/WritePerformance", kTestPerformance },
+        { "flush", "Flush File System Cache", kFlushCache },
 };                                     
 
 //==============================================================================
@@ -441,6 +443,17 @@ static void kStringToDecimalHexTest( const char* pcParameterBuffer )
 static void kShutdown( const char* pcParamegerBuffer )
 {
     kPrintf( "System Shutdown Start...\n" );
+    
+    // 파일 시스템 캐시에 들어 있는 내용을 하드 디스크로 옮김
+    kPrintf( "Cache Flush ... " );
+    if( kFlushFileSystemCache() == TRUE )
+    {
+        kPrintf( "Pass\n" );
+    }
+    else
+    {
+        kPrintf( "Fail\n" );
+    }
     
     // 키보드 컨트롤러를 통해 PC를 재시작
     kPrintf( "Press Any Key To Reboot PC..." );
@@ -2496,4 +2509,167 @@ static void kTestFileIO( const char* pcParameterBuffer )
 
     // 메모리를 해제
     kFreeMemory( pbBuffer );
+}
+
+// 파일을 읽고 쓰는 속도를 측정
+static void kTestPerformance( const char* pcParameterBuffer )
+{
+    FILE* pstFile;
+    DWORD dwClusterTestFileSize;
+    DWORD dwOneByteTestFileSize;
+    QWORD qwLastTickCount;
+    DWORD i;
+    BYTE* pbBuffer;
+
+    // 클러스터는 1MB까지 파일을 테스트
+    dwClusterTestFileSize = 1024 * 1024;
+    // 1바이트씩 읽고 쓰는 테스트는 시간이 많이 걸리므로 16KB만 테스트
+    dwOneByteTestFileSize = 16 * 1024;
+
+    // 테스트용 버퍼 메모리 할당
+    pbBuffer = kAllocateMemory( dwClusterTestFileSize );
+
+    if( pbBuffer == NULL )
+    {
+        kPrintf( "Memory Allcate Fail\n" );
+        return;
+    }
+
+    // 버퍼를 초기화
+    kMemSet( pbBuffer, 0, FILESYSTEM_CLUSTERSIZE );
+
+    kPrintf( "===================== File I/O Performance Test =====================\n" );
+
+    //==================================================================================
+    // 클러스터 단위로 파일을 순차적으로 쓰는 테스트
+    //==================================================================================
+    kPrintf( "1.Sequential Read/Write Test(Cluster Size)\n" );
+
+    // 기존의 테스트 파일을 제거하고 새로 만듦
+    remove( "performance.txt" );
+    pstFile = fopen( "performance.txt", "w" );
+    if( pstFile == NULL )
+    {
+        kPrintf( "File Open Fail\n" );
+        kFreeMemory( pbBuffer );
+        return;
+    }
+
+    qwLastTickCount = kGetTickCount();
+    // 클러스터 단위로 쓰는 테스트
+    for( i = 0 ; i < ( dwClusterTestFileSize / FILESYSTEM_CLUSTERSIZE ) ; i ++ )
+    {
+        if( fwrite( pbBuffer, 1, FILESYSTEM_CLUSTERSIZE, pstFile ) != 
+            FILESYSTEM_CLUSTERSIZE )
+        {
+            kPrintf( "Write Fail\n" );
+            // 파일을 닫고 메모리를 해제함
+            fclose( pstFile );
+            kFreeMemory( pbBuffer );
+            return;
+        }
+    }
+    // 시간 출력
+    kPrintf( "   Sequential Write(Cluster Size): %d ms\n", kGetTickCount() -
+            qwLastTickCount );
+
+    //===================================================================================
+    // 클러스터 단위로 파일을 순차적으로 읽는 테스트
+    //===================================================================================
+    // 파일의 처음으로 이동
+    fseek( pstFile, 0, SEEK_SET );
+
+    qwLastTickCount = kGetTickCount();
+    // 클러스터 단위로 읽는 테스트
+    for( i = 0 ; i < ( dwClusterTestFileSize / FILESYSTEM_CLUSTERSIZE ) ; i++ )
+    {
+        if( fread( pbBuffer, 1, FILESYSTEM_CLUSTERSIZE, pstFile ) != 
+             FILESYSTEM_CLUSTERSIZE )
+        {
+            kPrintf( "Read Fail\n" );
+            // 파일을 닫고 메모리를 해제함
+            fclose( pstFile );
+            kFreeMemory( pbBuffer );
+            return;
+        }
+    }
+    // 시간 출력
+    kPrintf( "   Seqeuntial Read(Cluster Size): %d ms\n", kGetTickCount() -
+             qwLastTickCount );
+
+    //===================================================================================
+    // 1바이트 단위로 파일을 순차적으로 쓰는 테스트
+    //===================================================================================
+    kPrintf( "2.Sequential Read/Write Test(1 Byte)\n" );
+
+    // 기존의 테스트 파일을 제거하고 새로 만듦
+    remove( "performance.txt" );
+    pstFile = fopen( "performance.txt", "w" );
+    if( pstFile == NULL )
+    {
+        kPrintf( "File Open Fail\n" );
+        kFreeMemory( pbBuffer );
+        return;
+    }
+
+    qwLastTickCount = kGetTickCount();
+    // 1바이트 단위로 쓰는 테스트
+    for( i = 0 ; i < dwOneByteTestFileSize ; i ++ )
+    {
+        if( fwrite( pbBuffer, 1, 1, pstFile ) != 1 )
+        {
+            kPrintf( "Write Fail\n" );
+            // 파일을 닫고 메모리를 해제함
+            fclose( pstFile );
+            kFreeMemory( pbBuffer );
+            return;
+        }
+    }
+    // 시간 출력
+    kPrintf( "   Sequential Write(1Byte): %d ms\n", kGetTickCount() -
+             qwLastTickCount );
+    //===================================================================================
+    // 1바이트 단위로 파일을 순차적으로 읽는 테스트
+    //===================================================================================
+    // 파일의 처음으로 이동
+    fseek( pstFile, 0, SEEK_SET );
+
+    qwLastTickCount = kGetTickCount();
+    // 1바이트 단위로 읽는 테스트
+    for( i = 0 ; i < dwOneByteTestFileSize ; i++ )
+    {
+        if (fread( pbBuffer, 1, 1, pstFile ) != 1 )
+        {
+            kPrintf( "Read Fail\n" );
+            // 파일을 닫고 메모리를 해제함
+            fclose( pstFile );
+            kFreeMemory( pbBuffer );
+            return;
+        }
+    }
+    // 시간 출력
+    kPrintf( "    Seqeuntial Read(1 Byte): %d ms\n", kGetTickCount() -
+             qwLastTickCount );
+
+    // 파일을 닫고 메모리를 해제함
+    fclose( pstFile );
+    kFreeMemory( pbBuffer );
+}
+
+// 파일 시스템의 캐시 버퍼에 있는 데이터를 모두 하드 디스크에 씀
+static void kFlushCache( const char* pcParameterBuffer )
+{
+    QWORD qwTickCount;
+
+    qwTickCount = kGetTickCount();
+    kPrintf( "Cache Flush... " );
+    if( kFlushFileSystemCache() == TRUE )
+    {
+        kPrintf( "Pass\n" );
+    }
+    else
+    {
+        kPrintf( "Fail\n" );
+    }
+    kPrintf( "Total Time = %d ms\n", kGetTickCount() - qwTickCount );
 }
