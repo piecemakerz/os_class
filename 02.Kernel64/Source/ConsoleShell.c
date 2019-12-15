@@ -2016,6 +2016,13 @@ static void kCreateDirectoryInDirectory(const char* pcParameterBuffer)
         return;
     }
 
+    for(int j=0;vcFileName[j]!='\0';j++){
+        if(vcFileName[j]>='!' && vcFileName[j]<='/'){
+            kPrintf("Directory name cannot contains special symbols\nDirectory Create Fail\n");
+            return;
+        }
+    }
+
     pstFile = makedir(vcFileName);
     if (pstFile == NULL)
     {
