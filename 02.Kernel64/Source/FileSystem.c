@@ -230,6 +230,7 @@ BOOL kFormat(void)
     kMemSet(&stEntry, 0, sizeof(DIRECTORYENTRY));
     stEntry.vcFileName[0] = '.';
     stEntry.dwFileSize = 0;
+    stEntry.dwEntryCount = 2;
     stEntry.dwStartClusterIndex = 1;
     stEntry.bType = FILESYSTEM_TYPE_DIRECTORY;
     kReadRTCTime(&(stEntry.hour), &(stEntry.minute), &(stEntry.second));
@@ -237,6 +238,7 @@ BOOL kFormat(void)
     kMemCpy(currentEntry, &stEntry, sizeof(DIRECTORYENTRY));
 
     stEntry.vcFileName[1] = '.';
+    stEntry.dwEntryCount = 0;
     kMemCpy((char*)currentEntry + sizeof(DIRECTORYENTRY), &stEntry, sizeof(DIRECTORYENTRY));
 
     // 갱신된 현재 디렉터리 디스크에 쓰기
@@ -761,6 +763,7 @@ static int kFindFreeDirectoryEntry(DWORD dirOffset)
 static BOOL kSetDirectoryEntryData(DWORD dirOffset, int iIndex, DIRECTORYENTRY* pstEntry)
 {
     DIRECTORYENTRY* pstRootEntry;
+    DIRECTORYENTRY currentDirEntry;
 
     // 파일 시스템을 인식하지 못했거나 인덱스가 올바르지 않으면 실패
     if ((gs_stFileSystemManager.bMounted == FALSE) ||
@@ -784,6 +787,7 @@ static BOOL kSetDirectoryEntryData(DWORD dirOffset, int iIndex, DIRECTORYENTRY* 
     {
         return FALSE;
     }
+
     return TRUE;
 }
 
@@ -909,6 +913,8 @@ static BOOL kCreateFile(const char* pcFileName, DIRECTORYENTRY* pstEntry,
 {
     DWORD dwCluster;
     DWORD dwCurrentDirOffset;
+    DIRECTORYENTRY curDirEntry;
+    DWORD curDirEntryCount;
 
     dwCurrentDirOffset = gs_stFileSystemManager.dwCurrentDirOffset;
 
@@ -933,6 +939,7 @@ static BOOL kCreateFile(const char* pcFileName, DIRECTORYENTRY* pstEntry,
     kMemCpy(pstEntry->vcFileName, pcFileName, kStrLen(pcFileName) + 1);
     pstEntry->dwStartClusterIndex = dwCluster;
     pstEntry->dwFileSize = 0;
+    pstEntry->dwEntryCount = 0;
     pstEntry->bType = FILESYSTEM_TYPE_FILE;
     kReadRTCTime(&(pstEntry->hour), &(pstEntry->minute), &(pstEntry->second));
     kReadRTCDate(&(pstEntry->year), &(pstEntry->month), &(pstEntry->dayOfMonth), &(pstEntry->dayOfWeek));
@@ -945,6 +952,12 @@ static BOOL kCreateFile(const char* pcFileName, DIRECTORYENTRY* pstEntry,
         kSetClusterLinkData(dwCluster, FILESYSTEM_FREECLUSTER);
         return FALSE;
     }
+
+    // 현재 디렉터리를 가리키는 엔트리의 파일 갯수 갱신함.
+    kGetDirectoryEntryData(gs_stFileSystemManager.dwCurrentDirOffset, 0, &curDirEntry );
+    curDirEntry.dwEntryCount++;
+    kSetDirectoryEntryData(gs_stFileSystemManager.dwCurrentDirOffset, 0, &curDirEntry);
+
     return TRUE;
 }
 
@@ -1665,6 +1678,11 @@ int kRemoveFile(const char* pcFileName)
         return -1;
     }
 
+    // 현재 디렉터리를 가리키는 엔트리의 파일 갯수 갱신함.
+    kGetDirectoryEntryData(currentDirOffset, 0, &stEntry );
+    stEntry.dwEntryCount--;
+    kSetDirectoryEntryData(currentDirOffset, 0, &stEntry);
+
     // 동기화
     kUnlock(&(gs_stFileSystemManager.stMutex));
     return 0;
@@ -1746,14 +1764,21 @@ BOOL kCreateDirectory(const char* pcDirName) {
     kMemSet(stEntry.vcFileName, 0, sizeof(stEntry.vcFileName));
     stEntry.vcFileName[0] = '.';
     stEntry.dwStartClusterIndex = dwCluster;
+    stEntry.dwEntryCount = 2;
     stEntry.bType = FILESYSTEM_TYPE_DIRECTORY;
     kMemCpy(currentEntry, &stEntry, sizeof(DIRECTORYENTRY));
 
     stEntry.vcFileName[1] = '.';
     stEntry.dwStartClusterIndex = currentDirOffset;
+    stEntry.dwEntryCount = 0;
     kMemCpy(currentEntry + 1, &stEntry, sizeof(DIRECTORYENTRY));
 
     kWriteCluster(dwCluster, currentEntry);
+
+    // 부모 디렉터리의 파일 수 갱신
+   kGetDirectoryEntryData(currentDirOffset, 0, &stEntry);
+   stEntry.dwEntryCount++;
+   kSetDirectoryEntryData(currentDirOffset, 0, &stEntry);
     return TRUE;
 }
 
@@ -1839,6 +1864,7 @@ BOOL kReadDirectory(void* buffer, DIR* pstDirectory)
 {
     DIRECTORYHANDLE* pstDirectoryHandle;
     DIRECTORYENTRY pstEntry;
+    int curDirEntryCount;
 
     // 핸들 타입이 디렉터리가 아니면 실패
     if ((pstDirectory == NULL) ||
@@ -1858,7 +1884,6 @@ BOOL kReadDirectory(void* buffer, DIR* pstDirectory)
 
     // 동기화
     kLock(&(gs_stFileSystemManager.stMutex));
-    kMemSet(&pstEntry, 0, sizeof(DIRECTORYENTRY));
 
     // 디렉터리에 있는 최대 디렉터리 엔트리의 개수만큼 검색
     while (pstDirectoryHandle->iCurrentOffset < FILESYSTEM_MAXDIRECTORYENTRYCOUNT)
@@ -1913,6 +1938,7 @@ void kRewindDirectory(DIR* pstDirectory)
 int kCloseDirectory(DIR* pstDirectory)
 {
     DIRECTORYHANDLE* pstDirectoryHandle;
+    DIRECTORYENTRY stEntry;
 
     // 핸들 타입이 디렉터리가 아니면 실패
     if ((pstDirectory == NULL) ||
@@ -1941,8 +1967,10 @@ int kCloseDirectory(DIR* pstDirectory)
 int kRemoveDirectory(const char* pcDirectoryName)
 {
     DIRECTORYENTRY stEntry;
+    DIRECTORYENTRY tempEntry;
     int iDirectoryEntryOffset;
     int iDirNameLength;
+    int i;
     DWORD currentDirOffset;
 
     currentDirOffset = gs_stFileSystemManager.dwCurrentDirOffset;
@@ -1976,6 +2004,17 @@ int kRemoveDirectory(const char* pcDirectoryName)
         return -1;
     }
 
+    // 해당 디렉터리에 파일 혹은 디렉터리가 존재한다면
+    // 삭제 명령을 거부한다.
+	kGetDirectoryEntryData(stEntry.dwStartClusterIndex, 0, &tempEntry);
+	if(tempEntry.dwEntryCount > 2)
+	{
+		kPrintf("File Exists\n", i, tempEntry.dwStartClusterIndex);
+			// 동기화
+		kUnlock(&(gs_stFileSystemManager.stMutex));
+		return -1;
+    }
+
     // 디렉터리를 구성하는 클러스터를 모두 해제
     if (kFreeClusterUntilEnd(stEntry.dwStartClusterIndex) == FALSE)
     {
@@ -1992,6 +2031,11 @@ int kRemoveDirectory(const char* pcDirectoryName)
         kUnlock(&(gs_stFileSystemManager.stMutex));
         return -1;
     }
+
+    // 현재 디렉터리의 파일 수 갱신
+	kGetDirectoryEntryData(currentDirOffset, 0, &tempEntry);
+	tempEntry.dwEntryCount--;
+	kSetDirectoryEntryData(currentDirOffset, 0, &tempEntry);
 
     // 동기화
     kUnlock(&(gs_stFileSystemManager.stMutex));

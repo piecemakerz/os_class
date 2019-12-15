@@ -2051,6 +2051,8 @@ static void kShowDirectory(const char* pcParameterBuffer)
     DWORD dwUsedClusterCount;
     FILESYSTEMMANAGER stManager;
     DIRECTORYENTRY dir;
+    DWORD curDirEntryCount;
+
     // 파일 시스템 정보를 얻음
     kGetFileSystemInformation(&stManager);
 
@@ -2067,7 +2069,11 @@ static void kShowDirectory(const char* pcParameterBuffer)
     iTotalCount = 0;
     dwTotalByte = 0;
     dwUsedClusterCount = 0;
-    while (1)
+
+    kGetDirectoryEntryData(pstDirectory->stDirectoryHandle.dwStartClusterIndex, 0, &stEntry);
+    curDirEntryCount = stEntry.dwEntryCount;
+
+    while (iTotalCount < curDirEntryCount)
     {
         kMemSet(&stEntry, 0, sizeof(DIRECTORYENTRY));
         // 디렉터리에서 엔트리 하나를 읽음
@@ -2095,7 +2101,7 @@ static void kShowDirectory(const char* pcParameterBuffer)
     // 실제 파일의 내용을 표시하는 루프
     rewinddir(pstDirectory);
     iCount = 0;
-    while (1)
+    while (iCount < curDirEntryCount)
     {
         kMemSet(&stEntry, 0, sizeof(DIRECTORYENTRY));
         // 디렉터리에서 엔트리 하나를 읽음

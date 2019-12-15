@@ -138,7 +138,11 @@ typedef struct kDirectoryEntryStruct
     BYTE second, minute, hour;
     BYTE dayOfWeek, dayOfMonth, month;
     WORD year;
-    char offset[23];
+    // 디렉터리의 엔트리 수
+    // 각 디렉터리의 첫 번째 엔트리인 .이 현재 디렉터리의 엔트리 수를 저장하도록 한다.
+    // 디렉터리는 최소 2 이상의 수를 가진다.
+    DWORD dwEntryCount;
+    char offset[19];
 } DIRECTORYENTRY;
 
 #pragma pack( pop )
