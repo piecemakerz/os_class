@@ -1954,6 +1954,8 @@ int kRemoveDirectory(const char* pcDirectoryName)
     {
         return NULL;
     }
+    if (iDirNameLength==1 && pcDirectoryName[0] == '.') return -2;
+    if (iDirNameLength==2 && pcDirectoryName[0] == '.' && pcDirectoryName[1] =='.') return -2;
 
     // µø±‚»≠
     kLock(&(gs_stFileSystemManager.stMutex));
