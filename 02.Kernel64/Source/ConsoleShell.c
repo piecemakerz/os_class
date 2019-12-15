@@ -2051,6 +2051,7 @@ static void kShowDirectory(const char* pcParameterBuffer)
     DWORD dwUsedClusterCount;
     FILESYSTEMMANAGER stManager;
     DIRECTORYENTRY dir;
+
     // 파일 시스템 정보를 얻음
     kGetFileSystemInformation(&stManager);
 
