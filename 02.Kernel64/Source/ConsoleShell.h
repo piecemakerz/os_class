@@ -132,4 +132,7 @@ static void kReadDataFromFile( const char* pcParameterBuffer );
 static void kFlushCache( const char* pcParamterBuffer );
 static void kTestPerformance( const char* pcParamterBuffer );
 static void kChangeDirectoryInDirectory( const char* pcParameterBuffer );
+// for print current path
+void printCurPath();
+void cpyDirArray();
 #endif /*__CONSOLESHELL_H__*/
