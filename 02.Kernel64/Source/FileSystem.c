@@ -2024,6 +2024,7 @@ DIR* kChangeDirectory(DIR* pstCurrentDirectory, const char* pcDirectoryName)
 	if (iDirectoryEntryOffset == -1)
 	{
 		// 동기화
+		kPrintf("Directory Not Exist\n");
 		kUnlock(&(gs_stFileSystemManager.stMutex));
 		return NULL;
 	}
@@ -2033,6 +2034,7 @@ DIR* kChangeDirectory(DIR* pstCurrentDirectory, const char* pcDirectoryName)
 	if (kIsFileOpened(&stEntry) == TRUE)
 	{
 		// 동기화
+		kPrintf("File is Opened\n");
 		kUnlock(&(gs_stFileSystemManager.stMutex));
 		return NULL;
 	}

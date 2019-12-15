@@ -2509,6 +2509,38 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 			kPrintf("Current Directory Open Fail\n");
 			return;
 		}
+
+		// 이미 현재 디렉터리를 열었으므로 맨 앞에 '.'가 오면 무시한다
+		if(vcFileName[0] == '.')
+		{
+			// 현재 디렉터리로만 이동하는 경우이면 아무런 동작을 하지 않는다.
+			if(vcFileName[1] == '\0')
+			{
+				closedir(pstCurrentDirectory);
+				kPrintf("Directory Change Success\n");
+				return;
+			}
+			else if(vcFileName[1] == '/')
+			{
+				i += 2;
+			}
+			// 루트 디렉터리의 경우 부모 디렉터리가 자기 자신을 가리키므로
+			// 이에 대한 예외처리를 해준다.
+			else if(vcFileName[1] == '.' &&	(pstCurrentDirectory->stDirectoryHandle.dwStartClusterIndex == 1))
+			{
+				// 현재 디렉터리로만 이동하는 경우이면 아무런 동작을 하지 않는다.
+				if(vcFileName[2] == '\0')
+				{
+					closedir(pstCurrentDirectory);
+					kPrintf("Directory Change Success\n");
+					return;
+				}
+				else if(vcFileName[2] == '/')
+				{
+					i += 3;
+				}
+			}
+		}
     }
 
 	// 하위 디렉터리 순차적으로 열기
