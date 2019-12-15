@@ -805,7 +805,7 @@ BOOL kGetDirectoryEntryData(DWORD dirOffset, int iIndex, DIRECTORYENTRY* pstEntr
     // 디렉터리를 읽음
     if (kReadCluster(dirOffset, gs_vbTempBuffer) == FALSE)
     {
-    	kPrintf("Error While Reading Cluster\n");
+    	//kPrintf("Error While Reading Cluster\n");
         return FALSE;
     }
 
