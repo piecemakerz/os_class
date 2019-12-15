@@ -14,7 +14,9 @@
 static int bTry = 0;
 
 // for print current path
+char tWorkingDir[FILESYSTEM_MAXDIRECTORYENTRYCOUNT][FILESYSTEM_MAXFILENAMELENGTH];
 char workingDir[FILESYSTEM_MAXDIRECTORYENTRYCOUNT][FILESYSTEM_MAXFILENAMELENGTH];
+int tWorkingDirIndex;
 int workingDirIndex;
 
 // 커맨드 테이블 정의
@@ -2477,6 +2479,8 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
     DWORD dwCluster;
     int i, j;
     BOOL fileEnd;
+    // for print current path
+    cpyDirArray(1);
     // 파라미터 리스트를 초기화하여 파일 이름을 추출
     kInitializeParameter(&stList, pcParameterBuffer);
     iLength = kGetNextParameter(&stList, vcFileName);
@@ -2502,7 +2506,7 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 		}
 
         // for print current path
-        workingDirIndex = 0;
+        tWorkingDirIndex = 0;
 
     	i++;
 
@@ -2510,6 +2514,7 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
     	if(vcFileName[i] == '\0')
     	{
     		closedir(pstCurrentDirectory);
+            workingDirIndex = 0;
     		kPrintf("Directory Change Success\n");
     		return;
     	}
@@ -2547,6 +2552,10 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 				if(vcFileName[2] == '\0')
 				{
 					closedir(pstCurrentDirectory);
+                    if(workingDirIndex != 0)
+                    {
+                        workingDirIndex--;
+                    }
 					kPrintf("Directory Change Success\n");
 					return;
 				}
@@ -2568,33 +2577,32 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 			 tempBuffer[j] = vcFileName[i];
 
              // for print current path
-             workingDir[workingDirIndex][j] = vcFileName[i];
+             tWorkingDir[tWorkingDirIndex][j] = vcFileName[i];
 
 			 i++;
 			 j++;
 		}
 
         // for print current path
-        workingDir[workingDirIndex][j] = '\0';
-        if(workingDir[workingDirIndex][0] == '.' && workingDir[workingDirIndex][1] == '.' && workingDir[workingDirIndex][2] == '\0')
+        tWorkingDir[tWorkingDirIndex][j] = '\0';
+        if(tWorkingDir[tWorkingDirIndex][0] == '.' && tWorkingDir[tWorkingDirIndex][1] == '.' && tWorkingDir[tWorkingDirIndex][2] == '\0')
         {
-            workingDirIndex--;
-            if(workingDirIndex < 0)
+            if(tWorkingDirIndex != 0)
             {
-                workingDirIndex = 0;
+                tWorkingDirIndex--;
             }
         }
-        else if(workingDir[workingDirIndex][0] == '.' && workingDir[workingDirIndex][1] == '\0')
+        else if(tWorkingDir[tWorkingDirIndex][0] == '.' && tWorkingDir[tWorkingDirIndex][1] == '\0')
         {
             // nothing
         }
-        else if(workingDir[workingDirIndex][0] == '\0')
+        else if(tWorkingDir[tWorkingDirIndex][0] == '\0')
         {
             // nothing
         }
         else
         {
-            workingDirIndex++;
+            tWorkingDirIndex++;
         }
 
 		if(vcFileName[i] == '\0')
@@ -2620,6 +2628,7 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 	}
 
 	closedir(pstCurrentDirectory);
+    cpyDirArray(0);
 	kPrintf("Directory Change Success\n");
 }
 
@@ -2637,4 +2646,55 @@ void printCurPath()
         }
     }
     kPrintf(">");
+}
+
+void cpyDirArray(int switchNum)
+{
+    int i;
+    int j;
+
+    if(switchNum == 0)
+    {
+        if(tWorkingDirIndex == 0)
+        {
+            workingDirIndex = 0;
+        }
+        else
+        {
+            workingDirIndex = tWorkingDirIndex;
+            for(i = 0; i < tWorkingDirIndex; i++)
+            {
+                for(j = 0; j < FILESYSTEM_MAXFILENAMELENGTH; j++)
+                {
+                    workingDir[i][j] = tWorkingDir[i][j];
+                    if(workingDir[i][j] == '\0')
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    else if(switchNum == 1)
+    {
+        if(workingDirIndex == 0)
+        {
+            tWorkingDirIndex = 0;
+        }
+        else
+        {
+            tWorkingDirIndex = workingDirIndex;
+            for(i = 0; i < workingDirIndex; i++)
+            {
+                for(j = 0; j < FILESYSTEM_MAXFILENAMELENGTH; j++)
+                {
+                    tWorkingDir[i][j] = workingDir[i][j];
+                    if(tWorkingDir[i][j] == '\0')
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
