@@ -2127,9 +2127,16 @@ static void kShowDirectory(const char* pcParameterBuffer)
             kSPrintf(vcTempValue, "             ");
         kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
         }
+        // kMemCpy(vcBuffer + 25, vcTempValue, kStrLen(vcTempValue));
 
         // 파일의 시작 클러스터 삽입
-        kPrintf("   %s  ", vcBuffer);
+        if(stEntry.bType = FILESYSTEM_TYPE_FILE)
+        {
+			kSPrintf(vcTempValue, "0x%X Cluster", stEntry.dwStartClusterIndex);
+			kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
+        }
+
+        kPrintf("%s", vcBuffer);
 
         kPrintf("%4d-%2d-%2d %02d:%02d:%02d\n", stEntry.year, stEntry.month, stEntry.dayOfMonth, stEntry.hour, stEntry.minute, stEntry.second);
         if ((iCount != 0) && ((iCount % 20) == 0))
