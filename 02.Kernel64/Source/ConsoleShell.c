@@ -51,8 +51,8 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] =
         { "filesysteminfo", "Show File System Information", kShowFileSystemInformation },
         { "createfile", "Create File, ex)createfile a.txt", kCreateFileInDirectory },
         { "deletefile", "Delete File, ex)deletefile a.txt", kDeleteFileInDirectory },
-        { "createdir", "Create Directory, ex)createdir a", kCreateDirectoryInDirectory },
-        { "deletedir", "Delete Directory, ex)deletedir a", kDeleteDirectoryInDirectory },
+        { "makedir", "Create Directory, ex)createdir a", kCreateDirectoryInDirectory },
+        { "rmdir", "Delete Directory, ex)deletedir a", kDeleteDirectoryInDirectory },
         { "dir", "Show Directory", kShowDirectory },
         { "writefile", "Write Data To File, ex) writefile a.txt", kWriteDataToFile },
         { "readfile", "Read Data From File, ex) readfile a.txt", kReadDataFromFile },
@@ -2136,7 +2136,7 @@ static void kShowDirectory(const char* pcParameterBuffer)
 			kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
         }
 
-        kPrintf("%s", vcBuffer);
+        kPrintf("%s    ", vcBuffer);
 
         kPrintf("%4d-%2d-%2d %02d:%02d:%02d\n", stEntry.year, stEntry.month, stEntry.dayOfMonth, stEntry.hour, stEntry.minute, stEntry.second);
         if ((iCount != 0) && ((iCount % 20) == 0))
@@ -2165,6 +2165,7 @@ static void kShowDirectory(const char* pcParameterBuffer)
     // 디렉터리를 닫음
     closedir(pstDirectory);
 }
+
 
 /**
  *  파일을 생성하여 키보드로 입력된 데이터를 씀
@@ -2456,13 +2457,14 @@ static void kFlushCache(const char* pcParameterBuffer)
 static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 {
 	DIR* pstCurrentDirectory;
+	DIR* pstMovedDirectory;
     PARAMETERLIST stList;
-    char vcFileName[50];
+    char vcFileName[200];
+    char tempBuffer[25];
     int iLength;
     DWORD dwCluster;
-    int i;
-    DIR* pstMovedDirectory;
-
+    int i, j;
+    BOOL fileEnd;
     // 파라미터 리스트를 초기화하여 파일 이름을 추출
     kInitializeParameter(&stList, pcParameterBuffer);
     iLength = kGetNextParameter(&stList, vcFileName);
@@ -2473,22 +2475,108 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
         return;
     }
 
-    pstCurrentDirectory = opendir(".");
+    i = 0;
+    fileEnd = FALSE;
 
-	if (pstCurrentDirectory == NULL)
-	{
-		kPrintf("Current Directory Open Fail\n");
-		return;
-	}
-
-	pstMovedDirectory = cd(pstCurrentDirectory, vcFileName);
-    if (pstMovedDirectory == NULL)
+    // 절대 경로 이동
+    if(vcFileName[0] == '/')
     {
-        kPrintf("Directory Change Fail\n");
-        return;
+    		// 루트 디렉터리 열기
+    	pstCurrentDirectory = kOpenRootDirectory();
+    	if (pstCurrentDirectory == NULL)
+		{
+			kPrintf("Root Directory Open Fail\n");
+			return;
+		}
+
+    	i++;
+
+    		// 루트 디렉터리로만 이동하는 경우
+    	if(vcFileName[i] == '\0')
+    	{
+    		closedir(pstCurrentDirectory);
+    		kPrintf("Directory Change Success\n");
+    		return;
+    	}
+    }
+    // 상대 경로 이동
+    else
+    {
+		// 현재 디렉터리 열기
+		pstCurrentDirectory = kOpenDirectory(".");
+		if (pstCurrentDirectory == NULL)
+		{
+			kPrintf("Current Directory Open Fail\n");
+			return;
+		}
+
+		// 이미 현재 디렉터리를 열었으므로 맨 앞에 '.'가 오면 무시한다
+		if(vcFileName[0] == '.')
+		{
+			// 현재 디렉터리로만 이동하는 경우이면 아무런 동작을 하지 않는다.
+			if(vcFileName[1] == '\0')
+			{
+				closedir(pstCurrentDirectory);
+				kPrintf("Directory Change Success\n");
+				return;
+			}
+			else if(vcFileName[1] == '/')
+			{
+				i += 2;
+			}
+			// 루트 디렉터리의 경우 부모 디렉터리가 자기 자신을 가리키므로
+			// 이에 대한 예외처리를 해준다.
+			else if(vcFileName[1] == '.' &&	(pstCurrentDirectory->stDirectoryHandle.dwStartClusterIndex == 1))
+			{
+				// 현재 디렉터리로만 이동하는 경우이면 아무런 동작을 하지 않는다.
+				if(vcFileName[2] == '\0')
+				{
+					closedir(pstCurrentDirectory);
+					kPrintf("Directory Change Success\n");
+					return;
+				}
+				else if(vcFileName[2] == '/')
+				{
+					i += 3;
+				}
+			}
+		}
     }
 
-    closedir(pstCurrentDirectory);
-    closedir(pstMovedDirectory);
-    kPrintf("Directory Change Success\n");
+	// 하위 디렉터리 순차적으로 열기
+	while(TRUE)
+	{
+		j = 0;
+		kMemSet(tempBuffer, 0, sizeof(tempBuffer));
+		while((vcFileName[i] != '/') && (vcFileName[i] != '\0'))
+		{
+			 tempBuffer[j] = vcFileName[i];
+			 i++;
+			 j++;
+		}
+
+		if(vcFileName[i] == '\0')
+		{
+			fileEnd = TRUE;
+		}
+		i++;
+		tempBuffer[j] = '\0';
+		pstMovedDirectory = cd(tempBuffer);
+		if (pstMovedDirectory == NULL)
+		{
+			kPrintf("Directory Change Fail\n");
+			return;
+		}
+
+		closedir(pstCurrentDirectory);
+		pstCurrentDirectory = pstMovedDirectory;
+
+		if(fileEnd == TRUE)
+		{
+			break;
+		}
+	}
+
+	closedir(pstCurrentDirectory);
+	kPrintf("Directory Change Success\n");
 }

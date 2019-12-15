@@ -624,11 +624,9 @@ unsigned long time(void)
 	WORD year;
 	BYTE month, dayOfMonth, dayOfWeek;
 	unsigned long secondsOfDay = 86400;
-
 	totalSeconds = 0;
 	kReadRTCTime( &hour, &minute, &second );
 	kReadRTCDate( &year, &month, &dayOfMonth, &dayOfWeek);
-
 	for(i=1970; i<year; i++)
 	{
 		if((year%4 == 0) && (year%100 != 0) || (year%400 == 0))
@@ -640,17 +638,14 @@ unsigned long time(void)
 			totalSeconds += secondsOfDay * 365;
 		}
 	}
-
 	for(j=1; j<month; j++)
 	{
 		totalSeconds += secondsOfDay * daysOfMonth[j];
 	}
-
 	totalSeconds += secondsOfDay * (dayOfMonth - 1);
 	totalSeconds += hour * 3600;
 	totalSeconds += minute * 60;
 	totalSeconds += second;
-
 	return totalSeconds;
 }
 */
@@ -669,4 +664,3 @@ void kSleep( QWORD qwMillisecond )
         kSchedule();
     }
 }
-
