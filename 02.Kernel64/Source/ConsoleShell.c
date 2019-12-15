@@ -2136,7 +2136,7 @@ static void kShowDirectory(const char* pcParameterBuffer)
 			kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
         }
 
-        kPrintf("%s", vcBuffer);
+        kPrintf("%s    ", vcBuffer);
 
         kPrintf("%4d-%2d-%2d %02d:%02d:%02d\n", stEntry.year, stEntry.month, stEntry.dayOfMonth, stEntry.hour, stEntry.minute, stEntry.second);
         if ((iCount != 0) && ((iCount % 20) == 0))
