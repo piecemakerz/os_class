@@ -134,5 +134,5 @@ static void kTestPerformance( const char* pcParamterBuffer );
 static void kChangeDirectoryInDirectory( const char* pcParameterBuffer );
 // for print current path
 void printCurPath();
-void cpyDirArray(int switchNum);
+void cpyDirArray();
 #endif /*__CONSOLESHELL_H__*/

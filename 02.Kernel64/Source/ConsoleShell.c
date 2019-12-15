@@ -2480,7 +2480,7 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
     int i, j;
     BOOL fileEnd;
     // for print current path
-    cpyDirArray(1);
+    tWorkingDirIndex = workingDirIndex;
     // 파라미터 리스트를 초기화하여 파일 이름을 추출
     kInitializeParameter(&stList, pcParameterBuffer);
     iLength = kGetNextParameter(&stList, vcFileName);
@@ -2628,7 +2628,7 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 	}
 
 	closedir(pstCurrentDirectory);
-    cpyDirArray(0);
+    cpyDirArray();
 	kPrintf("Directory Change Success\n");
 }
 
@@ -2648,51 +2648,26 @@ void printCurPath()
     kPrintf(">");
 }
 
-void cpyDirArray(int switchNum)
+void cpyDirArray()
 {
     int i;
     int j;
 
-    if(switchNum == 0)
+    if(tWorkingDirIndex == 0)
     {
-        if(tWorkingDirIndex == 0)
-        {
-            workingDirIndex = 0;
-        }
-        else
-        {
-            workingDirIndex = tWorkingDirIndex;
-            for(i = 0; i < tWorkingDirIndex; i++)
-            {
-                for(j = 0; j < FILESYSTEM_MAXFILENAMELENGTH; j++)
-                {
-                    workingDir[i][j] = tWorkingDir[i][j];
-                    if(workingDir[i][j] == '\0')
-                    {
-                        break;
-                    }
-                }
-            }
-        }
+        workingDirIndex = 0;
     }
-    else if(switchNum == 1)
+    else
     {
-        if(workingDirIndex == 0)
+        workingDirIndex = tWorkingDirIndex;
+        for(i = 0; i < tWorkingDirIndex; i++)
         {
-            tWorkingDirIndex = 0;
-        }
-        else
-        {
-            tWorkingDirIndex = workingDirIndex;
-            for(i = 0; i < workingDirIndex; i++)
+            for(j = 0; j < FILESYSTEM_MAXFILENAMELENGTH; j++)
             {
-                for(j = 0; j < FILESYSTEM_MAXFILENAMELENGTH; j++)
+                workingDir[i][j] = tWorkingDir[i][j];
+                if(workingDir[i][j] == '\0')
                 {
-                    tWorkingDir[i][j] = workingDir[i][j];
-                    if(tWorkingDir[i][j] == '\0')
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
         }
