@@ -122,12 +122,14 @@ static void kWriteSector( const char* pcParameterBuffer );
 static void kMountHDD( const char* pcParameterBuffer );
 static void kFormatHDD( const char* pcParameterBuffer );
 static void kShowFileSystemInformation( const char* pcParameterBuffer );
-static void kCreateFileInRootDirectory( const char* pcParameterBuffer );
-static void kDeleteFileInRootDirectory( const char* pcParameterBuffer );
-static void kShowRootDirectory( const char* pcParameterBuffer );
+static void kCreateFileInDirectory( const char* pcParameterBuffer );
+static void kDeleteFileInDirectory( const char* pcParameterBuffer );
+static void kCreateDirectoryInDirectory(const char* pcParameterBuffer);
+static void kDeleteDirectoryInDirectory(const char* pcParameterBuffer);
+static void kShowDirectory( const char* pcParameterBuffer );
 static void kWriteDataToFile( const char* pcParameterBuffer );
 static void kReadDataFromFile( const char* pcParameterBuffer );
-static void kTestFileIO( const char* pcParameterBuffer );
 static void kFlushCache( const char* pcParamterBuffer );
 static void kTestPerformance( const char* pcParamterBuffer );
+static void kChangeDirectoryInDirectory( const char* pcParameterBuffer );
 #endif /*__CONSOLESHELL_H__*/
