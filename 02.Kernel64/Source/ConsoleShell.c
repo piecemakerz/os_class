@@ -2561,7 +2561,7 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 		}
 		i++;
 		tempBuffer[j] = '\0';
-		pstMovedDirectory = cd(pstCurrentDirectory, tempBuffer);
+		pstMovedDirectory = cd(tempBuffer);
 		if (pstMovedDirectory == NULL)
 		{
 			kPrintf("Directory Change Fail\n");

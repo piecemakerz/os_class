@@ -1998,7 +1998,7 @@ int kRemoveDirectory(const char* pcDirectoryName)
     return 0;
 }
 
-DIR* kChangeDirectory(DIR* pstCurrentDirectory, const char* pcDirectoryName)
+DIR* kChangeDirectory(const char* pcDirectoryName)
 {
 	DIR* pstDirectory;
 	DIRECTORYENTRY stEntry;
