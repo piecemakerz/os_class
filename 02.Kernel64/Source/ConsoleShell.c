@@ -2132,7 +2132,7 @@ static void kShowDirectory(const char* pcParameterBuffer)
         // 파일의 시작 클러스터 삽입
         if(stEntry.bType = FILESYSTEM_TYPE_FILE)
         {
-			kSPrintf(vcTempValue, "0x%X Cluster", stEntry.dwStartClusterIndex);
+			kSPrintf(vcTempValue, "%#3X Cluster ", stEntry.dwStartClusterIndex);
 			kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
         }
 

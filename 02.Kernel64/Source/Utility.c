@@ -532,20 +532,20 @@ int kVSPrintf( char* pcBuffer, const char* pcFormatString, va_list ap )
                     // }
                     for (int k=0; k<paddingLength; k++)
                         pcBuffer[iBufferIndex + k] = (fieldBuffer[0] == '0' && iValue>0) ? '0':' ';
-                    // if(printX){
-                    //     paddingLength = paddingLength<0 ? 0:paddingLength;
-                    //     pcBuffer[iBufferIndex + paddingLength++] = '0';
-                    //     pcBuffer[iBufferIndex + paddingLength++] = 'x';
-                    // }
+                    if(printX){
+                        paddingLength = paddingLength<0 ? 0:paddingLength;
+                        pcBuffer[iBufferIndex + paddingLength++] = '0';
+                        pcBuffer[iBufferIndex + paddingLength++] = 'x';
+                    }
                     for (int k=0; k<numberLength; k++)
                         pcBuffer[iBufferIndex + paddingLength + k] = numberBuffer[k];
                     iBufferIndex += paddingLength + numberLength;
                 }else{
                     paddingLength = 0;
-                    // if(printX){
-                    //     pcBuffer[iBufferIndex + paddingLength++] = '0';
-                    //     pcBuffer[iBufferIndex + paddingLength++] = 'x';
-                    // }
+                    if(printX){
+                        pcBuffer[iBufferIndex + paddingLength++] = '0';
+                        pcBuffer[iBufferIndex + paddingLength++] = 'x';
+                    }
                     iBufferIndex += kIToA( qwValue, pcBuffer + paddingLength + iBufferIndex, 16 );
                 }
                 break;
