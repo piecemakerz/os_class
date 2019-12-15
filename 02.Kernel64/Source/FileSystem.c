@@ -1802,6 +1802,37 @@ DIR* kOpenDirectory(const char* pcDirectoryName)
 }
 
 /**
+ *  루트 디렉터리를 엶
+    현재 디렉터리의 엔트리로 존재하는 디렉터리를 연다.
+ */
+DIR* kOpenRootDirectory(void)
+{
+    DIR* pstDirectory;
+
+    // 동기화
+    kLock(&(gs_stFileSystemManager.stMutex));
+
+    // 핸들을 할당받아 반환
+    pstDirectory = kAllocateFileDirectoryHandle();
+    if (pstDirectory == NULL)
+    {
+        kPrintf("Failed to Allocate Handle\n");
+        // 동기화
+        kUnlock(&(gs_stFileSystemManager.stMutex));
+        return NULL;
+    }
+
+    // 디렉터리 타입으로 설정하고 현재 디렉터리 엔트리의 오프셋을 초기화
+    pstDirectory->bType = FILESYSTEM_TYPE_DIRECTORY;
+    pstDirectory->stDirectoryHandle.iCurrentOffset = 0;
+    pstDirectory->stDirectoryHandle.dwStartClusterIndex = 1;
+    gs_stFileSystemManager.dwCurrentDirOffset = 1;
+    // 동기화
+    kUnlock(&(gs_stFileSystemManager.stMutex));
+    return pstDirectory;
+}
+
+/**
  *  디렉터리 엔트리를 반환하고 다음으로 이동
  */
 BOOL kReadDirectory(void* buffer, DIR* pstDirectory)

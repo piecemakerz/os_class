@@ -266,6 +266,7 @@ int kCloseFile(FILE* pstFile);
 int kRemoveFile(const char* pcFileName);
 BOOL kCreateDirectory(const char* pcDirectoryName);
 DIR* kOpenDirectory(const char* pcDirName);
+DIR* kOpenRootDirectory(void);
 BOOL kReadDirectory(void* buffer, DIR* pstDirectory);
 void kRewindDirectory(DIR* pstDirectory);
 int kCloseDirectory(DIR* pstDirectory);
