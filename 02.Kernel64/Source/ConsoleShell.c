@@ -13,6 +13,10 @@
 
 static int bTry = 0;
 
+// for print current path
+char workingDir[FILESYSTEM_MAXDIRECTORYENTRYCOUNT][FILESYSTEM_MAXFILENAMELENGTH];
+int workingDirIndex;
+
 // 커맨드 테이블 정의
 SHELLCOMMANDENTRY gs_vstCommandTable[] =
 {
@@ -90,6 +94,9 @@ void kStartConsoleShell(void)
     BOOL candidateExists = FALSE;
     BOOL commandWrote = FALSE;
 
+    // for print current path
+    workingDirIndex = 0;
+
     kMemSet(lineClear, ' ', 79);
     lineClear[79] = '\0';
 
@@ -104,6 +111,7 @@ void kStartConsoleShell(void)
 
     // 프롬프트 출력
     kPrintf(CONSOLESHELL_PROMPTMESSAGE);
+    printCurPath();
     while (1)
     {
         // 키가 수신될 때까지 대기
@@ -146,6 +154,7 @@ void kStartConsoleShell(void)
 
             // 프롬프트 출력 및 커맨드 버퍼 초기화
             kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE);
+            printCurPath();
             kMemSet(vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
             iCommandBufferIndex = 0;
         }
@@ -205,6 +214,7 @@ void kStartConsoleShell(void)
                             kSetCursor(0, iCursorY);
                             vcCommandBuffer[iCommandBufferIndex] = '\0';
                             kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE);
+                            printCurPath();
                             kPrintf("%s", vcCommandBuffer);
 
                             historyIdx = -1;
@@ -228,6 +238,7 @@ void kStartConsoleShell(void)
                             kPrintf("%s\n", candidateBuffer);
 
                             kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE);
+                            printCurPath();
                             kMemSet(vcCommandBuffer, '\0', CONSOLESHELL_MAXCOMMANDBUFFERCOUNT);
                             iCommandBufferIndex = 0;
                         }
@@ -505,6 +516,7 @@ static void kHistoryPrint(char* vcCommandBuffer, char historyBuffer[][CONSOLESHE
     kPrintf("%s", lineClear);
     kSetCursor(0, iCursorY);
     kPrintf("%s", CONSOLESHELL_PROMPTMESSAGE);
+    printCurPath();
     kPrintf("%s", vcCommandBuffer);
 }
 
@@ -2489,6 +2501,9 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 			return;
 		}
 
+        // for print current path
+        workingDirIndex = 0;
+
     	i++;
 
     		// 루트 디렉터리로만 이동하는 경우
@@ -2551,9 +2566,36 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 		while((vcFileName[i] != '/') && (vcFileName[i] != '\0'))
 		{
 			 tempBuffer[j] = vcFileName[i];
+
+             // for print current path
+             workingDir[workingDirIndex][j] = vcFileName[i];
+
 			 i++;
 			 j++;
 		}
+
+        // for print current path
+        workingDir[workingDirIndex][j] = '\0';
+        if(workingDir[workingDirIndex][0] == '.' && workingDir[workingDirIndex][1] == '.' && workingDir[workingDirIndex][2] == '\0')
+        {
+            workingDirIndex--;
+            if(workingDirIndex < 0)
+            {
+                workingDirIndex = 0;
+            }
+        }
+        else if(workingDir[workingDirIndex][0] == '.' && workingDir[workingDirIndex][1] == '\0')
+        {
+            // nothing
+        }
+        else if(workingDir[workingDirIndex][0] == '\0')
+        {
+            // nothing
+        }
+        else
+        {
+            workingDirIndex++;
+        }
 
 		if(vcFileName[i] == '\0')
 		{
@@ -2579,4 +2621,20 @@ static void kChangeDirectoryInDirectory(const char* pcParameterBuffer)
 
 	closedir(pstCurrentDirectory);
 	kPrintf("Directory Change Success\n");
+}
+
+// for print current path
+void printCurPath()
+{
+    if(workingDirIndex == 0)
+    {
+        kPrintf("/");
+    }
+    else{
+        for(int i = 0; i < workingDirIndex; i++)
+        {
+            kPrintf("/%s", workingDir[i]);
+        }
+    }
+    kPrintf(">");
 }
