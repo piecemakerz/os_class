@@ -2121,11 +2121,18 @@ static void kShowDirectory(const char* pcParameterBuffer)
         {
             kSPrintf(vcTempValue, "Directory");
         }
-        kMemCpy(vcBuffer + 30, vcTempValue, kStrLen(vcTempValue));
+        kMemCpy(vcBuffer + 25, vcTempValue, kStrLen(vcTempValue));
 
         // 파일의 시작 클러스터 삽입
-        kSPrintf(vcTempValue, "0x%X Cluster", stEntry.dwStartClusterIndex);
-        kMemCpy(vcBuffer + 55, vcTempValue, kStrLen(vcTempValue) + 1);
+        if(stEntry.bType = FILESYSTEM_TYPE_FILE)
+        {
+			kSPrintf(vcTempValue, "0x%X Cluster", stEntry.dwStartClusterIndex);
+			kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
+        }
+
+        kSPrintf(vcTempValue, "%d-%d-%d %d:%d:%d", stEntry.year, stEntry.month, stEntry.dayOfMonth,
+        		stEntry.hour, stEntry.minute, stEntry.second);
+        kMemCpy(vcBuffer + 46, vcTempValue, kStrLen(vcTempValue) + 1);
         kPrintf("    %s\n", vcBuffer);
 
         if ((iCount != 0) && ((iCount % 20) == 0))
