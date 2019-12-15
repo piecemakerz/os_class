@@ -2115,19 +2115,23 @@ static void kShowDirectory(const char* pcParameterBuffer)
         // 파일 길이 삽입
         if (stEntry.bType == FILESYSTEM_TYPE_FILE)
         {
-            kSPrintf(vcTempValue, "%d Byte", stEntry.dwFileSize);
+            kSPrintf(vcTempValue, "%4d Byte", stEntry.dwFileSize);
+            kMemCpy(vcBuffer + 20, vcTempValue, kStrLen(vcTempValue));
+            kSPrintf(vcTempValue, "0x%#X Cluster", stEntry.dwStartClusterIndex);
+            kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
         }
         else
         {
             kSPrintf(vcTempValue, "Directory");
+            kMemCpy(vcBuffer + 20, vcTempValue, kStrLen(vcTempValue));
+            kSPrintf(vcTempValue, "             ");
+        kMemCpy(vcBuffer + 35, vcTempValue, kStrLen(vcTempValue) + 1);
         }
-        kMemCpy(vcBuffer + 30, vcTempValue, kStrLen(vcTempValue));
 
         // 파일의 시작 클러스터 삽입
-        kSPrintf(vcTempValue, "0x%X Cluster", stEntry.dwStartClusterIndex);
-        kMemCpy(vcBuffer + 55, vcTempValue, kStrLen(vcTempValue) + 1);
-        kPrintf("    %s\n", vcBuffer);
+        kPrintf("   %s  ", vcBuffer);
 
+        kPrintf("%4d-%2d-%2d %02d:%02d:%02d\n", stEntry.year, stEntry.month, stEntry.dayOfMonth, stEntry.hour, stEntry.minute, stEntry.second);
         if ((iCount != 0) && ((iCount % 20) == 0))
         {
             kPrintf("Press any key to continue... ('q' is exit) : ");
